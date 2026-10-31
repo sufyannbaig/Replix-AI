@@ -1,6 +1,6 @@
 # Replix AI 2.0 front end: handover
 
-Last updated: 2026-10-31 (session 2 in progress; session 1 stopped at ~93–95% weekly usage). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
+Last updated: 2026-11-01 (end of session 2: every ⏳ row is done). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
 
 ## 0. Status at a glance
 
@@ -21,7 +21,7 @@ Last updated: 2026-10-31 (session 2 in progress; session 1 stopped at ~93–95% 
 | Login / Sign up | `/login` (`543:168449`) | ✅ Done (session 2). See §5 item 9 |
 | Generate → Result screen | `/generations/$jobId` | ✅ Done (session 2, our own design). See §5 item 10 |
 | Old v1 app routes | `/create`, `/generate/*`, `/gallery`, `/campaigns`, `/collections`, `/analytics`, `/ads/$adId` | ✅ Redirected (session 2). `/pricing` and `/billing` kept (checkout). See §5 item 11 |
-| Full QA pass | all | ⏳ Phone/tablet and dark mode checked on Home only; spot-check every screen |
+| Full QA pass | all | ✅ Session 2: no overflow at 390/768/1440, dark contrast scan clean. See §8 |
 
 Every screen above was measured against Figma at 1440px with JS bounding boxes (usually within 1–5px; the browser scrollbar takes 15px of width that Figma doesn't have).
 
@@ -167,3 +167,10 @@ npx prettier --write src/v2 src/routes/_app.*.tsx
 ```
 
 Many old v1 files already fail lint; only lint new or changed files.
+
+## 8. QA pass (session 2, 2026-11-01)
+
+- **Responsive:** all 20 app routes (Home, Photo Studio ×3 modes, Ad Studio, Video hub, UGC ×2, Shorts ×2, Concept, Brand Kit, Products, Assets, Library, Upgrade, Connect, Settings, Refer, Help) checked at **390, 768 and 1440 px** with JS: zero horizontal overflow (no element extends past the viewport). `/login` and `/generations/$jobId` checked separately at 375/1440.
+- **Dark mode:** every route scanned for text vs effective background contrast below 3:1. The only flags were scanner false positives (Tailwind v4 emits `oklab(… / a)` for `text-x/80` colours); confirmed visually. Help, Login, Result and Assets were also checked by eye in dark.
+- **Not covered:** pixel re-measurement against Figma of the session-1 screens (they were measured when built), real-device Safari/iOS, signed-in flows (credits, Shopify, checkout) since there is no test account on this machine, and `/forgot-password`, `/reset-password`, `/pricing`, `/billing`, which are still v1 pages.
+- **How to repeat:** open a page with `?preview=1`, then in the console push each route with `history.pushState` + a `popstate` event and compare `document.documentElement.scrollWidth` with `innerWidth`.
