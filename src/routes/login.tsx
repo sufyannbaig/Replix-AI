@@ -1,12 +1,15 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
-import { Sparkles, Loader2, Gift } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Gift, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/use-auth";
 import { trackBrowserRegistration } from "@/lib/meta-registration";
-import logoAsset from "@/assets/replix-mark.png.asset.json";
-const logo = logoAsset.url;
+import { cn } from "@/lib/utils";
+import logoMark from "@/assets/v2/logo-mark.png";
+import logoWordmark from "@/assets/v2/logo-wordmark.svg";
+import googleIcon from "@/assets/v2/auth/google.svg";
+import heroImage from "@/assets/v2/auth/hero.jpg";
 
 const REFERRAL_STORAGE_KEY = "replix.pendingReferralCode";
 
@@ -16,31 +19,53 @@ export const Route = createFileRoute("/login")({
     ...(typeof s.shop === "string" ? { shop: s.shop } : {}),
   }),
   component: LoginPage,
-  head: () => ({ meta: [
-    { title: "Sign in or create an account | Replix AI" },
-    { name: "description", content: "Start with 10 free ads. No credit card required. Sign in or create your Replix AI account." },
-    { property: "og:title", content: "Sign in or create an account | Replix AI" },
-    { property: "og:description", content: "Start with 10 free ads. No credit card required. Sign in or create your Replix AI account." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title: "Sign in or create an account | Replix AI" },
+      {
+        name: "description",
+        content:
+          "Start with 10 free ads. No credit card required. Sign in or create your Replix AI account.",
+      },
+      { property: "og:title", content: "Sign in or create an account | Replix AI" },
+      {
+        property: "og:description",
+        content:
+          "Start with 10 free ads. No credit card required. Sign in or create your Replix AI account.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
+/*
+ * Replix 2.0 login (Figma 543:168449). The design is email-first; auth is still email +
+ * password, so "Continue" reveals the password step. Every auth call below is the v1
+ * code unchanged, including registration tracking (AGENTS.md): email sign-up calls
+ * trackBrowserRegistration here and OAuth account creation is tracked in useAuth.
+ */
 function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { ref: refParam, shop: shopParam } = Route.useSearch();
-  const [mode, setMode] = useState<"signin" | "signup">(refParam || shopParam ? "signup" : "signin");
+  const [mode, setMode] = useState<"signin" | "signup">(
+    refParam || shopParam ? "signup" : "signin",
+  );
+  const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Persist referral code so it survives email-confirm / OAuth round-trips
   useEffect(() => {
     if (refParam && typeof window !== "undefined") {
-      try { window.localStorage.setItem(REFERRAL_STORAGE_KEY, refParam.toUpperCase()); } catch {}
+      try {
+        window.localStorage.setItem(REFERRAL_STORAGE_KEY, refParam.toUpperCase());
+      } catch {}
     }
   }, [refParam]);
 
@@ -54,10 +79,18 @@ function LoginPage() {
     }
   }, [user, loading, navigate, shopParam]);
 
+  useEffect(() => {
+    if (step === "password") passwordRef.current?.focus();
+  }, [step]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    if (step === "email") {
+      setStep("password");
+      return;
+    }
     setSubmitting(true);
     try {
       const redirectBack = shopParam
@@ -123,155 +156,237 @@ function LoginPage() {
     if (result.error) setError(result.error.message ?? "Google sign-in failed");
   };
 
+  const switchMode = () => {
+    setMode(mode === "signin" ? "signup" : "signin");
+    setError(null);
+    setInfo(null);
+  };
+
+  const heading =
+    step === "email"
+      ? ["Login or", "Sign up"]
+      : mode === "signin"
+        ? ["Welcome", "back"]
+        : ["Create your", "account"];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed -top-20 left-1/2 size-[40rem] -translate-x-1/2 rounded-full bg-brand/15 blur-3xl"
-      />
-      <div className="relative w-full max-w-md">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <img src={logo} alt="Replix AI" className="h-12 w-12 rounded-xl" />
-          <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+    <div className="flex min-h-screen bg-v2-surface font-inter-tight text-v2-ink">
+      <div className="relative z-10 flex w-full flex-col px-6 pb-12 pt-10 shadow-[5px_0px_27.1px_0px_rgba(0,0,0,0.03)] sm:px-[51px] sm:pt-16 lg:w-[44.65%] lg:shrink-0">
+        <Link
+          to="/"
+          aria-label="Replix AI home"
+          className="flex h-[37px] items-center gap-[9.87px] self-start"
+        >
+          <img src={logoMark} alt="" className="size-[37px] rounded-[5.5px] object-cover" />
+          <span
+            aria-hidden
+            className="v2-icon h-[9.98px] w-[95.16px] text-[#162544] night:text-v2-ink"
+            style={{
+              maskImage: `url("${logoWordmark}")`,
+              WebkitMaskImage: `url("${logoWordmark}")`,
+            }}
+          />
+        </Link>
+
+        <div className="mt-14 w-full max-w-[418px] sm:mt-[61px]">
+          <h1 className="font-archivo text-[44px] font-semibold uppercase leading-[1.14] tracking-[-2.2px] text-[#162544] sm:-mb-[15px] sm:text-[61px] sm:tracking-[-3.05px] night:text-v2-ink">
+            {heading[0]}
+            <br />
+            {heading[1]}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "signin"
-              ? "Sign in to generate scroll-stopping ads"
-              : "Start turning products into winning ads"}
+          {/* Figma title-cases this line ("Enter Your Email Address Or Use Google."). */}
+          <p className="-mb-[5px] mt-6 font-inter-tight text-lg leading-[1.38] tracking-[0.18px] text-v2-ink-60">
+            {step === "email" ? (
+              "Enter your email address or use Google."
+            ) : (
+              <>
+                {email}{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("email");
+                    setPassword("");
+                    setError(null);
+                    setInfo(null);
+                  }}
+                  className="font-medium text-v2-blue hover:underline"
+                >
+                  Change
+                </button>
+              </>
+            )}
           </p>
-        </div>
 
-        {refParam && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-brand">
-            <Gift className="size-4 shrink-0" />
-            <span>You were invited! Sign up to get <strong>10 free credits</strong>.</span>
-          </div>
-        )}
+          {refParam ? (
+            <p className="mt-6 flex items-center gap-2 rounded-[14px] bg-v2-nav-active px-4 py-3 text-sm text-v2-ink">
+              <Gift className="size-4 shrink-0 text-v2-blue" />
+              <span>
+                You were invited! Sign up to get <strong>10 free credits</strong>.
+              </span>
+            </p>
+          ) : null}
 
-        <p className="mb-4 text-center text-sm font-medium text-foreground">
-          Start with 10 free ads. No credit card required.
-        </p>
-
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
-          <button
-            type="button"
-            onClick={handleGoogle}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">or</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand"
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="text-xs font-medium text-muted-foreground">
-                  Password
-                </label>
-                {mode === "signin" && (
-                  <Link to="/forgot-password" className="text-xs font-semibold text-brand hover:underline">
-                    Forgot password?
-                  </Link>
-                )}
+          {step === "email" ? (
+            <>
+              <button
+                type="button"
+                onClick={handleGoogle}
+                className="mt-10 flex h-[61px] w-full items-center justify-center gap-4 rounded-[60px] border border-[rgba(13,35,72,0.4)] px-[30px] font-archivo text-xl leading-[1.4] text-v2-ink-70 transition-colors hover:bg-v2-surface-2 night:border-v2-border"
+              >
+                <img src={googleIcon} alt="" className="size-[29px]" />
+                Continue with Google
+              </button>
+              <div className="flex h-10 items-end gap-5" aria-hidden>
+                <span className="mb-[12.5px] h-px flex-1 bg-[rgba(115,124,143,0.45)]" />
+                <span className="font-inter-tight text-lg leading-[1.38] tracking-[0.18px] text-[rgba(115,124,143,0.6)] night:text-v2-subtle">
+                  or
+                </span>
+                <span className="mb-[12.5px] h-px flex-1 bg-[rgba(115,124,143,0.45)]" />
               </div>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand"
-              />
-            </div>
+            </>
+          ) : null}
 
-            {error && (
-              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <form
+            onSubmit={handleSubmit}
+            className={cn("flex flex-col gap-[26px]", step === "password" && "mt-10")}
+          >
+            {step === "email" ? (
+              <Field label="Email" htmlFor="email">
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  className={inputClass}
+                />
+              </Field>
+            ) : (
+              <Field
+                label="Password"
+                htmlFor="password"
+                aside={
+                  mode === "signin" ? (
+                    <Link
+                      to="/forgot-password"
+                      className="font-inter-tight text-sm font-medium text-v2-blue hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  ) : null
+                }
+              >
+                <input
+                  ref={passwordRef}
+                  id="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === "signin" ? "Enter your password" : "At least 6 characters"}
+                  className={inputClass}
+                />
+              </Field>
+            )}
+
+            {error ? (
+              <p
+                role="alert"
+                className="-mt-2 rounded-[14px] bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              >
                 {error}
               </p>
-            )}
-            {info && (
-              <p className="rounded-md border border-brand/30 bg-brand/10 px-3 py-2 text-xs text-brand">
+            ) : null}
+            {info ? (
+              <p
+                role="status"
+                className="-mt-2 rounded-[14px] bg-v2-nav-active px-4 py-3 text-sm text-v2-ink"
+              >
                 {info}
               </p>
-            )}
+            ) : null}
 
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition-all hover:brightness-110 disabled:opacity-60"
+              className="v2-brand-fill flex h-[58px] w-full items-center justify-center gap-2 rounded-[60px] px-[30px] font-archivo text-xl leading-[1.4] text-[#f5f5f5] transition-[filter] hover:brightness-110 disabled:opacity-60"
             >
-              {submitting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {submitting ? <Loader2 className="size-5 animate-spin" /> : null}
+              {step === "email" ? "Continue" : mode === "signin" ? "Log in" : "Create account"}
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            Didn't get the confirmation email?{" "}
-            <button
-              type="button"
-              onClick={handleResendConfirmation}
-              disabled={submitting}
-              className="font-semibold text-brand hover:underline disabled:opacity-60"
-            >
-              Resend it
-            </button>
-          </p>
-
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            {mode === "signin" ? "New to Replix AI?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
-                setError(null);
-                setInfo(null);
-              }}
-              className="font-semibold text-brand hover:underline"
-            >
-              {mode === "signin" ? "Create an account" : "Sign in"}
-            </button>
-          </p>
+          <div className="mt-6 flex flex-col gap-2 font-inter-tight text-sm text-v2-muted">
+            {step === "password" ? (
+              <p>
+                {mode === "signin" ? "New to Replix AI?" : "Already have an account?"}{" "}
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="font-medium text-v2-blue hover:underline"
+                >
+                  {mode === "signin" ? "Create an account" : "Log in"}
+                </button>
+              </p>
+            ) : (
+              <p>Start with 10 free ads. No credit card required.</p>
+            )}
+            <p>
+              Didn't get the confirmation email?{" "}
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={submitting}
+                className="font-medium text-v2-blue hover:underline disabled:opacity-60"
+              >
+                Resend it
+              </button>
+            </p>
+          </div>
         </div>
+      </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">← Back home</Link>
-        </p>
+      <div className="relative hidden min-h-screen flex-1 overflow-hidden lg:block">
+        <img
+          src={heroImage}
+          alt="A Replix product shot: a phone photo of a drink can turned into a studio ad"
+          className="absolute inset-0 size-full object-cover object-[20%_center]"
+        />
       </div>
     </div>
   );
 }
 
-function GoogleIcon() {
+const inputClass =
+  "h-[52px] w-full rounded-[250px] border border-[rgba(11,15,25,0.3)] bg-transparent px-4 font-inter-tight text-sm tracking-[0.14px] text-v2-ink outline-none transition-colors placeholder:text-v2-ink-60 focus:border-v2-blue night:border-v2-border";
+
+function Field({
+  label,
+  htmlFor,
+  aside,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className="size-4">
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.3-1.66 3.8-5.5 3.8-3.32 0-6.02-2.74-6.02-6.12s2.7-6.12 6.02-6.12c1.88 0 3.14.8 3.86 1.49l2.63-2.53C16.84 3.1 14.66 2.1 12 2.1 6.96 2.1 2.88 6.18 2.88 11.22S6.96 20.34 12 20.34c6.92 0 9.5-4.86 9.5-7.34 0-.5-.05-.88-.12-1.26H12z"/>
-    </svg>
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-4">
+        <label
+          htmlFor={htmlFor}
+          className="font-archivo text-lg leading-[1.38] tracking-[0.18px] text-[#0b0f19] night:text-v2-ink"
+        >
+          {label}
+        </label>
+        {aside}
+      </div>
+      {children}
+    </div>
   );
 }
