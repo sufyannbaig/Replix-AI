@@ -98,7 +98,7 @@ Original specs from Figma (`543:5192`), kept for reference:
 
 1. Photo Studio: Piece by piece (Scene → Props → Character stepper, "Upload your own" as the first tile, live "Your shot" summary), then Build it yourself (wireframe only; may be cut).
 2. Shared Product Picker dialog with both states. Wire it to the existing Shopify and upload intake functions through `api.ts`.
-3. **Profile popup** (`543:165690`) from the avatar: credits (with reset date), upgrade push, Refer & Earn, Appearance (Light/Dark/System via `useThemePreference`), Settings, Help & Support, Sign out (`useAuth().signOut`).
+3. ~~Profile popup~~: **done** (`src/v2/components/shell/ProfileMenu.tsx`, commit `c2010d1`). The avatar opens it; Appearance drives the theme.
 4. Ad Studio (start, product analysed).
 5. Video Studio hub, UGC Ads (templates/custom) and Product Shorts. Sanity-check durations and options in these designs.
 6. Brand Kit (empty/filled), Products list and Add Product popup.
@@ -109,7 +109,13 @@ Original specs from Figma (`543:5192`), kept for reference:
 11. Redirect or remove old v1 routes; run a full responsive and dark-mode pass; verify each screen against Figma (measure element boxes with JS as was done for Home).
 12. Ask the user before pushing `v2` and opening a PR.
 
-## 6. Running it locally
+## 6. Git, push and PR
+
+- Pushing from the agent works: Git Credential Manager is enabled for this repo only (`git config --local credential.helper manager`), so `git push origin v2` runs without prompts.
+- **Pull request not created yet.** There's no `gh` CLI, and the built-in browser pane isn't signed in to GitHub. Either Sufyan signs in once in the browser pane (or allows Claude in Chrome), then open a **draft** PR `v2 → main` at https://github.com/sufyannbaig/Replix-AI/compare/main...v2?expand=1 . Or Sufyan opens it from GitHub Desktop (Branch → Create Pull Request). Don't merge until the client approves.
+- `package-lock.json` was regenerated with npm and committed on `v2` (`3511d23`); keep it.
+
+## 7. Running it locally
 
 ```bash
 npm install
