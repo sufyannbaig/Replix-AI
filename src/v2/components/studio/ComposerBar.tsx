@@ -56,6 +56,9 @@ export function ComposerBar({
   canGenerate,
   onGenerate,
   unit = ["image", "images"],
+  notePlaceholder = "Add a note for this shot (optional)",
+  noteAction,
+  duration,
 }: {
   product: { name: string; imageUrl: string } | null;
   onPickProduct: () => void;
@@ -73,6 +76,11 @@ export function ComposerBar({
   onGenerate: () => void;
   /** Singular and plural name of what is generated, e.g. ["ad", "ads"]. */
   unit?: [string, string];
+  notePlaceholder?: string;
+  /** Extra control beside the note field, e.g. "Write with AI". */
+  noteAction?: ReactNode;
+  /** Videos pick a length instead of a count. */
+  duration?: { value: number; options: readonly number[]; onChange: (seconds: number) => void };
 }) {
   const aspectLabel = ASPECT_OPTIONS.find((o) => o.value === aspect)?.label ?? aspect;
 
@@ -102,13 +110,17 @@ export function ComposerBar({
       </button>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
-        <input
-          value={note}
-          onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="Add a note for this shot (optional)"
-          aria-label="Note for this shot"
-          className="mt-1 w-full bg-transparent font-inter-tight text-sm text-v2-ink outline-none placeholder:text-v2-subtle"
-        />
+        <div className="mt-1 flex items-start gap-2">
+          <textarea
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder={notePlaceholder}
+            aria-label={notePlaceholder}
+            rows={1}
+            className="max-h-24 min-w-0 flex-1 resize-none bg-transparent font-inter-tight text-xs leading-[1.4] text-v2-ink outline-none [field-sizing:content] placeholder:text-v2-muted"
+          />
+          {noteAction}
+        </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {chips}
           <DropdownMenu>
@@ -128,33 +140,55 @@ export function ComposerBar({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <div
-            className={cn(chip, "px-[13px] py-2.5")}
-            role="group"
-            aria-label={`Number of ${unit[1]}`}
-          >
-            <button
-              type="button"
-              aria-label={`Fewer ${unit[1]}`}
-              disabled={count <= 1}
-              onClick={() => onCountChange(count - 1)}
-              className="flex size-4 items-center justify-center disabled:opacity-30"
+          {duration ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger className={cn(chip, "px-[13px] py-2.5")}>
+                {duration.value} sec
+                <ChevronDown className="size-3 opacity-60" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {duration.options.map((seconds) => (
+                  <DropdownMenuItem key={seconds} onSelect={() => duration.onChange(seconds)}>
+                    <Check
+                      className={cn(
+                        "size-4",
+                        seconds === duration.value ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    {seconds} seconds
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div
+              className={cn(chip, "px-[13px] py-2.5")}
+              role="group"
+              aria-label={`Number of ${unit[1]}`}
             >
-              <MaskIcon src={minusIcon} width={5.96} height={1.15} />
-            </button>
-            <span className="min-w-[52px] text-center tabular-nums">
-              {count} {count === 1 ? unit[0] : unit[1]}
-            </span>
-            <button
-              type="button"
-              aria-label={`More ${unit[1]}`}
-              disabled={count >= maxCount}
-              onClick={() => onCountChange(count + 1)}
-              className="flex size-4 items-center justify-center disabled:opacity-30"
-            >
-              <MaskIcon src={plusIcon} width={7.5} height={7.5} />
-            </button>
-          </div>
+              <button
+                type="button"
+                aria-label={`Fewer ${unit[1]}`}
+                disabled={count <= 1}
+                onClick={() => onCountChange(count - 1)}
+                className="flex size-4 items-center justify-center disabled:opacity-30"
+              >
+                <MaskIcon src={minusIcon} width={5.96} height={1.15} />
+              </button>
+              <span className="min-w-[52px] text-center tabular-nums">
+                {count} {count === 1 ? unit[0] : unit[1]}
+              </span>
+              <button
+                type="button"
+                aria-label={`More ${unit[1]}`}
+                disabled={count >= maxCount}
+                onClick={() => onCountChange(count + 1)}
+                className="flex size-4 items-center justify-center disabled:opacity-30"
+              >
+                <MaskIcon src={plusIcon} width={7.5} height={7.5} />
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={onGenerate}

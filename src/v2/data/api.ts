@@ -15,6 +15,8 @@ import {
   products,
   recentGenerations,
   sampleInsights,
+  ugcTemplates,
+  VIDEO_CREDITS_PER_15S,
 } from "./mock";
 import type {
   AdTheme,
@@ -27,6 +29,7 @@ import type {
   PieceOption,
   Product,
   ProductInsights,
+  UgcTemplate,
 } from "./types";
 
 export const queryKeys = {
@@ -37,6 +40,7 @@ export const queryKeys = {
   pieces: (kind: PieceKind) => ["v2", "pieces", kind] as const,
   insights: (productId: string) => ["v2", "insights", productId] as const,
   adThemes: ["v2", "ad-themes"] as const,
+  ugcTemplates: ["v2", "ugc-templates"] as const,
   recent: (kind: GenerationKind | "all") => ["v2", "recent", kind] as const,
 };
 
@@ -141,4 +145,15 @@ export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
     queryFn: async (): Promise<Generation[]> =>
       recentGenerations.filter((g) => kind === "all" || g.kind === kind),
   });
+}
+
+export function useUgcTemplates() {
+  return useQuery({
+    queryKey: queryKeys.ugcTemplates,
+    queryFn: async (): Promise<UgcTemplate[]> => ugcTemplates,
+  });
+}
+
+export function videoGenerationCost(seconds: number) {
+  return Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
 }

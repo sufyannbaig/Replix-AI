@@ -25,7 +25,10 @@ export function ModeSwitcher<T extends string>({
     <div
       role="radiogroup"
       aria-label="How do you want to create?"
-      className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:gap-[54px]"
+      className={cn(
+        "grid grid-cols-1 gap-4",
+        modes.length === 2 ? "sm:grid-cols-2 xl:gap-[44px]" : "sm:grid-cols-3 xl:gap-[54px]",
+      )}
     >
       {modes.map((mode) => {
         const active = mode.value === value;

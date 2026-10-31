@@ -92,3 +92,14 @@ export type Generation = {
   thumbnailUrl: string;
   createdAt: string;
 };
+
+export type UgcStyle = "tutorial" | "review" | "unboxing" | "reveal" | "try-on";
+
+/** UGC templates bundle the creator, scene and transitions; the user adds product + script. */
+export type UgcTemplate = {
+  id: string;
+  name: string;
+  style: UgcStyle;
+  posterUrl: string;
+  isPro: boolean;
+};

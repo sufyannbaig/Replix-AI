@@ -14,7 +14,12 @@ import type {
   PieceOption,
   Product,
   ProductInsights,
+  UgcTemplate,
 } from "./types";
+import ugc1 from "@/assets/v2/ugc/template-01.png";
+import ugc2 from "@/assets/v2/ugc/template-02.png";
+import ugc3 from "@/assets/v2/ugc/template-03.png";
+import ugc4 from "@/assets/v2/ugc/template-04.png";
 import themeBeforeAfter from "@/assets/v2/themes/before-after.png";
 import themeBoldOffer from "@/assets/v2/themes/bold-offer.png";
 import cookieDough from "@/assets/v2/gallery/d1471.png";
@@ -274,3 +279,25 @@ export const recentGenerations: Generation[] = RECENT_VIDEO_TITLES.map((title, i
     createdAt: new Date(Date.UTC(2026, 9, 30 - i)).toISOString(),
   };
 });
+
+export const ugcTemplates: UgcTemplate[] = [
+  {
+    id: "ugc_app_walkthrough",
+    name: "App Walkthrough",
+    style: "tutorial",
+    posterUrl: ugc1,
+    isPro: false,
+  },
+  { id: "ugc_food_review", name: "Honest Review", style: "review", posterUrl: ugc2, isPro: true },
+  {
+    id: "ugc_asmr_unboxing",
+    name: "ASMR Unboxing",
+    style: "unboxing",
+    posterUrl: ugc3,
+    isPro: false,
+  },
+  { id: "ugc_case_reveal", name: "Colour Reveal", style: "reveal", posterUrl: ugc4, isPro: true },
+];
+
+/** Video pricing placeholder: credits per started 15 seconds. The backend owns this. */
+export const VIDEO_CREDITS_PER_15S = 10;
