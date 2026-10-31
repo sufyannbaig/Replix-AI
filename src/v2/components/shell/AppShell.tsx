@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCredits } from "@/hooks/use-credits";
 import { PRICING_PLANS } from "@/lib/pricing-plans";
 import { pillClass } from "@/v2/components/primitives";
+import { ProfileMenu } from "./ProfileMenu";
 import { Sidebar, SidebarContent } from "./Sidebar";
 import creditCoin from "@/assets/v2/credit-coin.png";
 import defaultAvatar from "@/assets/v2/home/avatar.png";
@@ -27,16 +28,24 @@ function useAccountSummary() {
 function Avatar({ size = 40 }: { size?: number }) {
   const { avatar } = useAccountSummary();
   return (
-    <Link to="/settings" aria-label="Account and settings" className="shrink-0 rounded-full">
-      <img
-        src={avatar}
-        alt=""
-        width={size}
-        height={size}
-        className="rounded-full object-cover"
-        style={{ width: size, height: size }}
-      />
-    </Link>
+    <ProfileMenu
+      trigger={
+        <button
+          type="button"
+          aria-label="Open account menu"
+          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v2-blue/40"
+        >
+          <img
+            src={avatar}
+            alt=""
+            width={size}
+            height={size}
+            className="rounded-full object-cover"
+            style={{ width: size, height: size }}
+          />
+        </button>
+      }
+    />
   );
 }
 

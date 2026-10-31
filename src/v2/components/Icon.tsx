@@ -12,6 +12,12 @@ import chevronSmallRight from "@/assets/v2/icons/chevron-small-right.svg";
 import lock from "@/assets/v2/icons/lock.svg";
 import checkCircle from "@/assets/v2/icons/check-circle.svg";
 import checkMark from "@/assets/v2/icons/check-mark.svg";
+import edit from "@/assets/v2/icons/edit.svg";
+import link from "@/assets/v2/icons/link.svg";
+import settings from "@/assets/v2/icons/settings.svg";
+import help from "@/assets/v2/icons/help.svg";
+import sun from "@/assets/v2/icons/sun.svg";
+import monitor from "@/assets/v2/icons/monitor.svg";
 
 /** Figma icon sources. Each SVG is drawn in a single colour, so it is rendered as a mask. */
 export const ICONS = {
@@ -27,6 +33,12 @@ export const ICONS = {
   lock,
   checkCircle,
   checkMark,
+  edit,
+  link,
+  settings,
+  help,
+  sun,
+  monitor,
 } as const;
 
 export type IconName = keyof typeof ICONS;
