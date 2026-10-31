@@ -1,12 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Loader2, ShieldCheck } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { useCredits } from "@/hooks/use-credits";
 import { formatPlanPrice, PAID_PRICING_PLANS } from "@/lib/pricing-plans";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
+import { usePlanCheckout, type PaidPlanKey } from "@/v2/components/billing/usePlanCheckout";
 import checkIcon from "@/assets/v2/icons/check-circle-sm.svg";
 
 export const Route = createFileRoute("/_app/upgrade")({
+  /* Stripe returns here (via the old /pricing URL) when checkout is cancelled. */
+  validateSearch: (search: Record<string, unknown>): { checkout?: string } =>
+    typeof search.checkout === "string" ? { checkout: search.checkout } : {},
   head: () => ({ meta: [{ title: "Upgrade Plan · Replix AI" }] }),
   component: UpgradePage,
 });
@@ -16,11 +22,17 @@ const CREDIT_PACKS = [100, 500, 1000];
 
 /**
  * Plans render from PRICING_PLANS (the single source of truth for prices and copy), not
- * the Figma text, which has typos and may drift from billing. Checkout reuses the
- * existing v1 /pricing flow until the 2.0 checkout is wired.
+ * the Figma text, which has typos and may drift from billing. Plan buttons start the
+ * same Shopify / Stripe checkout the v1 /pricing page used (usePlanCheckout).
  */
 function UpgradePage() {
   const { plan: currentPlan } = useCredits();
+  const { checkout } = Route.useSearch();
+  const { select, loadingPlan } = usePlanCheckout();
+
+  useEffect(() => {
+    if (checkout === "cancelled") toast("Checkout cancelled. Your plan hasn't changed.");
+  }, [checkout]);
 
   return (
     <AppShell title="Upgrade Plan" subtitle="Pick the plan that fits how much you create">
@@ -86,17 +98,26 @@ function UpgradePage() {
                     Current plan
                   </span>
                 ) : (
-                  <Link
-                    to="/pricing"
+                  <button
+                    type="button"
+                    onClick={() => select(plan.key as PaidPlanKey)}
+                    disabled={loadingPlan !== null}
                     className={cn(
+                      "gap-2 disabled:pointer-events-none",
                       "flex h-[38px] items-center justify-center rounded-[40px] font-archivo text-base leading-[1.4] transition-opacity",
                       plan.highlight
                         ? "bg-white text-black hover:opacity-90"
                         : "border border-black text-black opacity-60 hover:opacity-100 night:border-v2-ink night:text-v2-ink",
                     )}
                   >
-                    {plan.cta}
-                  </Link>
+                    {loadingPlan === plan.key ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" /> Redirecting…
+                      </>
+                    ) : (
+                      plan.cta
+                    )}
+                  </button>
                 )}
                 <ul className="mt-[13px] flex flex-col gap-[18px]">
                   {plan.features.map((feature) => (
@@ -114,7 +135,14 @@ function UpgradePage() {
           })}
         </div>
 
-        <section className="mt-[74px] flex w-full flex-col gap-5 rounded-[16px] bg-v2-surface px-[30px] py-[30px]">
+        {/* Carried over from the v1 pricing page's reassurance row. */}
+        <p className="-mt-4 flex items-center gap-2 text-center font-inter-tight text-sm text-v2-muted">
+          <ShieldCheck className="size-4 shrink-0" />
+          Cancel anytime. Billed through Shopify if your store is connected, otherwise securely
+          through Stripe.
+        </p>
+
+        <section className="mt-[34px] flex w-full flex-col gap-5 rounded-[16px] bg-v2-surface px-[30px] py-[30px]">
           <h2 className="font-archivo text-[30px] font-medium leading-archivo tracking-[-0.6px] text-black night:text-v2-ink">
             Need more credits? One-off credit packs
           </h2>
