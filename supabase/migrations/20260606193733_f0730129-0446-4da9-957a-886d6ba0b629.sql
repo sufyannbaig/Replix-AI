@@ -1,0 +1,2 @@
+REVOKE SELECT ON public.shopify_installations FROM authenticated;
+GRANT SELECT (id, user_id, shop_domain, scopes, installed_at, uninstalled_at, created_at, updated_at) ON public.shopify_installations TO authenticated;

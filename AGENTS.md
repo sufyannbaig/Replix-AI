@@ -1,0 +1,2 @@
+# Architecture rules
+- Keep browser registration tracking in a shared, independently tested helper; email signup success and initial OAuth account creation use the same per-account deduplication without changing billing or authentication behavior.

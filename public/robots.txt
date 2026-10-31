@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /lovable/
+Disallow: /email/
+
+Sitemap: https://replixai.co.uk/sitemap.xml

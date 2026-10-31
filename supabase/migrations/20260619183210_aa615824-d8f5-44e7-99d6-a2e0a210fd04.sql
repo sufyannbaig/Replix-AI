@@ -1,0 +1,1 @@
+GRANT ALL ON public.shopify_installations TO service_role;

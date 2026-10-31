@@ -1,0 +1,1 @@
+DELETE FROM public.referrals WHERE referrer_id = '1b7bf219-e619-453c-9bc0-2848f6ceaed7' AND referred_user_id = 'd11cafc3-43d1-432d-9da9-e648ba0cb4ad';
