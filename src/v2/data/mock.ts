@@ -26,6 +26,8 @@ import themeBeforeAfter from "@/assets/v2/themes/before-after.png";
 import themeBoldOffer from "@/assets/v2/themes/bold-offer.png";
 import cookieDough from "@/assets/v2/gallery/d1471.png";
 import mercuryLogo from "@/assets/v2/home/mercury-logo.svg";
+import brandLogoPrimary from "@/assets/v2/brand/logo-primary.png";
+import brandLogoLight from "@/assets/v2/brand/logo-light.png";
 import vanilla from "@/assets/v2/gallery/d1a08.png";
 import mocha from "@/assets/v2/gallery/d726d.png";
 import truffle from "@/assets/v2/gallery/908f4.png";
@@ -40,13 +42,41 @@ export const brandKits: BrandKit[] = [
   {
     id: "bk_mercury",
     name: "Mercury",
-    logoUrl: mercuryLogo,
-    colors: ["#0D2348", "#375DAA", "#F5F5F5"],
+    website: null,
+    logos: [mercuryLogo],
+    colors: [],
     fonts: null,
+    toneTags: [],
     tone: null,
+    audience: null,
+    images: [],
     isComplete: false,
   },
 ];
+
+const brandImages = import.meta.glob<string>("@/assets/v2/brand/image-*.png", {
+  eager: true,
+  import: "default",
+});
+
+/** What the website extraction returns for the demo (Figma "Brand Kit - Filled"). */
+export function sampleExtractedKit(base: BrandKit, website: string): BrandKit {
+  return {
+    ...base,
+    website,
+    logos: [brandLogoPrimary, brandLogoLight],
+    colors: ["#0A0B00", "#FFAA01", "#FFFDFB", "#333333"],
+    fonts: { heading: "Archivo", body: "Inter Tight" },
+    toneTags: ["Friendly", "Premium", "Playful", "Gift"],
+    tone: "Afrimode's voice is warm, welcoming, and deeply rooted in cultural heritage. It fosters a vibrant and friendly connection with modern creators and brands, beautifully balancing traditional authenticity with contemporary digital style.",
+    audience:
+      "Modern digital creators, ethnic fashion brands, cultural entrepreneurs, and e-commerce businesses looking to integrate African and ethnic patterns with bold, modern aesthetics into their brand identity.",
+    images: Object.keys(brandImages)
+      .sort()
+      .map((k) => brandImages[k]),
+    isComplete: true,
+  };
+}
 
 function creation(
   id: string,

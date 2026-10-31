@@ -4,6 +4,7 @@ import { Clapperboard, Images, PersonStanding, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "@/v2/components/Icon";
 import { useBrandKits } from "@/v2/data/api";
+import { brandLogo } from "@/v2/data/types";
 import logoMark from "@/assets/v2/logo-mark.png";
 import logoWordmark from "@/assets/v2/logo-wordmark.svg";
 import brandKitRing from "@/assets/v2/icons/brandkit-ring.svg";
@@ -159,9 +160,9 @@ function BrandKitSwitcher() {
       <span className="flex items-center gap-[13px]">
         <span className="relative size-9 shrink-0">
           <img src={brandKitRing} alt="" className="absolute -inset-[49.72%] max-w-none" />
-          {kit.logoUrl ? (
+          {brandLogo(kit) ? (
             <img
-              src={kit.logoUrl}
+              src={brandLogo(kit) ?? undefined}
               alt=""
               className="absolute left-[7.36px] top-[10.64px] h-[14.73px] w-[20.45px] object-contain"
             />

@@ -8,13 +8,23 @@ export type PlanId = "free" | "starter" | "pro" | "scale";
 export type BrandKit = {
   id: string;
   name: string;
-  logoUrl: string | null;
+  website: string | null;
+  /** Primary logo first; extra variants (light, mono) after it. */
+  logos: string[];
   /** Hex colours, primary first. */
   colors: string[];
   fonts: { heading: string; body: string } | null;
+  toneTags: string[];
   tone: string | null;
+  audience: string | null;
+  images: string[];
   isComplete: boolean;
 };
+
+/** Convenience for places that only need the first logo. */
+export function brandLogo(kit: BrandKit) {
+  return kit.logos[0] ?? null;
+}
 
 export type CreationKind = "ugc" | "product-short" | "photoshoot" | "ad" | "concept";
 

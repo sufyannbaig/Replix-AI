@@ -14,6 +14,7 @@ import {
   pieceOptions,
   products,
   recentGenerations,
+  sampleExtractedKit,
   sampleInsights,
   shortTemplates,
   ugcTemplates,
@@ -165,5 +166,26 @@ export function useShortTemplates() {
   return useQuery({
     queryKey: queryKeys.shortTemplates,
     queryFn: async (): Promise<ShortTemplate[]> => shortTemplates,
+  });
+}
+
+/**
+ * Extract a brand kit from a website. Front-end stand-in: waits, then fills the active
+ * kit with sample data. Backend: scrape logo, colours, fonts, tone and images.
+ */
+export function useExtractBrandKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kitId, website }: { kitId: string; website: string }) => {
+      await new Promise((resolve) => setTimeout(resolve, 2200));
+      const kits = queryClient.getQueryData<BrandKit[]>(queryKeys.brandKits) ?? brandKits;
+      const base = kits.find((k) => k.id === kitId) ?? kits[0];
+      return sampleExtractedKit(base, website);
+    },
+    onSuccess: (kit) => {
+      queryClient.setQueryData<BrandKit[]>(queryKeys.brandKits, (prev = brandKits) =>
+        prev.map((k) => (k.id === kit.id ? kit : k)),
+      );
+    },
   });
 }
