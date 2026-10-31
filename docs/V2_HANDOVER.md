@@ -16,7 +16,7 @@ Last updated: 2026-10-31 (session 1 stopped at ~93–95% weekly usage). Branch: 
 | Brand Kit (empty + filled), Products + Add Product | `/brand-kit`, `/products` | ✅ Done |
 | Assets, Library | `/assets`, `/library` | ✅ Done |
 | Upgrade, Connect Shopify, Settings | `/upgrade`, `/connect`, `/settings` | ✅ Done |
-| Refer & Earn | `/refer` (`543:41114`) | ⏳ Placeholder. Reuse v1 `src/components/ReferralCard.tsx` and `src/lib/referrals/*` |
+| Refer & Earn | `/refer` | ✅ Done on the real `getMyReferralStats` (same `/login?ref=` link as v1). Fixes: "Afrimode" → Replix; stats show what is tracked (friends joined, credits earned, reward per friend) |
 | Help & Support | `/help` (`543:51477`) | ⏳ Still the v1 page; restyle in 2.0 (v1 FAQ data: `src/lib/faqs.ts`) |
 | Login / Sign up | `/login` (`543:168449`) | ⏳ Still v1. Keep auth and the registration-tracking helper unchanged (AGENTS.md) |
 | Generate → Result screen | none yet | ⏳ Not designed; we design it. Every studio's Generate currently shows a toast |
