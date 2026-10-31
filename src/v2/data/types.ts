@@ -26,3 +26,16 @@ export type CommunityCreation = {
   aspect: number;
   title: string;
 };
+
+export type PhotoTemplateCategory =
+  "with-model" | "without-model" | "studio" | "lifestyle" | "flat-lay";
+
+export type PhotoTemplate = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  categories: PhotoTemplateCategory[];
+  isPro: boolean;
+};
+
+export type AspectRatio = "1:1" | "4:5" | "9:16" | "16:9";

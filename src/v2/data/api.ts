@@ -4,12 +4,13 @@
  * keep the return types. Query keys are stable so mutations can invalidate them.
  */
 import { useQuery } from "@tanstack/react-query";
-import { brandKits, communityCreations } from "./mock";
-import type { BrandKit, CommunityCreation } from "./types";
+import { brandKits, communityCreations, PHOTO_CREDITS_PER_IMAGE, photoTemplates } from "./mock";
+import type { BrandKit, CommunityCreation, PhotoTemplate } from "./types";
 
 export const queryKeys = {
   brandKits: ["v2", "brand-kits"] as const,
   community: ["v2", "community"] as const,
+  photoTemplates: ["v2", "photo-templates"] as const,
 };
 
 async function fetchBrandKits(): Promise<BrandKit[]> {
@@ -20,10 +21,23 @@ async function fetchCommunity(): Promise<CommunityCreation[]> {
   return communityCreations;
 }
 
+async function fetchPhotoTemplates(): Promise<PhotoTemplate[]> {
+  return photoTemplates;
+}
+
 export function useBrandKits() {
   return useQuery({ queryKey: queryKeys.brandKits, queryFn: fetchBrandKits });
 }
 
 export function useCommunityCreations() {
   return useQuery({ queryKey: queryKeys.community, queryFn: fetchCommunity });
+}
+
+export function usePhotoTemplates() {
+  return useQuery({ queryKey: queryKeys.photoTemplates, queryFn: fetchPhotoTemplates });
+}
+
+/** Credit cost shown on Generate before the user commits. */
+export function photoGenerationCost(imageCount: number) {
+  return imageCount * PHOTO_CREDITS_PER_IMAGE;
 }

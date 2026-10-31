@@ -2,7 +2,13 @@
  * Front-end fixtures for Replix 2.0. Every value here is placeholder data that the
  * backend will replace through ./api.ts; nothing outside the data folder imports it.
  */
-import type { BrandKit, CommunityCreation, CreationKind } from "./types";
+import type {
+  BrandKit,
+  CommunityCreation,
+  CreationKind,
+  PhotoTemplate,
+  PhotoTemplateCategory,
+} from "./types";
 import mercuryLogo from "@/assets/v2/home/mercury-logo.svg";
 import vanilla from "@/assets/v2/gallery/d1a08.png";
 import mocha from "@/assets/v2/gallery/d726d.png";
@@ -63,3 +69,40 @@ export const communityCreations: CommunityCreation[] = [
   creation("c19", "product-short", sodaCan, 183, 346, "Soda can, sunset"),
   creation("c20", "concept", sodaCherry, 183, 219, "Cherry on top"),
 ];
+
+const photoTemplateImages = import.meta.glob<string>("@/assets/v2/templates/photo-*.png", {
+  eager: true,
+  import: "default",
+});
+
+const PHOTO_TEMPLATE_META: [string, PhotoTemplateCategory[], boolean][] = [
+  ["Sunlit Denim", ["with-model", "lifestyle"], false],
+  ["Cocoa Gloss", ["without-model", "studio"], false],
+  ["Blush Studio", ["with-model", "studio"], false],
+  ["Poolside Shade", ["with-model", "lifestyle"], true],
+  ["Sky Blue Serum", ["with-model", "studio"], false],
+  ["Golden Hour Glow", ["with-model", "lifestyle"], false],
+  ["Rose Light", ["with-model", "studio"], false],
+  ["Street Edge", ["with-model", "lifestyle"], true],
+  ["Clean White", ["with-model", "studio"], false],
+  ["Salon Shine", ["with-model", "lifestyle"], false],
+  ["Monochrome Muse", ["with-model", "flat-lay"], false],
+  ["Statement Bag", ["with-model", "flat-lay"], true],
+];
+
+export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
+  ([name, categories, isPro], i) => {
+    const n = String(i + 1).padStart(2, "0");
+    const key = Object.keys(photoTemplateImages).find((k) => k.endsWith(`photo-${n}.png`));
+    return {
+      id: `pt_${n}`,
+      name,
+      imageUrl: key ? photoTemplateImages[key] : "",
+      categories,
+      isPro,
+    };
+  },
+);
+
+/** Credits charged per generated photo; the backend will own this value. */
+export const PHOTO_CREDITS_PER_IMAGE = 2;
