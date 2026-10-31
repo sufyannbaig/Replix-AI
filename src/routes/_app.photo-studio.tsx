@@ -14,6 +14,11 @@ import {
   PieceByPiece,
   type PieceSelection,
 } from "@/v2/components/studio/PieceByPiece";
+import {
+  BuildItYourself,
+  EMPTY_DIY,
+  type DiySelection,
+} from "@/v2/components/studio/BuildItYourself";
 import { photoGenerationCost, usePhotoTemplates } from "@/v2/data/api";
 import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
 import mocha from "@/assets/v2/gallery/d726d.png";
@@ -239,6 +244,7 @@ function PhotoStudioPage() {
   const [upgradeFor, setUpgradeFor] = useState<{ name: string; imageUrl: string } | null>(null);
   const [pieceStep, setPieceStep] = useState(0);
   const [pieces, setPieces] = useState<PieceSelection>(EMPTY_SELECTION);
+  const [diy, setDiy] = useState<DiySelection>(EMPTY_DIY);
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
   const [count, setCount] = useState(1);
   const [note, setNote] = useState("");
@@ -256,6 +262,23 @@ function PhotoStudioPage() {
     }
     setSelected(template);
   };
+
+  /* What the composer shows and the result screen records for the current mode. */
+  const style =
+    mode === "piece"
+      ? pieces.scene && { label: `Scene: ${pieces.scene.name}`, imageUrl: pieces.scene.imageUrl }
+      : mode === "diy"
+        ? diy.scene && {
+            label: [
+              "Your scene",
+              diy.character && "your model",
+              diy.props.length && `${diy.props.length} prop${diy.props.length > 1 ? "s" : ""}`,
+            ]
+              .filter(Boolean)
+              .join(" + "),
+            imageUrl: diy.scene.url,
+          }
+        : selected && { label: selected.name, imageUrl: selected.imageUrl };
 
   return (
     <AppShell title="Photo Studio" subtitle="Select how you want to create">
@@ -303,9 +326,7 @@ function PhotoStudioPage() {
             onLocked={setUpgradeFor}
           />
         ) : (
-          <div className="flex h-[360px] items-center justify-center rounded-[18px] border border-dashed border-v2-border bg-v2-surface font-inter-tight text-sm text-v2-muted">
-            Build it yourself is being built.
-          </div>
+          <BuildItYourself value={diy} onChange={setDiy} />
         )}
       </div>
 
@@ -315,18 +336,7 @@ function PhotoStudioPage() {
           <ComposerBar
             product={product}
             onPickProduct={() => setPickerOpen(true)}
-            chips={
-              mode === "piece" ? (
-                pieces.scene ? (
-                  <TemplateChip
-                    name={`Scene: ${pieces.scene.name}`}
-                    imageUrl={pieces.scene.imageUrl}
-                  />
-                ) : null
-              ) : selected ? (
-                <TemplateChip name={selected.name} imageUrl={selected.imageUrl} />
-              ) : null
-            }
+            chips={style ? <TemplateChip name={style.label} imageUrl={style.imageUrl} /> : null}
             aspect={aspect}
             onAspectChange={setAspect}
             count={count}
@@ -334,18 +344,13 @@ function PhotoStudioPage() {
             note={note}
             onNoteChange={setNote}
             cost={photoGenerationCost(count)}
-            canGenerate={!!product && (mode === "piece" ? !!pieces.scene : !!selected)}
+            canGenerate={!!product && !!style}
             onGenerate={() =>
               generate({
                 studio: "photo",
                 kind: "photo",
                 product: product!,
-                style:
-                  mode === "piece" && pieces.scene
-                    ? { label: `Scene: ${pieces.scene.name}`, imageUrl: pieces.scene.imageUrl }
-                    : selected
-                      ? { label: selected.name, imageUrl: selected.imageUrl }
-                      : undefined,
+                style: style || undefined,
                 aspect,
                 count,
                 note: note.trim() || undefined,
