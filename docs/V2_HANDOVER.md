@@ -82,7 +82,7 @@ Built and measured at 1440px: mode cards at y=149, filters at 449, grid at 541 w
 - `src/v2/components/studio/ModeSwitcher.tsx` and `ComposerBar.tsx` (+ `TemplateChip`) are the shared components; reuse them in Ad and Video studios.
 - `src/routes/_app.photo-studio.tsx`: mode is held in the URL (`?mode=piece|diy`, default templates). Templates, filters, the Pro upgrade dialog and the sticky composer are in place. Mode illustrations are rebuilt from Figma pieces.
 - Data: `usePhotoTemplates()` and `photoGenerationCost(count)` in `api.ts` (2 credits per image in `mock.ts`).
-- **Still to do on this screen:** the composer's `+` only shows a toast (wire it to the Product Picker), `canGenerate` is hard-coded false (enable it once a product is chosen and route to the Result screen), Piece-by-piece and Build-it-yourself modes are placeholders, and the Photo Studio phone layout hasn't been checked yet.
+- **Still to do on this screen:** route Generate to the Result screen once it exists (a toast for now), Piece-by-piece and Build-it-yourself modes are placeholders, and the Photo Studio phone layout hasn't been checked yet.
 
 Original specs from Figma (`543:5192`), kept for reference:
 - Page header: "Photo Studio" / "Select how you want to create".
@@ -97,7 +97,7 @@ Original specs from Figma (`543:5192`), kept for reference:
 ## 5. Remaining plan, in order
 
 1. Photo Studio: Piece by piece (Scene → Props → Character stepper, "Upload your own" as the first tile, live "Your shot" summary), then Build it yourself (wireframe only; may be cut).
-2. Shared Product Picker dialog with both states. Wire it to the existing Shopify and upload intake functions through `api.ts`.
+2. ~~Shared Product Picker~~: **done** (`src/v2/components/studio/ProductPicker.tsx`), with both states (catalogue + upload / empty big upload + Connect Shopify), tabs, search and drag & drop. Data: `useProducts()` / `useUploadProduct()` in `api.ts`. Uploads are kept as object URLs for now. **Backend TODO:** back `useProducts` with Shopify (`getShopifyProducts`) plus uploaded products, and make `useUploadProduct` upload to storage. Photo Studio's composer uses it, and Generate unlocks once a product is chosen (it shows a toast until the generate API exists). Figma labelled every product "Chocolate Truffle"; the fixtures have real names. A "Use product" button appears on selection; double-click also picks.
 3. ~~Profile popup~~: **done** (`src/v2/components/shell/ProfileMenu.tsx`, commit `c2010d1`). The avatar opens it; Appearance drives the theme.
 4. Ad Studio (start, product analysed).
 5. Video Studio hub, UGC Ads (templates/custom) and Product Shorts. Sanity-check durations and options in these designs.

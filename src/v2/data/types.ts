@@ -39,3 +39,14 @@ export type PhotoTemplate = {
 };
 
 export type AspectRatio = "1:1" | "4:5" | "9:16" | "16:9";
+
+export type ProductSource = "shopify" | "upload";
+
+export type Product = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  source: ProductSource;
+  /** ISO timestamp; used to order "Recent uploads". */
+  createdAt: string;
+};

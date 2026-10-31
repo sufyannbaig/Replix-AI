@@ -8,8 +8,9 @@ import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
 import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { photoGenerationCost, usePhotoTemplates } from "@/v2/data/api";
-import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory } from "@/v2/data/types";
+import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
 import mocha from "@/assets/v2/gallery/d726d.png";
 import sodaHand from "@/assets/v2/gallery/35540.png";
 import sodaCherry from "@/assets/v2/gallery/e9c3b.png";
@@ -223,7 +224,9 @@ const FILTERS: readonly { value: "all" | PhotoTemplateCategory; label: string }[
 function PhotoStudioPage() {
   const { mode = "templates" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { plan } = useCredits();
+  const { plan, credits } = useCredits();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const [filter, setFilter] = useState<"all" | PhotoTemplateCategory>("all");
   const [selected, setSelected] = useState<PhotoTemplate | null>(null);
@@ -293,8 +296,8 @@ function PhotoStudioPage() {
       <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:left-[308px] lg:bottom-6">
         <div className="pointer-events-auto w-full max-w-[622px]">
           <ComposerBar
-            product={null}
-            onPickProduct={() => toast("Product Picker is the next screen in the build.")}
+            product={product}
+            onPickProduct={() => setPickerOpen(true)}
             chips={
               selected ? <TemplateChip name={selected.name} imageUrl={selected.imageUrl} /> : null
             }
@@ -305,11 +308,28 @@ function PhotoStudioPage() {
             note={note}
             onNoteChange={setNote}
             cost={photoGenerationCost(count)}
-            canGenerate={false}
-            onGenerate={() => undefined}
+            canGenerate={!!product}
+            onGenerate={() => {
+              const cost = photoGenerationCost(count);
+              if (credits < cost) {
+                toast.error(`You need ${cost} credits for this shoot.`, {
+                  action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
+                });
+                return;
+              }
+              // Backend hook-up: start the photo job and open the Result screen.
+              toast.success("Shoot queued. Results will appear once generation is connected.");
+            }}
           />
         </div>
       </div>
+
+      <ProductPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={setProduct}
+        initialSelectedId={product?.id}
+      />
 
       <Dialog open={!!upgradeFor} onOpenChange={(open) => !open && setUpgradeFor(null)}>
         <DialogContent className="max-w-[420px] rounded-[18px] border-none bg-v2-surface p-0 text-v2-ink">

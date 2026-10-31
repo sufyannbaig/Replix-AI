@@ -8,7 +8,9 @@ import type {
   CreationKind,
   PhotoTemplate,
   PhotoTemplateCategory,
+  Product,
 } from "./types";
+import cookieDough from "@/assets/v2/gallery/d1471.png";
 import mercuryLogo from "@/assets/v2/home/mercury-logo.svg";
 import vanilla from "@/assets/v2/gallery/d1a08.png";
 import mocha from "@/assets/v2/gallery/d726d.png";
@@ -106,3 +108,35 @@ export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
 
 /** Credits charged per generated photo; the backend will own this value. */
 export const PHOTO_CREDITS_PER_IMAGE = 2;
+
+/* Figma labels every product "Chocolate Truffle"; each fixture gets its own name. */
+export const products: Product[] = [
+  {
+    id: "p_truffle",
+    name: "Chocolate Truffle Sauce",
+    imageUrl: truffle,
+    source: "shopify",
+    createdAt: "2026-10-01T10:00:00Z",
+  },
+  {
+    id: "p_vanilla",
+    name: "Vanilla Coffee Creamer",
+    imageUrl: vanilla,
+    source: "shopify",
+    createdAt: "2026-10-02T10:00:00Z",
+  },
+  {
+    id: "p_cookie",
+    name: "Cookie Dough Spread",
+    imageUrl: cookieDough,
+    source: "upload",
+    createdAt: "2026-10-20T10:00:00Z",
+  },
+  {
+    id: "p_mocha",
+    name: "Chocolate Mocha Mix",
+    imageUrl: mocha,
+    source: "upload",
+    createdAt: "2026-10-25T10:00:00Z",
+  },
+];

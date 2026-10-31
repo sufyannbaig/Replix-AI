@@ -81,20 +81,11 @@ export function ComposerBar({
         aria-label={product ? `Change product: ${product.name}` : "Select product"}
         className={cn(
           "relative flex h-24 w-[87px] shrink-0 flex-col items-center justify-center gap-[11px] overflow-hidden rounded-[5px] border-[0.9px] border-dashed border-black/[0.37] bg-[#f5f5f5] transition-colors hover:border-v2-blue night:border-v2-border night:bg-v2-surface-2",
-          product && "border-solid",
+          product && "rounded-[8px] border-0",
         )}
       >
         {product ? (
-          <>
-            <img
-              src={product.imageUrl}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-            />
-            <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1 py-0.5 text-center font-inter-tight text-[10px] text-white">
-              {product.name}
-            </span>
-          </>
+          <img src={product.imageUrl} alt="" className="absolute inset-0 size-full object-cover" />
         ) : (
           <>
             <img src={plusCircle} alt="" className="size-6 night:invert" />

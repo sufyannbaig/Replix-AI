@@ -3,14 +3,21 @@
  * when the backend lands, swap each fetcher for a Supabase query or server function and
  * keep the return types. Query keys are stable so mutations can invalidate them.
  */
-import { useQuery } from "@tanstack/react-query";
-import { brandKits, communityCreations, PHOTO_CREDITS_PER_IMAGE, photoTemplates } from "./mock";
-import type { BrandKit, CommunityCreation, PhotoTemplate } from "./types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  brandKits,
+  communityCreations,
+  PHOTO_CREDITS_PER_IMAGE,
+  photoTemplates,
+  products,
+} from "./mock";
+import type { BrandKit, CommunityCreation, PhotoTemplate, Product } from "./types";
 
 export const queryKeys = {
   brandKits: ["v2", "brand-kits"] as const,
   community: ["v2", "community"] as const,
   photoTemplates: ["v2", "photo-templates"] as const,
+  products: ["v2", "products"] as const,
 };
 
 async function fetchBrandKits(): Promise<BrandKit[]> {
@@ -40,4 +47,32 @@ export function usePhotoTemplates() {
 /** Credit cost shown on Generate before the user commits. */
 export function photoGenerationCost(imageCount: number) {
   return imageCount * PHOTO_CREDITS_PER_IMAGE;
+}
+
+async function fetchProducts(): Promise<Product[]> {
+  return products;
+}
+
+export function useProducts() {
+  return useQuery({ queryKey: queryKeys.products, queryFn: fetchProducts });
+}
+
+/**
+ * Upload a product photo. Front-end only for now: the file is kept as an object URL in
+ * the query cache. The backend version should upload to storage and return the row.
+ */
+export function useUploadProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<Product> => ({
+      id: `upload_${Date.now()}`,
+      name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") || "Uploaded product",
+      imageUrl: URL.createObjectURL(file),
+      source: "upload",
+      createdAt: new Date().toISOString(),
+    }),
+    onSuccess: (product) => {
+      queryClient.setQueryData<Product[]>(queryKeys.products, (prev = []) => [product, ...prev]);
+    },
+  });
 }
