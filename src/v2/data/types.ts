@@ -81,3 +81,14 @@ export type AdTheme = {
   description: string;
   imageUrl: string;
 };
+
+export type GenerationKind = "photo" | "ad" | "video";
+
+/** A finished generation the user made (thumbnail for videos). */
+export type Generation = {
+  id: string;
+  kind: GenerationKind;
+  title: string;
+  thumbnailUrl: string;
+  createdAt: string;
+};

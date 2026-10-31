@@ -13,12 +13,15 @@ import {
   photoTemplates,
   pieceOptions,
   products,
+  recentGenerations,
   sampleInsights,
 } from "./mock";
 import type {
   AdTheme,
   BrandKit,
   CommunityCreation,
+  Generation,
+  GenerationKind,
   PhotoTemplate,
   PieceKind,
   PieceOption,
@@ -34,6 +37,7 @@ export const queryKeys = {
   pieces: (kind: PieceKind) => ["v2", "pieces", kind] as const,
   insights: (productId: string) => ["v2", "insights", productId] as const,
   adThemes: ["v2", "ad-themes"] as const,
+  recent: (kind: GenerationKind | "all") => ["v2", "recent", kind] as const,
 };
 
 async function fetchBrandKits(): Promise<BrandKit[]> {
@@ -128,4 +132,13 @@ export function useAdThemes() {
 
 export function adGenerationCost(adCount: number) {
   return adCount * AD_CREDITS_PER_IMAGE;
+}
+
+/** The user's latest generations, newest first. Sections hide when this is empty. */
+export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
+  return useQuery({
+    queryKey: queryKeys.recent(kind),
+    queryFn: async (): Promise<Generation[]> =>
+      recentGenerations.filter((g) => kind === "all" || g.kind === kind),
+  });
 }

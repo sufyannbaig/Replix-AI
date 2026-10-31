@@ -9,6 +9,7 @@ import type {
   PhotoTemplate,
   PhotoTemplateCategory,
   AdTheme,
+  Generation,
   PieceKind,
   PieceOption,
   Product,
@@ -243,3 +244,33 @@ export const adThemes: AdTheme[] = [
 
 /** Credits charged per static ad; the backend will own this value. */
 export const AD_CREDITS_PER_IMAGE = 2;
+
+const recentVideoImages = import.meta.glob<string>("@/assets/v2/video/recent-*.png", {
+  eager: true,
+  import: "default",
+});
+
+const RECENT_VIDEO_TITLES = [
+  "Skincare set reveal",
+  "Travel pouch unboxing",
+  "Sunny bath duck short",
+  "Greens powder sky pan",
+  "Kiwi juice float",
+  "Citrus soda splash",
+  "Blackberry serum orbit",
+  "Night serum glow",
+  "Sneaker turntable",
+  "Runner color burst",
+];
+
+export const recentGenerations: Generation[] = RECENT_VIDEO_TITLES.map((title, i) => {
+  const n = String(i + 1).padStart(2, "0");
+  const key = Object.keys(recentVideoImages).find((k) => k.endsWith(`recent-${n}.png`));
+  return {
+    id: `gen_video_${n}`,
+    kind: "video",
+    title,
+    thumbnailUrl: key ? recentVideoImages[key] : "",
+    createdAt: new Date(Date.UTC(2026, 9, 30 - i)).toISOString(),
+  };
+});
