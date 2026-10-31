@@ -55,6 +55,7 @@ export function ComposerBar({
   cost,
   canGenerate,
   onGenerate,
+  unit = ["image", "images"],
 }: {
   product: { name: string; imageUrl: string } | null;
   onPickProduct: () => void;
@@ -70,6 +71,8 @@ export function ComposerBar({
   cost: number;
   canGenerate: boolean;
   onGenerate: () => void;
+  /** Singular and plural name of what is generated, e.g. ["ad", "ads"]. */
+  unit?: [string, string];
 }) {
   const aspectLabel = ASPECT_OPTIONS.find((o) => o.value === aspect)?.label ?? aspect;
 
@@ -125,10 +128,14 @@ export function ComposerBar({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className={cn(chip, "px-[13px] py-2.5")} role="group" aria-label="Number of images">
+          <div
+            className={cn(chip, "px-[13px] py-2.5")}
+            role="group"
+            aria-label={`Number of ${unit[1]}`}
+          >
             <button
               type="button"
-              aria-label="Fewer images"
+              aria-label={`Fewer ${unit[1]}`}
               disabled={count <= 1}
               onClick={() => onCountChange(count - 1)}
               className="flex size-4 items-center justify-center disabled:opacity-30"
@@ -136,11 +143,11 @@ export function ComposerBar({
               <MaskIcon src={minusIcon} width={5.96} height={1.15} />
             </button>
             <span className="min-w-[52px] text-center tabular-nums">
-              {count} {count === 1 ? "image" : "images"}
+              {count} {count === 1 ? unit[0] : unit[1]}
             </span>
             <button
               type="button"
-              aria-label="More images"
+              aria-label={`More ${unit[1]}`}
               disabled={count >= maxCount}
               onClick={() => onCountChange(count + 1)}
               className="flex size-4 items-center justify-center disabled:opacity-30"

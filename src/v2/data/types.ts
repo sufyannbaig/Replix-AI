@@ -47,6 +47,9 @@ export type Product = {
   name: string;
   imageUrl: string;
   source: ProductSource;
+  description?: string;
+  /** Formatted for display, e.g. "$34.99". */
+  price?: string;
   /** ISO timestamp; used to order "Recent uploads". */
   createdAt: string;
 };
@@ -62,4 +65,19 @@ export type PieceOption = {
   isPro: boolean;
   /** Cut-out props are shown on a solid colour in the summary panel. */
   background?: string;
+};
+
+/** Result of the AI product analysis shown in Ad Studio. */
+export type ProductInsights = {
+  painPoints: string[];
+  adAngles: string[];
+};
+
+export type AdThemeId = "problem-fix" | "before-after" | "testimonial" | "bold-offer" | "lifestyle";
+
+export type AdTheme = {
+  id: AdThemeId;
+  name: string;
+  description: string;
+  imageUrl: string;
 };

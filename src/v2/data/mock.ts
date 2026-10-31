@@ -8,10 +8,14 @@ import type {
   CreationKind,
   PhotoTemplate,
   PhotoTemplateCategory,
+  AdTheme,
   PieceKind,
   PieceOption,
   Product,
+  ProductInsights,
 } from "./types";
+import themeBeforeAfter from "@/assets/v2/themes/before-after.png";
+import themeBoldOffer from "@/assets/v2/themes/bold-offer.png";
 import cookieDough from "@/assets/v2/gallery/d1471.png";
 import mercuryLogo from "@/assets/v2/home/mercury-logo.svg";
 import vanilla from "@/assets/v2/gallery/d1a08.png";
@@ -191,3 +195,51 @@ export const pieceOptions: PieceOption[] = [
   piece("character", "character-06", "Kenji"),
   piece("character", "character-07", "Noor", true),
 ];
+
+/* Figma's "pain points" listed packaging traits; these are customer problems instead. */
+export const sampleInsights: ProductInsights = {
+  painPoints: [
+    "Store-bought sauces taste artificial or overly sweet",
+    "Hard to make café-style drinks and desserts at home",
+    "Most chocolate sauces skip real fruit flavour",
+    "Premium toppings feel too expensive for everyday use",
+  ],
+  adAngles: ["Indulgence", "Café at home", "Real ingredients", "Gift"],
+};
+
+/* Figma pairs images with the wrong themes; each theme now gets a matching visual. */
+export const adThemes: AdTheme[] = [
+  {
+    id: "problem-fix",
+    name: "Problem → Fix",
+    description: "Name the pain, then show the product solving it",
+    imageUrl: themeBeforeAfter,
+  },
+  {
+    id: "before-after",
+    name: "Before / After",
+    description: "Side-by-side proof of the difference it makes",
+    imageUrl: themeBeforeAfter,
+  },
+  {
+    id: "testimonial",
+    name: "Testimonials",
+    description: "Real-feeling customer quotes around the product",
+    imageUrl: themeBeforeAfter,
+  },
+  {
+    id: "bold-offer",
+    name: "Bold offer",
+    description: "Big type, one clear deal, impossible to scroll past",
+    imageUrl: themeBoldOffer,
+  },
+  {
+    id: "lifestyle",
+    name: "Lifestyle",
+    description: "The product in a real moment of everyday use",
+    imageUrl: themeBoldOffer,
+  },
+];
+
+/** Credits charged per static ad; the backend will own this value. */
+export const AD_CREDITS_PER_IMAGE = 2;
