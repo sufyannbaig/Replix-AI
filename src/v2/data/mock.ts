@@ -10,6 +10,7 @@ import type {
   PhotoTemplateCategory,
   AdTheme,
   Generation,
+  HelpFaq,
   PieceKind,
   PieceOption,
   Product,
@@ -354,3 +355,68 @@ export const shortTemplates: ShortTemplate[] = SHORT_META.map(([name, styles, is
   const key = Object.keys(shortImages).find((k) => k.endsWith(`template-${n}.png`));
   return { id: `short_${i + 1}`, name, styles, isPro, posterUrl: key ? shortImages[key] : "" };
 });
+
+/** Support inbox, same address as the v1 help page. */
+export const SUPPORT_EMAIL = "benjamin@replixai.co.uk";
+
+/*
+ * Help answers rewritten for 2.0 (the v1 list in src/lib/faqs.ts talks about the old
+ * gallery and collections). Credit numbers mirror the constants above and the Free plan.
+ */
+export const helpFaqs: HelpFaq[] = [
+  {
+    id: "start",
+    category: "getting-started",
+    question: "How do I get started with Replix AI?",
+    answer:
+      "Sign up free, add a product (connect Shopify or upload a photo), pick a studio and generate. New accounts get 10 free credits, no card required.",
+  },
+  {
+    id: "shopify",
+    category: "getting-started",
+    question: "Do I need a Shopify store?",
+    answer:
+      "No. Connecting Shopify imports your catalogue in one click, but you can upload product photos or import a product URL from the Products page instead.",
+  },
+  {
+    id: "brand-kit",
+    category: "getting-started",
+    question: "What is the Brand Kit for?",
+    answer:
+      "Paste your website and we pull your logo, colours, fonts and tone of voice. Every studio uses it so photos, ads and videos stay on brand.",
+  },
+  {
+    id: "credits",
+    category: "credits-billing",
+    question: "How do credits work?",
+    answer: `Each generation shows its cost on the Generate button before you commit: ${PHOTO_CREDITS_PER_IMAGE} credits per photo or ad, and ${VIDEO_CREDITS_PER_15S} credits per started 15 seconds of video. If a generation fails, the credits come back automatically.`,
+  },
+  {
+    id: "plans",
+    category: "credits-billing",
+    question: "How do I upgrade or cancel?",
+    answer:
+      "Open Upgrade from the top of any page to compare plans. To change your payment method or cancel, go to Settings → Billing and open the billing portal.",
+  },
+  {
+    id: "studios",
+    category: "studios",
+    question: "Which studio should I use?",
+    answer:
+      "Photo Studio for product shots, Ad Studio for ready-to-post static ads with copy, and Video Studio for UGC ads, Product Shorts and concept ads.",
+  },
+  {
+    id: "sizes",
+    category: "studios",
+    question: "Which sizes can I export?",
+    answer:
+      "Pick the size before you generate: 1:1 Square, 4:5 Portrait, 9:16 Story or 16:9 Landscape. Downloads keep the size you chose.",
+  },
+  {
+    id: "saved",
+    category: "studios",
+    question: "Where do my generations go?",
+    answer:
+      "Everything you generate is saved to Assets, where you can filter, download or reuse it. Characters and scenes you upload live in the Library.",
+  },
+];

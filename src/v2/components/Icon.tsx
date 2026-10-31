@@ -18,6 +18,11 @@ import settings from "@/assets/v2/icons/settings.svg";
 import help from "@/assets/v2/icons/help.svg";
 import sun from "@/assets/v2/icons/sun.svg";
 import monitor from "@/assets/v2/icons/monitor.svg";
+import rocket from "@/assets/v2/help/rocket.svg";
+import wallet from "@/assets/v2/help/wallet.svg";
+import graduation from "@/assets/v2/help/graduation.svg";
+import faqChevron from "@/assets/v2/help/faq-chevron.svg";
+import searchHelp from "@/assets/v2/help/search.svg";
 
 /** Figma icon sources. Each SVG is drawn in a single colour, so it is rendered as a mask. */
 export const ICONS = {
@@ -39,6 +44,11 @@ export const ICONS = {
   help,
   sun,
   monitor,
+  rocket,
+  wallet,
+  graduation,
+  faqChevron,
+  searchHelp,
 } as const;
 
 export type IconName = keyof typeof ICONS;

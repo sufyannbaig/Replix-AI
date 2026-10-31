@@ -61,6 +61,8 @@
   --v2-promo-from: rgb(255 235 201);
   --v2-promo-to: rgb(219 252 201);
   --v2-shadow-card: 0 0 13.4px 0 rgb(0 0 0 / 0.04);
+  --v2-highlight-from: #a6d27e;
+  --v2-highlight-to: #f6e5c8;
 }
 
 [data-theme="dark"] {
@@ -88,6 +90,8 @@
   --v2-promo-from: rgb(52 46 34);
   --v2-promo-to: rgb(24 48 44);
   --v2-shadow-card: 0 0 13.4px 0 rgb(0 0 0 / 0.3);
+  --v2-highlight-from: #5f8f3e;
+  --v2-highlight-to: #6b5a3a;
 }
 
 /* Canvas behind every 2.0 app screen: 14x12.46 dots on a 34 x 30.26 grid. */
@@ -127,4 +131,12 @@
   mask-repeat: no-repeat;
   mask-position: center;
   mask-size: contain;
+}
+
+/* Selected card stroke on Help (topic card, open FAQ): 1px green → cream gradient. */
+@utility v2-highlight-stroke {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--v2-surface), var(--v2-surface)) padding-box,
+    linear-gradient(80deg, var(--v2-highlight-from), var(--v2-highlight-to)) border-box;
 }

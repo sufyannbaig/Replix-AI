@@ -136,3 +136,13 @@ export type AssetItem = {
   thumbnailUrl: string;
   createdAt: string;
 };
+
+export type HelpCategory = "getting-started" | "credits-billing" | "studios";
+
+/** One Help & Support answer. Categories match the three topic cards on /help. */
+export type HelpFaq = {
+  id: string;
+  category: HelpCategory;
+  question: string;
+  answer: string;
+};

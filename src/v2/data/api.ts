@@ -9,6 +9,7 @@ import {
   adThemes,
   brandKits,
   communityCreations,
+  helpFaqs,
   PHOTO_CREDITS_PER_IMAGE,
   photoTemplates,
   pieceOptions,
@@ -27,6 +28,7 @@ import type {
   CommunityCreation,
   Generation,
   GenerationKind,
+  HelpFaq,
   PhotoTemplate,
   PieceKind,
   PieceOption,
@@ -46,6 +48,7 @@ export const queryKeys = {
   adThemes: ["v2", "ad-themes"] as const,
   ugcTemplates: ["v2", "ugc-templates"] as const,
   shortTemplates: ["v2", "short-templates"] as const,
+  helpFaqs: ["v2", "help-faqs"] as const,
   recent: (kind: GenerationKind | "all") => ["v2", "recent", kind] as const,
 };
 
@@ -281,5 +284,15 @@ export function useAssets() {
       ];
       return [...generations, ...uploads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
+  });
+}
+
+export { SUPPORT_EMAIL } from "./mock";
+
+/** Help & Support answers. Static today; a CMS or help-desk API can back this later. */
+export function useHelpFaqs() {
+  return useQuery({
+    queryKey: queryKeys.helpFaqs,
+    queryFn: async (): Promise<HelpFaq[]> => helpFaqs,
   });
 }
