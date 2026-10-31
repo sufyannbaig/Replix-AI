@@ -22,6 +22,7 @@ import {
 } from "./mock";
 import type {
   AdTheme,
+  AssetItem,
   BrandKit,
   CommunityCreation,
   Generation,
@@ -223,4 +224,62 @@ export async function importProductFromUrl(
     imageUrl: sample.imageUrl,
     source: "upload",
   };
+}
+
+/**
+ * Everything in the user's library, newest first. Front-end: assembled from the other
+ * fixtures. Backend: one endpoint over generations + uploads with kind/origin filters.
+ */
+export function useAssets() {
+  const { data: productList = products } = useProducts();
+  return useQuery({
+    queryKey: ["v2", "assets", productList.length] as const,
+    queryFn: async (): Promise<AssetItem[]> => {
+      const day = (n: number) => new Date(Date.UTC(2026, 9, 31 - n)).toISOString();
+      const generations: AssetItem[] = [
+        ...recentGenerations.map((g) => ({
+          id: g.id,
+          kind: "video" as const,
+          origin: "generation" as const,
+          title: g.title,
+          thumbnailUrl: g.thumbnailUrl,
+          createdAt: g.createdAt,
+        })),
+        ...communityCreations
+          .filter((c) => c.kind === "photoshoot" || c.kind === "ad")
+          .map((c, i) => ({
+            id: `asset_${c.id}`,
+            kind: c.kind === "ad" ? ("ad" as const) : ("photo" as const),
+            origin: "generation" as const,
+            title: c.title,
+            thumbnailUrl: c.imageUrl,
+            createdAt: day(i + 2),
+          })),
+      ];
+      const uploads: AssetItem[] = [
+        ...productList
+          .filter((p) => p.source === "upload")
+          .map((p) => ({
+            id: `asset_${p.id}`,
+            kind: "product" as const,
+            origin: "upload" as const,
+            title: p.name,
+            thumbnailUrl: p.imageUrl,
+            createdAt: p.createdAt,
+          })),
+        ...pieceOptions
+          .filter((p) => !p.isPro && (p.kind === "character" || p.kind === "scene"))
+          .slice(0, 6)
+          .map((p, i) => ({
+            id: `asset_${p.id}`,
+            kind: p.kind === "character" ? ("character" as const) : ("scene" as const),
+            origin: "upload" as const,
+            title: p.name,
+            thumbnailUrl: p.imageUrl,
+            createdAt: day(i + 5),
+          })),
+      ];
+      return [...generations, ...uploads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+  });
 }

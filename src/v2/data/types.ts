@@ -124,3 +124,15 @@ export type ShortTemplate = {
   posterUrl: string;
   isPro: boolean;
 };
+
+export type AssetKind = "video" | "photo" | "ad" | "product" | "character" | "scene" | "style";
+
+/** One item in the Assets library: a generation or something the user uploaded. */
+export type AssetItem = {
+  id: string;
+  kind: AssetKind;
+  origin: "generation" | "upload";
+  title: string;
+  thumbnailUrl: string;
+  createdAt: string;
+};
