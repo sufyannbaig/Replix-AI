@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
+import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
@@ -122,7 +122,8 @@ const DURATIONS = [5, 8, 10] as const;
 function ShortsPage() {
   const { mode = "templates" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { plan, credits } = useCredits();
+  const { plan } = useCredits();
+  const { generate, pending: generating } = useGenerate();
   const { data: templates = [] } = useShortTemplates();
 
   const [style, setStyle] = useState<"all" | ShortStyle>("all");
@@ -278,15 +279,23 @@ function ShortsPage() {
             notePlaceholder="Anything to add about the shot? (optional)"
             cost={cost}
             canGenerate={!!product && (mode === "templates" ? !!template : !!scene)}
-            onGenerate={() => {
-              if (credits < cost) {
-                toast.error(`You need ${cost} credits for this short.`, {
-                  action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
-                });
-                return;
-              }
-              toast.success("Short queued. Results will appear once generation is connected.");
-            }}
+            onGenerate={() =>
+              generate({
+                studio: "shorts",
+                kind: "video",
+                product: product!,
+                style:
+                  mode === "templates" && template
+                    ? { label: template.name, imageUrl: template.posterUrl }
+                    : { label: `Custom · ${animation} animation`, imageUrl: scene?.url },
+                aspect,
+                count: 1,
+                seconds,
+                note: note.trim() || undefined,
+                cost,
+              })
+            }
+            generating={generating}
           />
         </div>
       </div>

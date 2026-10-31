@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
+import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
@@ -195,7 +195,8 @@ const DURATIONS = [15, 30, 45, 60] as const;
 function UgcPage() {
   const { mode = "templates" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { plan, credits } = useCredits();
+  const { plan } = useCredits();
+  const { generate, pending: generating } = useGenerate();
   const { data: templates = [] } = useUgcTemplates();
 
   const [style, setStyle] = useState<"all" | UgcStyle>("all");
@@ -380,15 +381,23 @@ function UgcPage() {
               !!product &&
               (mode === "templates" ? !!template : !!scene && !!character && !!script.trim())
             }
-            onGenerate={() => {
-              if (credits < cost) {
-                toast.error(`You need ${cost} credits for this video.`, {
-                  action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
-                });
-                return;
-              }
-              toast.success("Video queued. Results will appear once generation is connected.");
-            }}
+            onGenerate={() =>
+              generate({
+                studio: "ugc",
+                kind: "video",
+                product: product!,
+                style:
+                  mode === "templates" && template
+                    ? { label: template.name, imageUrl: template.posterUrl }
+                    : { label: `Custom · ${transition} transitions`, imageUrl: scene?.url },
+                aspect,
+                count: 1,
+                seconds,
+                note: script.trim() || undefined,
+                cost,
+              })
+            }
+            generating={generating}
           />
         </div>
       </div>

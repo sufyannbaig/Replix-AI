@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
+import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
@@ -229,7 +229,8 @@ const FILTERS: readonly { value: "all" | PhotoTemplateCategory; label: string }[
 function PhotoStudioPage() {
   const { mode = "templates" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { plan, credits } = useCredits();
+  const { plan } = useCredits();
+  const { generate, pending: generating } = useGenerate();
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -334,17 +335,24 @@ function PhotoStudioPage() {
             onNoteChange={setNote}
             cost={photoGenerationCost(count)}
             canGenerate={!!product && (mode === "piece" ? !!pieces.scene : !!selected)}
-            onGenerate={() => {
-              const cost = photoGenerationCost(count);
-              if (credits < cost) {
-                toast.error(`You need ${cost} credits for this shoot.`, {
-                  action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
-                });
-                return;
-              }
-              // Backend hook-up: start the photo job and open the Result screen.
-              toast.success("Shoot queued. Results will appear once generation is connected.");
-            }}
+            onGenerate={() =>
+              generate({
+                studio: "photo",
+                kind: "photo",
+                product: product!,
+                style:
+                  mode === "piece" && pieces.scene
+                    ? { label: `Scene: ${pieces.scene.name}`, imageUrl: pieces.scene.imageUrl }
+                    : selected
+                      ? { label: selected.name, imageUrl: selected.imageUrl }
+                      : undefined,
+                aspect,
+                count,
+                note: note.trim() || undefined,
+                cost: photoGenerationCost(count),
+              })
+            }
+            generating={generating}
           />
         </div>
       </div>

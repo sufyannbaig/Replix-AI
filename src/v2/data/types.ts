@@ -146,3 +146,42 @@ export type HelpFaq = {
   question: string;
   answer: string;
 };
+
+/** Which studio a generation came from (Video Studio has three). */
+export type StudioKey = "photo" | "ad" | "ugc" | "shorts" | "concept";
+
+/** Everything a studio sends when the user clicks Generate. */
+export type GenerationRequest = {
+  studio: StudioKey;
+  kind: GenerationKind;
+  product: { id: string; name: string; imageUrl: string };
+  /** Template, theme or scene the user picked, shown on the result screen. */
+  style?: { label: string; imageUrl?: string };
+  aspect: AspectRatio;
+  /** Number of images or ads; videos are always 1. */
+  count: number;
+  seconds?: number;
+  note?: string;
+  cost: number;
+};
+
+export type GenerationStatus = "queued" | "running" | "done" | "failed";
+
+export type GenerationOutput = {
+  id: string;
+  /** Image, or the poster frame for a video. */
+  imageUrl: string;
+  videoUrl?: string;
+  savedToAssets: boolean;
+};
+
+/** A generation run, polled by the result screen until it is done or failed. */
+export type GenerationJob = {
+  id: string;
+  request: GenerationRequest;
+  status: GenerationStatus;
+  /** 0 to 1 while running. */
+  progress: number;
+  createdAt: string;
+  outputs: GenerationOutput[];
+};

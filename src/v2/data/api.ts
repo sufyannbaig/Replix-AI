@@ -10,6 +10,8 @@ import {
   brandKits,
   communityCreations,
   helpFaqs,
+  MOCK_GENERATION_SECONDS,
+  mockGenerationImages,
   PHOTO_CREDITS_PER_IMAGE,
   photoTemplates,
   pieceOptions,
@@ -27,7 +29,9 @@ import type {
   BrandKit,
   CommunityCreation,
   Generation,
+  GenerationJob,
   GenerationKind,
+  GenerationRequest,
   HelpFaq,
   PhotoTemplate,
   PieceKind,
@@ -49,6 +53,7 @@ export const queryKeys = {
   ugcTemplates: ["v2", "ugc-templates"] as const,
   shortTemplates: ["v2", "short-templates"] as const,
   helpFaqs: ["v2", "help-faqs"] as const,
+  job: (id: string) => ["v2", "job", id] as const,
   recent: (kind: GenerationKind | "all") => ["v2", "recent", kind] as const,
 };
 
@@ -294,5 +299,119 @@ export function useHelpFaqs() {
   return useQuery({
     queryKey: queryKeys.helpFaqs,
     queryFn: async (): Promise<HelpFaq[]> => helpFaqs,
+  });
+}
+
+/*
+ * Generation jobs. Front-end stand-in: a job lives in sessionStorage (so the result page
+ * survives a refresh) and "runs" for MOCK_GENERATION_SECONDS, then returns template art.
+ * Backend hook-up: useStartGeneration calls the generate function and returns the job
+ * row; useGenerationJob polls (or subscribes to) that row; credits are charged and
+ * refunded server-side.
+ */
+const JOBS_STORAGE_KEY = "replix-v2-jobs";
+
+function readJobs(): Record<string, GenerationJob> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.sessionStorage.getItem(JOBS_STORAGE_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeJob(job: GenerationJob) {
+  if (typeof window === "undefined") return;
+  try {
+    const jobs = readJobs();
+    jobs[job.id] = job;
+    window.sessionStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+  } catch {
+    /* Storage full or blocked: the job still works until the page reloads. */
+  }
+}
+
+function hashId(id: string) {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+function advanceJob(job: GenerationJob): GenerationJob {
+  if (job.status === "done" || job.status === "failed") return job;
+  const total = MOCK_GENERATION_SECONDS[job.request.kind] * 1000;
+  const elapsed = Date.now() - Date.parse(job.createdAt);
+  if (elapsed < 700) return { ...job, status: "queued", progress: 0 };
+  if (elapsed < total)
+    return { ...job, status: "running", progress: Math.min(0.96, elapsed / total) };
+
+  const pool = mockGenerationImages(job.request.kind);
+  const offset = hashId(job.id) % pool.length;
+  /* Template art can stand in for the first result; uploads (blob: URLs) and video posters can't. */
+  const styleImage =
+    job.request.kind !== "video" && !job.request.style?.imageUrl?.startsWith("blob:")
+      ? job.request.style?.imageUrl
+      : undefined;
+  const outputs = Array.from({ length: job.request.count }, (_, i) => ({
+    id: `${job.id}_${i + 1}`,
+    imageUrl: i === 0 && styleImage ? styleImage : pool[(offset + i) % pool.length],
+    savedToAssets: false,
+  }));
+  return { ...job, status: "done", progress: 1, outputs };
+}
+
+/** Start a generation; resolves with the new job so the caller can open its result page. */
+export function useStartGeneration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (request: GenerationRequest): Promise<GenerationJob> => {
+      const job: GenerationJob = {
+        id: `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        request,
+        status: "queued",
+        progress: 0,
+        createdAt: new Date().toISOString(),
+        outputs: [],
+      };
+      writeJob(job);
+      return job;
+    },
+    onSuccess: (job) => queryClient.setQueryData(queryKeys.job(job.id), job),
+  });
+}
+
+/** One job, polled every half second until it finishes. `null` when the id is unknown. */
+export function useGenerationJob(jobId: string) {
+  return useQuery({
+    queryKey: queryKeys.job(jobId),
+    queryFn: async (): Promise<GenerationJob | null> => {
+      const stored = readJobs()[jobId];
+      if (!stored) return null;
+      const next = advanceJob(stored);
+      if (next !== stored) writeJob(next);
+      return next;
+    },
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "queued" || status === "running" ? 500 : false;
+    },
+  });
+}
+
+/** Save (or unsave) one result to Assets. */
+export function useSaveGenerationOutput(jobId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ outputId, saved }: { outputId: string; saved: boolean }) => {
+      const job = readJobs()[jobId];
+      if (!job) throw new Error("This generation is no longer available.");
+      const next: GenerationJob = {
+        ...job,
+        outputs: job.outputs.map((o) => (o.id === outputId ? { ...o, savedToAssets: saved } : o)),
+      };
+      writeJob(next);
+      return next;
+    },
+    onSuccess: (job) => queryClient.setQueryData(queryKeys.job(jobId), job),
   });
 }

@@ -1,8 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Sparkles, X } from "lucide-react";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
-import { useCredits } from "@/hooks/use-credits";
+import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
@@ -162,8 +161,7 @@ function SlotUpload({
 }
 
 function ConceptPage() {
-  const navigate = useNavigate();
-  const { credits } = useCredits();
+  const { generate, pending: generating } = useGenerate();
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [concept, setConcept] = useState("");
@@ -304,15 +302,20 @@ function ConceptPage() {
             notePlaceholder="Anything else the director should know? (optional)"
             cost={cost}
             canGenerate={!!product && !!concept.trim() && !!character && !!scene}
-            onGenerate={() => {
-              if (credits < cost) {
-                toast.error(`You need ${cost} credits for this concept ad.`, {
-                  action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
-                });
-                return;
-              }
-              toast.success("Concept ad queued. Results will appear once generation is connected.");
-            }}
+            onGenerate={() =>
+              generate({
+                studio: "concept",
+                kind: "video",
+                product: product!,
+                style: { label: `${emotion} concept`, imageUrl: scene?.url },
+                aspect,
+                count: 1,
+                seconds,
+                note: concept.trim() || undefined,
+                cost,
+              })
+            }
+            generating={generating}
           />
         </div>
       </div>

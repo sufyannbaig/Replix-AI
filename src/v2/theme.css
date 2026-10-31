@@ -140,3 +140,24 @@
     linear-gradient(var(--v2-surface), var(--v2-surface)) padding-box,
     linear-gradient(80deg, var(--v2-highlight-from), var(--v2-highlight-to)) border-box;
 }
+
+/* Loading sweep on the result screen while a generation runs. */
+@utility v2-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--v2-blue) 10%, transparent) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: v2-shimmer 1.6s linear infinite;
+}
+
+@keyframes v2-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}

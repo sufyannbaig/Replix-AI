@@ -10,6 +10,7 @@ import type {
   PhotoTemplateCategory,
   AdTheme,
   Generation,
+  GenerationKind,
   HelpFaq,
   PieceKind,
   PieceOption,
@@ -417,6 +418,24 @@ export const helpFaqs: HelpFaq[] = [
     category: "studios",
     question: "Where do my generations go?",
     answer:
-      "Everything you generate is saved to Assets, where you can filter, download or reuse it. Characters and scenes you upload live in the Library.",
+      "Each result opens on its own page where you can download it, regenerate, or save it to Assets to find and reuse later. Characters and scenes you upload live in the Library.",
   },
 ];
+
+/** Seconds a fake generation takes, so the loading state can be designed and tested. */
+export const MOCK_GENERATION_SECONDS: Record<GenerationKind, number> = {
+  photo: 5,
+  ad: 5,
+  video: 9,
+};
+
+/** Images the fake generator returns: the studio's own template art. */
+export function mockGenerationImages(kind: GenerationKind): string[] {
+  if (kind === "photo") return photoTemplates.map((t) => t.imageUrl).filter(Boolean);
+  if (kind === "ad") return [...new Set(adThemes.map((t) => t.imageUrl))];
+  return [
+    ...ugcTemplates.map((t) => t.posterUrl),
+    ...shortTemplates.map((t) => t.posterUrl),
+    ...recentGenerations.map((g) => g.thumbnailUrl),
+  ].filter(Boolean);
+}

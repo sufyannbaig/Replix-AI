@@ -1,7 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { toast } from "sonner";
-import { useCredits } from "@/hooks/use-credits";
+import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
@@ -21,8 +20,7 @@ export const Route = createFileRoute("/_app/ad-studio")({
 });
 
 function AdStudioPage() {
-  const navigate = useNavigate();
-  const { credits } = useCredits();
+  const { generate, pending: generating } = useGenerate();
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [theme, setTheme] = useState<AdTheme | null>(null);
@@ -128,17 +126,21 @@ function AdStudioPage() {
             onNoteChange={setNote}
             cost={adGenerationCost(count)}
             canGenerate={!!product && !!theme && !insights.isLoading}
-            onGenerate={() => {
-              const cost = adGenerationCost(count);
-              if (credits < cost) {
-                toast.error(`You need ${cost} credits for these ads.`, {
-                  action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
-                });
-                return;
-              }
-              // Backend hook-up: start the ad job and open the Result screen.
-              toast.success("Ads queued. Results will appear once generation is connected.");
-            }}
+            onGenerate={() =>
+              generate({
+                studio: "ad",
+                kind: "ad",
+                product: product!,
+                style: theme
+                  ? { label: `Theme: ${theme.name}`, imageUrl: theme.imageUrl }
+                  : undefined,
+                aspect,
+                count,
+                note: note.trim() || undefined,
+                cost: adGenerationCost(count),
+              })
+            }
+            generating={generating}
           />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   DropdownMenu,
@@ -60,6 +60,7 @@ export function ComposerBar({
   noteAction,
   duration,
   extraPanel,
+  generating = false,
 }: {
   product: { name: string; imageUrl: string } | null;
   onPickProduct: () => void;
@@ -84,6 +85,8 @@ export function ComposerBar({
   duration?: { value: number; options: readonly number[]; onChange: (seconds: number) => void };
   /** Mode-specific settings shown between the note and the chips (e.g. transitions). */
   extraPanel?: ReactNode;
+  /** True while the job is being started; the button shows a spinner. */
+  generating?: boolean;
 }) {
   const aspectLabel = ASPECT_OPTIONS.find((o) => o.value === aspect)?.label ?? aspect;
 
@@ -196,11 +199,16 @@ export function ComposerBar({
           <button
             type="button"
             onClick={onGenerate}
-            disabled={!canGenerate}
+            disabled={!canGenerate || generating}
+            aria-busy={generating}
             title={canGenerate ? undefined : "Select a product to generate"}
             className={pillClass("primary", "ml-auto h-[49.88px] text-sm")}
           >
-            <img src={creditCoin} alt="" className="size-5" />
+            {generating ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <img src={creditCoin} alt="" className="size-5" />
+            )}
             Generate · {cost} credits
           </button>
         </div>

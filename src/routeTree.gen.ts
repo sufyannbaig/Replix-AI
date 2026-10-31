@@ -46,6 +46,7 @@ import { Route as AppCollectionsCollectionIdRouteImport } from './routes/_app.co
 import { Route as AppGenerateIndexRouteImport } from './routes/_app.generate.index'
 import { Route as AppGenerateProductIdRouteImport } from './routes/_app.generate.$productId'
 import { Route as AppGenerateExternalRouteImport } from './routes/_app.generate.external'
+import { Route as AppGenerationsJobIdRouteImport } from './routes/_app.generations.$jobId'
 import { Route as AppVideoStudioIndexRouteImport } from './routes/_app.video-studio.index'
 import { Route as AppVideoStudioConceptRouteImport } from './routes/_app.video-studio.concept'
 import { Route as AppVideoStudioShortsRouteImport } from './routes/_app.video-studio.shorts'
@@ -252,6 +253,11 @@ const AppGenerateExternalRoute = AppGenerateExternalRouteImport.update({
   path: '/generate/external',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGenerationsJobIdRoute = AppGenerationsJobIdRouteImport.update({
+  id: '/generations/$jobId',
+  path: '/generations/$jobId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVideoStudioIndexRoute = AppVideoStudioIndexRouteImport.update({
   id: '/video-studio/',
   path: '/video-studio/',
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/collections/$collectionId': typeof AppCollectionsCollectionIdRoute
   '/generate/$productId': typeof AppGenerateProductIdRoute
   '/generate/external': typeof AppGenerateExternalRoute
+  '/generations/$jobId': typeof AppGenerationsJobIdRoute
   '/video-studio/concept': typeof AppVideoStudioConceptRoute
   '/video-studio/shorts': typeof AppVideoStudioShortsRoute
   '/video-studio/ugc': typeof AppVideoStudioUgcRoute
@@ -457,6 +464,7 @@ export interface FileRoutesByTo {
   '/collections/$collectionId': typeof AppCollectionsCollectionIdRoute
   '/generate/$productId': typeof AppGenerateProductIdRoute
   '/generate/external': typeof AppGenerateExternalRoute
+  '/generations/$jobId': typeof AppGenerationsJobIdRoute
   '/video-studio/concept': typeof AppVideoStudioConceptRoute
   '/video-studio/shorts': typeof AppVideoStudioShortsRoute
   '/video-studio/ugc': typeof AppVideoStudioUgcRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/_app/collections/$collectionId': typeof AppCollectionsCollectionIdRoute
   '/_app/generate/$productId': typeof AppGenerateProductIdRoute
   '/_app/generate/external': typeof AppGenerateExternalRoute
+  '/_app/generations/$jobId': typeof AppGenerationsJobIdRoute
   '/_app/video-studio/concept': typeof AppVideoStudioConceptRoute
   '/_app/video-studio/shorts': typeof AppVideoStudioShortsRoute
   '/_app/video-studio/ugc': typeof AppVideoStudioUgcRoute
@@ -577,6 +586,7 @@ export interface FileRouteTypes {
     | '/collections/$collectionId'
     | '/generate/$productId'
     | '/generate/external'
+    | '/generations/$jobId'
     | '/video-studio/concept'
     | '/video-studio/shorts'
     | '/video-studio/ugc'
@@ -635,6 +645,7 @@ export interface FileRouteTypes {
     | '/collections/$collectionId'
     | '/generate/$productId'
     | '/generate/external'
+    | '/generations/$jobId'
     | '/video-studio/concept'
     | '/video-studio/shorts'
     | '/video-studio/ugc'
@@ -694,6 +705,7 @@ export interface FileRouteTypes {
     | '/_app/collections/$collectionId'
     | '/_app/generate/$productId'
     | '/_app/generate/external'
+    | '/_app/generations/$jobId'
     | '/_app/video-studio/concept'
     | '/_app/video-studio/shorts'
     | '/_app/video-studio/ugc'
@@ -1010,6 +1022,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGenerateExternalRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/generations/$jobId': {
+      id: '/_app/generations/$jobId'
+      path: '/generations/$jobId'
+      fullPath: '/generations/$jobId'
+      preLoaderRoute: typeof AppGenerationsJobIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/video-studio/': {
       id: '/_app/video-studio/'
       path: '/video-studio'
@@ -1188,6 +1207,7 @@ interface AppRouteChildren {
   AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
   AppGenerateProductIdRoute: typeof AppGenerateProductIdRoute
   AppGenerateExternalRoute: typeof AppGenerateExternalRoute
+  AppGenerationsJobIdRoute: typeof AppGenerationsJobIdRoute
   AppVideoStudioConceptRoute: typeof AppVideoStudioConceptRoute
   AppVideoStudioShortsRoute: typeof AppVideoStudioShortsRoute
   AppVideoStudioUgcRoute: typeof AppVideoStudioUgcRoute
@@ -1219,6 +1239,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
   AppGenerateProductIdRoute: AppGenerateProductIdRoute,
   AppGenerateExternalRoute: AppGenerateExternalRoute,
+  AppGenerationsJobIdRoute: AppGenerationsJobIdRoute,
   AppVideoStudioConceptRoute: AppVideoStudioConceptRoute,
   AppVideoStudioShortsRoute: AppVideoStudioShortsRoute,
   AppVideoStudioUgcRoute: AppVideoStudioUgcRoute,
