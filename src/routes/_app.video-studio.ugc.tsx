@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Sparkles, Upload } from "lucide-react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
@@ -22,6 +22,11 @@ import artTruffle from "@/assets/v2/gallery/908f4.png";
 import modeWand from "@/assets/v2/studio/mode-wand.svg";
 import modeSliders from "@/assets/v2/studio/mode-sliders.svg";
 import modeCrop from "@/assets/v2/studio/mode-crop.svg";
+import sceneBack from "@/assets/v2/pieces/scene-05.png";
+import sceneFront from "@/assets/v2/pieces/scene-04.png";
+import castBack from "@/assets/v2/pieces/character-02.png";
+import castMiddle from "@/assets/v2/pieces/character-05.png";
+import castFront from "@/assets/v2/pieces/character-08.png";
 
 type UgcMode = "templates" | "custom";
 
@@ -139,6 +144,127 @@ const STYLES: readonly { value: "all" | UgcStyle; label: string }[] = [
   { value: "try-on", label: "Try-on" },
 ];
 
+const TRANSITIONS = ["Auto", "Cut", "Whip pan", "Zoom", "Match Cut"] as const;
+type Transition = (typeof TRANSITIONS)[number];
+
+type UploadedImage = { name: string; url: string };
+
+/** Big upload card for custom mode; shows the chosen image once uploaded. */
+function UploadCard({
+  title,
+  subtitle,
+  button,
+  art,
+  value,
+  onChange,
+}: {
+  title: string;
+  subtitle: string;
+  button: string;
+  art: ReactNode;
+  value: UploadedImage | null;
+  onChange: (value: UploadedImage | null) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <div className="relative flex h-[375px] flex-col items-center justify-end overflow-hidden rounded-[14px] bg-v2-surface pb-[41px]">
+      {value ? (
+        <img src={value.url} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        art
+      )}
+      <div
+        className={cn(
+          "relative flex flex-col items-center gap-3",
+          value && "rounded-[14px] bg-white/90 px-5 py-3",
+        )}
+      >
+        {value ? (
+          <p className="max-w-[260px] truncate font-archivo text-base font-medium text-[#12213d]">
+            {value.name}
+          </p>
+        ) : (
+          <div className="flex flex-col items-center gap-1.5 text-center">
+            <p className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
+              {title}
+            </p>
+            <p className="font-inter-tight text-sm text-v2-muted">{subtitle}</p>
+          </div>
+        )}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            className="flex items-center justify-center gap-1.5 rounded-[35px] border-[0.6px] border-[#a2a2a2] bg-white px-5 py-2.5 font-archivo text-base leading-[1.4] text-black hover:bg-[#f5f5f5]"
+          >
+            <Upload className="size-4" />
+            {value ? "Replace" : button}
+          </button>
+          {/* Wireframe: each slot can also pull from the user's Library. */}
+          <Link
+            to="/library"
+            className="font-inter-tight text-xs text-v2-muted underline-offset-2 hover:underline"
+          >
+            or pick from Library
+          </Link>
+        </div>
+      </div>
+      <input
+        ref={input}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) onChange({ name: file.name, url: URL.createObjectURL(file) });
+        }}
+      />
+    </div>
+  );
+}
+
+const SceneArt = (
+  <span aria-hidden className="absolute left-[calc(50%-96px)] top-[55px] h-[134px] w-[202px]">
+    <img
+      src={sceneBack}
+      alt=""
+      className="absolute left-[102.7px] top-[14.7px] h-[113.4px] w-[92.9px] rotate-[7.6deg] rounded-[6px] object-cover"
+    />
+    <img
+      src={artTruffle}
+      alt=""
+      className="absolute left-[54.25px] top-[8.1px] h-[114.4px] w-[93px] rounded-[6px] object-cover"
+    />
+    <img
+      src={sceneFront}
+      alt=""
+      className="absolute left-[8.3px] top-[7.2px] h-[113.4px] w-[93px] -rotate-[9.79deg] rounded-[6px] object-cover"
+    />
+    <span className="absolute left-[-11px] top-[84px] h-[50px] w-[207px] bg-gradient-to-b from-transparent to-[var(--v2-surface)]" />
+  </span>
+);
+
+const CastArt = (
+  <span aria-hidden className="absolute left-[calc(50%-103px)] top-[52px] h-[146px] w-[235px]">
+    <img
+      src={castBack}
+      alt=""
+      className="absolute left-[140.6px] top-[32px] h-[113.4px] w-[93px] rounded-[6px] object-cover"
+    />
+    <img
+      src={castMiddle}
+      alt=""
+      className="absolute left-[72.6px] top-[18px] h-[113.4px] w-[93px] rounded-[6px] object-cover"
+    />
+    <img
+      src={castFront}
+      alt=""
+      className="absolute left-[0.6px] top-0 h-[113.4px] w-[93px] rounded-[6px] border border-white object-cover"
+    />
+  </span>
+);
+
 /* UGC ads run 15–60s; 30s is the common default for TikTok and Reels. */
 const DURATIONS = [15, 30, 45, 60] as const;
 
@@ -156,6 +282,9 @@ function UgcPage() {
   const [aspect, setAspect] = useState<AspectRatio>("9:16");
   const [seconds, setSeconds] = useState(30);
   const [script, setScript] = useState("");
+  const [scene, setScene] = useState<UploadedImage | null>(null);
+  const [character, setCharacter] = useState<UploadedImage | null>(null);
+  const [transition, setTransition] = useState<Transition>("Auto");
 
   const visible = useMemo(
     () => templates.filter((t) => style === "all" || t.style === style),
@@ -239,8 +368,23 @@ function UgcPage() {
             )}
           </div>
         ) : (
-          <div className="flex h-[360px] items-center justify-center rounded-[18px] border border-dashed border-v2-border bg-v2-surface font-inter-tight text-sm text-v2-muted">
-            Custom UGC is being built.
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+            <UploadCard
+              title="Upload Your Scene"
+              subtitle="Where the creator films"
+              button="Upload Image"
+              art={SceneArt}
+              value={scene}
+              onChange={setScene}
+            />
+            <UploadCard
+              title="Upload Your Character"
+              subtitle="The creator who presents your product"
+              button="Upload Character"
+              art={CastArt}
+              value={character}
+              onChange={setCharacter}
+            />
           </div>
         )}
       </div>
@@ -251,7 +395,37 @@ function UgcPage() {
             product={product}
             onPickProduct={() => setPickerOpen(true)}
             chips={
-              template ? <TemplateChip name={template.name} imageUrl={template.posterUrl} /> : null
+              mode === "templates" && template ? (
+                <TemplateChip name={template.name} imageUrl={template.posterUrl} />
+              ) : null
+            }
+            extraPanel={
+              mode === "custom" ? (
+                <div className="mt-3 flex flex-col gap-2.5">
+                  <p className="font-archivo text-base font-medium leading-archivo text-v2-ink">
+                    Transitions
+                  </p>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Transitions">
+                    {TRANSITIONS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        role="radio"
+                        aria-checked={transition === t}
+                        onClick={() => setTransition(t)}
+                        className={cn(
+                          "rounded-[50px] border px-3 py-1 font-inter-tight text-sm transition-colors",
+                          transition === t
+                            ? "border-black text-black night:border-v2-ink night:text-v2-ink"
+                            : "border-black/15 text-black/35 hover:text-black/70 night:border-v2-border night:text-v2-ink-60",
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null
             }
             aspect={aspect}
             onAspectChange={setAspect}
@@ -278,7 +452,10 @@ function UgcPage() {
               </button>
             }
             cost={cost}
-            canGenerate={!!product && !!template}
+            canGenerate={
+              !!product &&
+              (mode === "templates" ? !!template : !!scene && !!character && !!script.trim())
+            }
             onGenerate={() => {
               if (credits < cost) {
                 toast.error(`You need ${cost} credits for this video.`, {

@@ -59,6 +59,7 @@ export function ComposerBar({
   notePlaceholder = "Add a note for this shot (optional)",
   noteAction,
   duration,
+  extraPanel,
 }: {
   product: { name: string; imageUrl: string } | null;
   onPickProduct: () => void;
@@ -81,6 +82,8 @@ export function ComposerBar({
   noteAction?: ReactNode;
   /** Videos pick a length instead of a count. */
   duration?: { value: number; options: readonly number[]; onChange: (seconds: number) => void };
+  /** Mode-specific settings shown between the note and the chips (e.g. transitions). */
+  extraPanel?: ReactNode;
 }) {
   const aspectLabel = ASPECT_OPTIONS.find((o) => o.value === aspect)?.label ?? aspect;
 
@@ -121,6 +124,7 @@ export function ComposerBar({
           />
           {noteAction}
         </div>
+        {extraPanel}
         <div className="flex flex-wrap items-center gap-2.5">
           {chips}
           <DropdownMenu>
