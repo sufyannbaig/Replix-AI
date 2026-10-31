@@ -103,3 +103,14 @@ export type UgcTemplate = {
   posterUrl: string;
   isPro: boolean;
 };
+
+export type ShortStyle = "studio" | "lifestyle" | "floating" | "spin" | "dramatic";
+
+/** Product Shorts templates fix scene, lighting and motion; the user only adds the product. */
+export type ShortTemplate = {
+  id: string;
+  name: string;
+  styles: ShortStyle[];
+  posterUrl: string;
+  isPro: boolean;
+};

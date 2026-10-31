@@ -14,6 +14,8 @@ import type {
   PieceOption,
   Product,
   ProductInsights,
+  ShortStyle,
+  ShortTemplate,
   UgcTemplate,
 } from "./types";
 import ugc1 from "@/assets/v2/ugc/template-01.png";
@@ -301,3 +303,24 @@ export const ugcTemplates: UgcTemplate[] = [
 
 /** Video pricing placeholder: credits per started 15 seconds. The backend owns this. */
 export const VIDEO_CREDITS_PER_15S = 10;
+
+const shortImages = import.meta.glob<string>("@/assets/v2/shorts/template-*.png", {
+  eager: true,
+  import: "default",
+});
+
+const SHORT_META: [string, ShortStyle[], boolean, string][] = [
+  ["Desert Drift", ["lifestyle", "dramatic"], false, "01"],
+  ["Garden Glow", ["studio", "dramatic"], true, "02"],
+  ["Creator Close-up", ["lifestyle"], false, "03"],
+  ["Case Float", ["floating", "spin"], true, "04"],
+  ["Couch Levitation", ["floating", "lifestyle"], false, "05"],
+  ["Hand Reveal", ["lifestyle"], true, "06"],
+  ["Clean Unpack", ["studio"], false, "07"],
+  ["Case Spin", ["spin", "studio"], true, "04"],
+];
+
+export const shortTemplates: ShortTemplate[] = SHORT_META.map(([name, styles, isPro, n], i) => {
+  const key = Object.keys(shortImages).find((k) => k.endsWith(`template-${n}.png`));
+  return { id: `short_${i + 1}`, name, styles, isPro, posterUrl: key ? shortImages[key] : "" };
+});

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles, Upload } from "lucide-react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
@@ -10,6 +10,7 @@ import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
 import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import { UploadCard, type UploadedImage } from "@/v2/components/studio/UploadCard";
 import { useUgcTemplates, videoGenerationCost } from "@/v2/data/api";
 import type { AspectRatio, Product, UgcStyle, UgcTemplate } from "@/v2/data/types";
 import artSkincare from "@/assets/v2/video/recent-01.png";
@@ -146,83 +147,6 @@ const STYLES: readonly { value: "all" | UgcStyle; label: string }[] = [
 
 const TRANSITIONS = ["Auto", "Cut", "Whip pan", "Zoom", "Match Cut"] as const;
 type Transition = (typeof TRANSITIONS)[number];
-
-type UploadedImage = { name: string; url: string };
-
-/** Big upload card for custom mode; shows the chosen image once uploaded. */
-function UploadCard({
-  title,
-  subtitle,
-  button,
-  art,
-  value,
-  onChange,
-}: {
-  title: string;
-  subtitle: string;
-  button: string;
-  art: ReactNode;
-  value: UploadedImage | null;
-  onChange: (value: UploadedImage | null) => void;
-}) {
-  const input = useRef<HTMLInputElement>(null);
-  return (
-    <div className="relative flex h-[375px] flex-col items-center justify-end overflow-hidden rounded-[14px] bg-v2-surface pb-[41px]">
-      {value ? (
-        <img src={value.url} alt="" className="absolute inset-0 size-full object-cover" />
-      ) : (
-        art
-      )}
-      <div
-        className={cn(
-          "relative flex flex-col items-center gap-3",
-          value && "rounded-[14px] bg-white/90 px-5 py-3",
-        )}
-      >
-        {value ? (
-          <p className="max-w-[260px] truncate font-archivo text-base font-medium text-[#12213d]">
-            {value.name}
-          </p>
-        ) : (
-          <div className="flex flex-col items-center gap-1.5 text-center">
-            <p className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
-              {title}
-            </p>
-            <p className="font-inter-tight text-sm text-v2-muted">{subtitle}</p>
-          </div>
-        )}
-        <div className="flex flex-col items-center gap-1">
-          <button
-            type="button"
-            onClick={() => input.current?.click()}
-            className="flex items-center justify-center gap-1.5 rounded-[35px] border-[0.6px] border-[#a2a2a2] bg-white px-5 py-2.5 font-archivo text-base leading-[1.4] text-black hover:bg-[#f5f5f5]"
-          >
-            <Upload className="size-4" />
-            {value ? "Replace" : button}
-          </button>
-          {/* Wireframe: each slot can also pull from the user's Library. */}
-          <Link
-            to="/library"
-            className="font-inter-tight text-xs text-v2-muted underline-offset-2 hover:underline"
-          >
-            or pick from Library
-          </Link>
-        </div>
-      </div>
-      <input
-        ref={input}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) onChange({ name: file.name, url: URL.createObjectURL(file) });
-        }}
-      />
-    </div>
-  );
-}
 
 const SceneArt = (
   <span aria-hidden className="absolute left-[calc(50%-96px)] top-[55px] h-[134px] w-[202px]">

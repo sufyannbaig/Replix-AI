@@ -15,6 +15,7 @@ import {
   products,
   recentGenerations,
   sampleInsights,
+  shortTemplates,
   ugcTemplates,
   VIDEO_CREDITS_PER_15S,
 } from "./mock";
@@ -29,6 +30,7 @@ import type {
   PieceOption,
   Product,
   ProductInsights,
+  ShortTemplate,
   UgcTemplate,
 } from "./types";
 
@@ -41,6 +43,7 @@ export const queryKeys = {
   insights: (productId: string) => ["v2", "insights", productId] as const,
   adThemes: ["v2", "ad-themes"] as const,
   ugcTemplates: ["v2", "ugc-templates"] as const,
+  shortTemplates: ["v2", "short-templates"] as const,
   recent: (kind: GenerationKind | "all") => ["v2", "recent", kind] as const,
 };
 
@@ -156,4 +159,11 @@ export function useUgcTemplates() {
 
 export function videoGenerationCost(seconds: number) {
   return Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
+}
+
+export function useShortTemplates() {
+  return useQuery({
+    queryKey: queryKeys.shortTemplates,
+    queryFn: async (): Promise<ShortTemplate[]> => shortTemplates,
+  });
 }
