@@ -1,6 +1,6 @@
 # Replix AI 2.0 front end: handover
 
-Last updated: 2026-10-31. Branch: `v2` (local; not pushed yet). `main` = the live v1 site, untouched.
+Last updated: 2026-10-31 (end of session 1). Branch: `v2` (local; not pushed yet). `main` = the live v1 site, untouched.
 
 ## 1. Brief (from the client, via Sufyan)
 
@@ -76,9 +76,15 @@ Last updated: 2026-10-31. Branch: `v2` (local; not pushed yet). `main` = the liv
 - Old routes not yet replaced: `/create`, `/generate/*`, `/gallery`, `/campaigns`, `/collections`, `/analytics`, `/billing`, `/pricing`, `/ads/$adId`. At the end, redirect them to their 2.0 equivalents or delete the routes (keep the server functions).
 - `AGENTS.md` rule: registration tracking stays in the shared helper (`src/lib/meta-registration.ts`). When rebuilding login/sign-up, call the same helper and don't change auth or billing behaviour.
 
-## 4. Work in progress: Photo Studio (Templates mode)
+## 4. Photo Studio: Templates mode done (commit `fa1e592`)
 
-Specs already pulled from Figma (`543:5192`):
+Built and measured at 1440px: mode cards at y=149, filters at 449, grid at 541 with a 40px row gap, all matching Figma.
+- `src/v2/components/studio/ModeSwitcher.tsx` and `ComposerBar.tsx` (+ `TemplateChip`) are the shared components; reuse them in Ad and Video studios.
+- `src/routes/_app.photo-studio.tsx`: mode is held in the URL (`?mode=piece|diy`, default templates). Templates, filters, the Pro upgrade dialog and the sticky composer are in place. Mode illustrations are rebuilt from Figma pieces.
+- Data: `usePhotoTemplates()` and `photoGenerationCost(count)` in `api.ts` (2 credits per image in `mock.ts`).
+- **Still to do on this screen:** the composer's `+` only shows a toast (wire it to the Product Picker), `canGenerate` is hard-coded false (enable it once a product is chosen and route to the Result screen), Piece-by-piece and Build-it-yourself modes are placeholders, and the Photo Studio phone layout hasn't been checked yet.
+
+Original specs from Figma (`543:5192`), kept for reference:
 - Page header: "Photo Studio" / "Select how you want to create".
 - **Mode Switcher** (shared component, also used by Ad and Video studios): 3 cards, 312/310/312 × 260, gap 54, white, radius 14. Selected card has a `1.5px #5d81c4` border. Title Archivo 20 medium, tracking -0.4; description Inter Tight 12 `#737373`. Illustrations use assets in `src/assets/v2/studio/mode-*.svg` plus gallery images; offsets are in the `543:10152` design context.
 - Filter tabs (reuse `FilterTabs`): All, With Model, Without Model, Studio shots, Lifestyle, Flat lay. 40px below the mode cards.
@@ -90,7 +96,7 @@ Specs already pulled from Figma (`543:5192`):
 
 ## 5. Remaining plan, in order
 
-1. Photo Studio: finish Templates mode (section 4 above), then Piece by piece (Scene → Props → Character stepper, "Upload your own" as the first tile, live "Your shot" summary), then Build it yourself (wireframe only; may be cut).
+1. Photo Studio: Piece by piece (Scene → Props → Character stepper, "Upload your own" as the first tile, live "Your shot" summary), then Build it yourself (wireframe only; may be cut).
 2. Shared Product Picker dialog with both states. Wire it to the existing Shopify and upload intake functions through `api.ts`.
 3. **Profile popup** (`543:165690`) from the avatar: credits (with reset date), upgrade push, Refer & Earn, Appearance (Light/Dark/System via `useThemePreference`), Settings, Help & Support, Sign out (`useAuth().signOut`).
 4. Ad Studio (start, product analysed).
