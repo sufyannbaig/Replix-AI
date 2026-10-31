@@ -1,6 +1,6 @@
 # Replix AI 2.0 front end: handover
 
-Last updated: 2026-11-01 (end of session 2: every ⏳ row is done). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
+Last updated: 2026-11-01 (session 2, second round: leftovers done, draft PR opened). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
 
 ## 0. Status at a glance
 
@@ -8,7 +8,7 @@ Last updated: 2026-11-01 (end of session 2: every ⏳ row is done). Branch: `v2`
 |---|---|---|
 | Shell, sidebar, header, mobile drawer, dark mode | `src/v2/components/shell/*`, `src/v2/theme.*` | ✅ Done |
 | Profile popup (avatar) | `ProfileMenu.tsx` | ✅ Done |
-| Home | `/dashboard` | ✅ Done (no "Recent generations" row or card videos yet) |
+| Home | `/dashboard` | ✅ Done, incl. Recent generations row and looping card previews (§9) |
 | Photo Studio (Templates, Piece by piece, Build it yourself) | `/photo-studio` | ✅ Done. Build it yourself added in session 2 (user chose to build it, not cut it) |
 | Product Picker (shared) | `studio/ProductPicker.tsx` | ✅ Done |
 | Ad Studio | `/ad-studio` | ✅ Done |
@@ -174,3 +174,13 @@ Many old v1 files already fail lint; only lint new or changed files.
 - **Dark mode:** every route scanned for text vs effective background contrast below 3:1. The only flags were scanner false positives (Tailwind v4 emits `oklab(… / a)` for `text-x/80` colours); confirmed visually. Help, Login, Result and Assets were also checked by eye in dark.
 - **Not covered:** pixel re-measurement against Figma of the session-1 screens (they were measured when built), real-device Safari/iOS, signed-in flows (credits, Shopify, checkout) since there is no test account on this machine, and `/forgot-password`, `/reset-password`, `/pricing`, `/billing`, which are still v1 pages.
 - **How to repeat:** open a page with `?preview=1`, then in the console push each route with `history.pushState` + a `popstate` event and compare `document.documentElement.scrollWidth` with `innerWidth`.
+
+## 9. Session 2, second round (2026-11-01)
+
+Leftovers from the QA list, done after the user asked for "all of it":
+
+- **Forgot / reset password** (`91a1fb3`): restyled on the login layout. The split layout moved into `src/v2/components/auth/AuthLayout.tsx` (`AuthLayout`, `AuthField`, `AuthMessage`, `AuthSubmit`, `BackToLogin`), now used by `/login`, `/forgot-password`, `/reset-password`. Supabase calls unchanged (`resetPasswordForEmail`, recovery session + `updateUser`). Reset shows "open this page from the reset link" until the recovery session exists.
+- **Pricing → Upgrade, Billing restyle** (`70b5fca`): the v1 checkout (Shopify billing when a store is connected, else Stripe) moved unchanged into `src/v2/components/billing/usePlanCheckout.ts`; Upgrade's plan buttons now call it directly. `/pricing` redirects to `/upgrade` and keeps `?checkout=` (Stripe's cancel URL still points at `/pricing`; Upgrade shows a "Checkout cancelled" toast). Upgrade gained the "cancel anytime / billed through Shopify or Stripe" note from the old page. `/billing` is in the 2.0 shell with every handler unchanged (Stripe portal, Shopify plan change, cancel, disconnect, history). Fix: v1 hid "Cancel subscription" from **Scale** subscribers (`isPaid` only checked starter/pro). Not verifiable without a signed-in account: the loaded billing table and the Manage dialog (preview mode has no user, so the page stays in its loading state, as v1 did). Now unused: `src/components/AppShell.tsx`, `ExclusiveOffer`.
+- **Home** (`93f2c89`): "Recent generations" row (hidden when empty) from `useRecentGenerations()`, which now merges finished jobs from this session (open their result page) with the sample video, photo and ad history Assets uses. Create cards use `src/v2/components/LoopingPreview.tsx`: pass `videoSrc` for the real clips; until then it cross-fades the studio's own art with a slow push-in (respects reduced motion).
+- **Re-measure against Figma** (`5e0db0c`): text layers of 15 session-1 frames were extracted from Figma metadata and matched to the live page at a 1455px viewport (1440 content + scrollbar). Within 0–3px: Home (above the new row), Photo Studio, Ad Studio, Video hub, UGC, Shorts, Concept, Assets, Library, Settings, Products. Fixed: **Refer** (link field 480px, step cards 334×206; "Your Rewards" now at Figma's y=798), **Brand Kit empty** (title and card height 560 on Figma's numbers), **Upgrade** (description/price line heights; card internals within 1px). Explained, not changed: Connect sits lower because Figma shows the connected-store row; Connect and Brand Kit cards are centred where Figma is ~15–20px left of centre.
+- **Still not covered** (needs a person or an account): a real iPhone/Safari pass, and signed-in flows (credits, Shopify connect, Stripe/Shopify checkout, billing portal).
