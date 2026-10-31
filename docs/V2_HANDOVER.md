@@ -96,7 +96,7 @@ Original specs from Figma (`543:5192`), kept for reference:
 
 ## 5. Remaining plan, in order
 
-1. Photo Studio: Piece by piece (Scene → Props → Character stepper, "Upload your own" as the first tile, live "Your shot" summary), then Build it yourself (wireframe only; may be cut).
+1. Photo Studio: ~~Piece by piece~~ **done** (`src/v2/components/studio/PieceByPiece.tsx`): chevron stepper (free tabs; navy up to the current step, light blue for the next one), "Upload your own" first tile, Pro gating, props multi-select (max 3), a "Your shot" summary with swap/remove, and a "Next" button. Data: `usePieceOptions(kind)`. Generate needs a product plus a template (Templates mode) or a scene (Piece mode). **Next:** Build it yourself (wireframe only; the client may cut it now that every step has "Upload your own", so ask before building).
 2. ~~Shared Product Picker~~: **done** (`src/v2/components/studio/ProductPicker.tsx`), with both states (catalogue + upload / empty big upload + Connect Shopify), tabs, search and drag & drop. Data: `useProducts()` / `useUploadProduct()` in `api.ts`. Uploads are kept as object URLs for now. **Backend TODO:** back `useProducts` with Shopify (`getShopifyProducts`) plus uploaded products, and make `useUploadProduct` upload to storage. Photo Studio's composer uses it, and Generate unlocks once a product is chosen (it shows a toast until the generate API exists). Figma labelled every product "Chocolate Truffle"; the fixtures have real names. A "Use product" button appears on selection; double-click also picks.
 3. ~~Profile popup~~: **done** (`src/v2/components/shell/ProfileMenu.tsx`, commit `c2010d1`). The avatar opens it; Appearance drives the theme.
 4. Ad Studio (start, product analysed).

@@ -50,3 +50,16 @@ export type Product = {
   /** ISO timestamp; used to order "Recent uploads". */
   createdAt: string;
 };
+
+export type PieceKind = "scene" | "prop" | "character";
+
+/** A pre-made (or user-uploaded) building block for Photo Studio's piece-by-piece mode. */
+export type PieceOption = {
+  id: string;
+  kind: PieceKind;
+  name: string;
+  imageUrl: string;
+  isPro: boolean;
+  /** Cut-out props are shown on a solid colour in the summary panel. */
+  background?: string;
+};

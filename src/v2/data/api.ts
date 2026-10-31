@@ -9,15 +9,24 @@ import {
   communityCreations,
   PHOTO_CREDITS_PER_IMAGE,
   photoTemplates,
+  pieceOptions,
   products,
 } from "./mock";
-import type { BrandKit, CommunityCreation, PhotoTemplate, Product } from "./types";
+import type {
+  BrandKit,
+  CommunityCreation,
+  PhotoTemplate,
+  PieceKind,
+  PieceOption,
+  Product,
+} from "./types";
 
 export const queryKeys = {
   brandKits: ["v2", "brand-kits"] as const,
   community: ["v2", "community"] as const,
   photoTemplates: ["v2", "photo-templates"] as const,
   products: ["v2", "products"] as const,
+  pieces: (kind: PieceKind) => ["v2", "pieces", kind] as const,
 };
 
 async function fetchBrandKits(): Promise<BrandKit[]> {
@@ -75,4 +84,13 @@ export function useUploadProduct() {
       queryClient.setQueryData<Product[]>(queryKeys.products, (prev = []) => [product, ...prev]);
     },
   });
+}
+
+async function fetchPieces(kind: PieceKind): Promise<PieceOption[]> {
+  return pieceOptions.filter((p) => p.kind === kind);
+}
+
+/** Pre-made scenes, props or characters for piece-by-piece shoots. */
+export function usePieceOptions(kind: PieceKind) {
+  return useQuery({ queryKey: queryKeys.pieces(kind), queryFn: () => fetchPieces(kind) });
 }

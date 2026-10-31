@@ -9,6 +9,11 @@ import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
 import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import {
+  EMPTY_SELECTION,
+  PieceByPiece,
+  type PieceSelection,
+} from "@/v2/components/studio/PieceByPiece";
 import { photoGenerationCost, usePhotoTemplates } from "@/v2/data/api";
 import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
 import mocha from "@/assets/v2/gallery/d726d.png";
@@ -230,7 +235,9 @@ function PhotoStudioPage() {
 
   const [filter, setFilter] = useState<"all" | PhotoTemplateCategory>("all");
   const [selected, setSelected] = useState<PhotoTemplate | null>(null);
-  const [upgradeFor, setUpgradeFor] = useState<PhotoTemplate | null>(null);
+  const [upgradeFor, setUpgradeFor] = useState<{ name: string; imageUrl: string } | null>(null);
+  const [pieceStep, setPieceStep] = useState(0);
+  const [pieces, setPieces] = useState<PieceSelection>(EMPTY_SELECTION);
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
   const [count, setCount] = useState(1);
   const [note, setNote] = useState("");
@@ -285,9 +292,18 @@ function PhotoStudioPage() {
               </p>
             )}
           </div>
+        ) : mode === "piece" ? (
+          <PieceByPiece
+            step={pieceStep}
+            onStep={setPieceStep}
+            selection={pieces}
+            onChange={setPieces}
+            isFreePlan={plan === "free"}
+            onLocked={setUpgradeFor}
+          />
         ) : (
           <div className="flex h-[360px] items-center justify-center rounded-[18px] border border-dashed border-v2-border bg-v2-surface font-inter-tight text-sm text-v2-muted">
-            {mode === "piece" ? "Piece by piece" : "Build it yourself"} is being built.
+            Build it yourself is being built.
           </div>
         )}
       </div>
@@ -299,7 +315,16 @@ function PhotoStudioPage() {
             product={product}
             onPickProduct={() => setPickerOpen(true)}
             chips={
-              selected ? <TemplateChip name={selected.name} imageUrl={selected.imageUrl} /> : null
+              mode === "piece" ? (
+                pieces.scene ? (
+                  <TemplateChip
+                    name={`Scene: ${pieces.scene.name}`}
+                    imageUrl={pieces.scene.imageUrl}
+                  />
+                ) : null
+              ) : selected ? (
+                <TemplateChip name={selected.name} imageUrl={selected.imageUrl} />
+              ) : null
             }
             aspect={aspect}
             onAspectChange={setAspect}
@@ -308,7 +333,7 @@ function PhotoStudioPage() {
             note={note}
             onNoteChange={setNote}
             cost={photoGenerationCost(count)}
-            canGenerate={!!product}
+            canGenerate={!!product && (mode === "piece" ? !!pieces.scene : !!selected)}
             onGenerate={() => {
               const cost = photoGenerationCost(count);
               if (credits < cost) {
@@ -342,7 +367,7 @@ function PhotoStudioPage() {
           ) : null}
           <div className="flex flex-col gap-3 p-6">
             <DialogTitle className="font-archivo text-2xl font-medium leading-archivo tracking-[-0.96px]">
-              {upgradeFor?.name} is a Pro template
+              {upgradeFor?.name} is a Pro {mode === "piece" ? "option" : "template"}
             </DialogTitle>
             <DialogDescription className="font-inter-tight text-sm leading-[1.41] text-v2-muted">
               Upgrade to use every premium photo and video template, Concept Ads and more credits

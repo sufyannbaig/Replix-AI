@@ -8,6 +8,8 @@ import type {
   CreationKind,
   PhotoTemplate,
   PhotoTemplateCategory,
+  PieceKind,
+  PieceOption,
   Product,
 } from "./types";
 import cookieDough from "@/assets/v2/gallery/d1471.png";
@@ -139,4 +141,53 @@ export const products: Product[] = [
     source: "upload",
     createdAt: "2026-10-25T10:00:00Z",
   },
+];
+
+const pieceImages = import.meta.glob<string>("@/assets/v2/pieces/*.png", {
+  eager: true,
+  import: "default",
+});
+
+function piece(
+  kind: PieceKind,
+  file: string,
+  name: string,
+  isPro = false,
+  background?: string,
+): PieceOption {
+  const key = Object.keys(pieceImages).find((k) => k.endsWith(`/${file}.png`));
+  return {
+    id: `${kind}_${file}`,
+    kind,
+    name,
+    imageUrl: key ? pieceImages[key] : "",
+    isPro,
+    background,
+  };
+}
+
+/* Grid order and Pro flags follow the Figma piece-by-piece screens. */
+export const pieceOptions: PieceOption[] = [
+  piece("scene", "scene-01", "Sky Plinth"),
+  piece("scene", "scene-02", "Violet Grip"),
+  piece("scene", "scene-03", "Torn Paper Peach"),
+  piece("scene", "scene-04", "Lemon Burst", true),
+  piece("scene", "scene-05", "Lilac Balloons", true),
+  piece("scene", "scene-06", "Periwinkle Arch"),
+  piece("scene", "scene-07", "Ribbon Mint"),
+  piece("scene", "scene-08", "Satin Ribbons", true),
+  piece("prop", "prop-01", "Tropical Leaves", false, "#5dc966"),
+  piece("prop", "prop-02", "Stone Plinth"),
+  piece("prop", "prop-03", "Dried Florals"),
+  piece("prop", "prop-04", "Glass Orbs", true),
+  piece("prop", "prop-05", "Linen Drape"),
+  piece("prop", "prop-06", "Citrus Slices"),
+  piece("prop", "prop-07", "Water Ripple"),
+  piece("character", "character-01", "Maya"),
+  piece("character", "character-02", "Jonah"),
+  piece("character", "character-03", "Aisha"),
+  piece("character", "character-04", "Leo", true),
+  piece("character", "character-05", "Sofia"),
+  piece("character", "character-06", "Kenji"),
+  piece("character", "character-07", "Noor", true),
 ];
