@@ -1,284 +1,311 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { Link2, Loader2, PackageOpen, Sparkles, Upload } from "lucide-react";
-import { toast } from "sonner";
-import { AppShell } from "@/components/AppShell";
-import { AdCard, type AdRecord } from "@/components/AdCard";
-import { ProductCardBody, productCardClasses } from "@/components/ProductCard";
-import { ReferralCard } from "@/components/ReferralCard";
-import { ShopifyStoreConnect } from "@/components/ShopifyStoreConnect";
-
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { formatPrice } from "@/lib/shopify";
-import { getShopifyProducts } from "@/lib/shopify.functions";
-import { setProductIntake } from "@/lib/product-intake";
-import { fileToDataUrl } from "@/lib/image-utils";
-import replixMark from "@/assets/replix-mark.png";
-import shopifyMark from "@/assets/shopify-mark.png";
-import productUrlIcon from "@/assets/product-url-icon.png";
-import uploadProductExample from "@/assets/product-speaker.jpg";
+import { useCredits } from "@/hooks/use-credits";
+import { cn } from "@/lib/utils";
+import { AppShell } from "@/v2/components/shell/AppShell";
+import { CheckCircleIcon, Icon } from "@/v2/components/Icon";
+import { Masonry } from "@/v2/components/Masonry";
+import { FilterTabs, PillLink, SectionTitle } from "@/v2/components/primitives";
+import { useBrandKits, useCommunityCreations } from "@/v2/data/api";
+import type { CommunityCreation, CreationKind } from "@/v2/data/types";
+import createPhoto from "@/assets/v2/home/create-photo.png";
+import createAd from "@/assets/v2/home/create-ad.png";
+import createVideo from "@/assets/v2/home/create-video.png";
+import promoBack from "@/assets/v2/gallery/44dcb.png";
+import promoMiddle from "@/assets/v2/gallery/d726d.png";
+import promoFront from "@/assets/v2/gallery/d1a08.png";
 
 export const Route = createFileRoute("/_app/dashboard")({
-  component: Dashboard,
+  head: () => ({ meta: [{ title: "Home · Replix AI" }] }),
+  component: HomePage,
 });
 
-const RECENT_SELECT =
-  "id, title, hook, caption, cta, platform, image_url, image_path, style, favorite, product_id, created_at";
+function greeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
-function Dashboard() {
+function useFirstName() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const loadProducts = useServerFn(getShopifyProducts);
-  const [url, setUrl] = useState("");
-  const [ads, setAds] = useState<AdRecord[]>([]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const meta = user?.user_metadata ?? {};
+  const full = (meta.full_name ?? meta.name ?? "") as string;
+  const fromEmail = (user?.email ?? "").split("@")[0].split(/[._-]/)[0];
+  const name = full.trim().split(/\s+/)[0] || fromEmail;
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : "";
+}
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["shopify-products", "dashboard"],
-    queryFn: () => loadProducts({ data: { first: 8 } }),
-    staleTime: 60 * 1000,
-  });
-
-  const products = data?.products ?? [];
-  const connected = !data?.notInstalled && products.length > 0;
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    void supabase
-      .from("ads")
-      .select(RECENT_SELECT)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(3)
-      .then(({ data: rows }) => {
-        if (!cancelled) setAds((rows ?? []) as AdRecord[]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-
-  const analyzeUrl = () => {
-    const trimmed = url.trim();
-    if (!trimmed) {
-      toast.error("Enter a product URL first.");
-      return;
-    }
-    try {
-      new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
-    } catch {
-      toast.error("That's not a valid URL.");
-      return;
-    }
-    setProductIntake({ kind: "url", url: trimmed });
-    navigate({ to: "/create" });
-  };
-
-  const handleUpload = async (file: File | undefined) => {
-    if (!file) return;
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setProductIntake({
-        kind: "upload",
-        name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
-        dataUrl,
-      });
-      navigate({ to: "/create" });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "We couldn't read that image file.");
-    }
-  };
+function HomePage() {
+  const firstName = useFirstName();
+  const { plan } = useCredits();
+  const { data: kits } = useBrandKits();
+  const needsBrandKit = !kits?.some((kit) => kit.isComplete);
 
   return (
     <AppShell
-      title="Generate AI Ads that stop the scroll. In seconds."
-      subtitle="Pick a product, upload an image, or paste a product link to get started."
-      titleGradient
+      title="Home"
+      subtitle={`${greeting()}${firstName ? `, ${firstName}` : ""} — what are we making today?`}
     >
-      <div className="space-y-9">
-        {isLoading ? (
-          <section className="flex items-center gap-2 rounded-3xl border border-border bg-card p-8 text-sm text-muted-foreground shadow-soft">
-            <Loader2 className="size-4 animate-spin" /> Loading your Shopify products…
-          </section>
-        ) : connected ? (
-          <section>
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="font-display text-xl font-medium">Promote Best Sellers</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Select your Shopify product and generate ads.
-                </p>
-              </div>
-              <Button asChild variant="ghost" size="sm" className="rounded-full">
-                <Link to="/create">View all</Link>
-              </Button>
+      <div className="mt-10 flex flex-col gap-10">
+        {needsBrandKit ? <BrandKitBanner /> : null}
+        <CreateSection />
+        {plan === "free" ? <UpgradePromo /> : null}
+        <CommunitySection />
+      </div>
+    </AppShell>
+  );
+}
+
+function BrandKitBanner() {
+  return (
+    <section className="flex flex-col gap-5 rounded-[18px] bg-v2-cream px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-[38px] sm:py-7">
+      <div className="flex max-w-[499px] flex-col gap-1">
+        <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.8px] text-v2-ink sm:text-2xl sm:tracking-[-0.96px]">
+          Need consistent results? Create a brand kit
+        </h2>
+        <p className="font-inter-tight text-sm leading-[1.41] text-v2-ink-60">
+          Logo, colours, fonts and tone applied to every generation
+        </p>
+      </div>
+      <PillLink
+        to="/brand-kit"
+        search={{ new: "1" }}
+        variant="ghost-outline"
+        className="self-start sm:self-auto"
+      >
+        Create Brand Kit
+      </PillLink>
+    </section>
+  );
+}
+
+const CREATE_CARDS = [
+  {
+    to: "/photo-studio",
+    title: "Photo Studio",
+    description: "Product photoshoots from templates or your own scene.",
+    image: createPhoto,
+  },
+  {
+    to: "/ad-studio",
+    title: "Ad Studio",
+    description: "Static ad creatives from one product.",
+    image: createAd,
+  },
+  {
+    to: "/video-studio",
+    title: "Video Studio",
+    description: "UGC ads, product shorts and story ads.",
+    image: createVideo,
+  },
+] as const;
+
+function CreateSection() {
+  return (
+    <section className="flex flex-col gap-[30px]">
+      <SectionTitle>Create</SectionTitle>
+      <div className="grid grid-cols-1 gap-[21px] sm:grid-cols-2 xl:grid-cols-3">
+        {CREATE_CARDS.map((card) => (
+          <Link
+            key={card.to}
+            to={card.to}
+            className="group flex flex-col overflow-hidden rounded-[14px] border border-transparent bg-v2-surface pb-[17px] transition-[border-color,box-shadow] duration-200 hover:border-v2-border hover:shadow-[var(--v2-shadow-card)] focus-visible:border-v2-border focus-visible:outline-none"
+          >
+            <div className="aspect-[333/217] overflow-hidden rounded-[10px]">
+              <img
+                src={card.image}
+                alt=""
+                className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+              />
             </div>
-            <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {products.slice(0, 4).map(({ node: p }, index) => {
-                const image = p.images.edges[0]?.node;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      setProductIntake({ kind: "shopify", handle: p.handle });
-                      void navigate({ to: "/create" });
-                    }}
-                    className={productCardClasses(false, "w-full")}
-                  >
-                    <ProductCardBody
-                      image={image?.url}
-                      imageAlt={image?.altText ?? p.title}
-                      name={p.title}
-                      price={formatPrice(
-                        p.priceRange.minVariantPrice.amount,
-                        p.priceRange.minVariantPrice.currencyCode,
-                      )}
-                      badge={index < 3 ? `#${index + 1} Best Seller` : undefined}
-                      fallback={<PackageOpen className="size-8" />}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : (
-          <section className="space-y-5">
-            <div className="relative overflow-hidden rounded-3xl bg-shopify-green px-6 py-12 text-center text-navy-foreground shadow-soft sm:px-12">
-              <span className="pointer-events-none absolute -right-16 -top-20 z-0 h-64 w-64 rounded-full bg-white/15 backdrop-blur-sm" />
-              <span className="pointer-events-none absolute -bottom-24 -left-10 z-0 h-56 w-56 rounded-full bg-white/10 backdrop-blur-sm" />
-              <span className="pointer-events-none absolute -bottom-16 right-1/3 z-0 h-40 w-40 rounded-full bg-white/10 backdrop-blur-sm" />
-              <div className="relative z-10 mx-auto flex w-fit items-center gap-3 sm:gap-4">
-                <img
-                  src={shopifyMark}
-                  alt="Shopify"
-                  className="h-16 w-16 -rotate-6 rounded-2xl shadow-lift sm:h-20 sm:w-20"
-                />
-                <span className="flex items-center gap-1.5">
-                  <span className="h-px w-6 bg-white/70 sm:w-10" />
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/25 shadow-lift backdrop-blur-sm">
-                    <Link2 className="h-4 w-4" />
-                  </span>
-                  <span className="h-px w-6 bg-white/70 sm:w-10" />
-                </span>
-                <img
-                  src={replixMark}
-                  alt="Replix AI"
-                  className="h-16 w-16 rotate-6 rounded-2xl shadow-lift sm:h-20 sm:w-20"
-                />
-              </div>
-              <h2 className="relative z-10 mt-5 text-2xl font-medium sm:text-3xl">
-                Connect Your <span className="font-bold italic">Shopify</span> Store
-              </h2>
-              <p className="relative z-10 mx-auto mt-3 max-w-md text-sm text-navy-foreground/85">
-                Sync your Shopify catalog and create studio-quality ads with optimized copy in
-                under 60 seconds.
+            <div className="mx-[18px] mt-[27px] flex flex-col gap-1">
+              <h3 className="font-archivo text-lg font-medium leading-archivo tracking-[-0.36px] text-v2-ink">
+                {card.title}
+              </h3>
+              <p className="font-inter-tight text-xs leading-[1.41] text-v2-muted group-hover:text-v2-ink-70">
+                {card.description}
               </p>
             </div>
-            <ShopifyStoreConnect onConnected={() => refetch()} />
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-          </section>
-        )}
+const PRO_FEATURES = [
+  "Premium Photo & Video Templates",
+  "Concept & Story ads",
+  "More Credits Every Month",
+];
 
-        <div className="flex items-center gap-5">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-xs font-semibold text-muted-foreground">OR</span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="flex flex-col items-center rounded-3xl border border-border bg-card px-8 py-10 text-center shadow-soft">
-            <img
-              src={uploadProductExample}
-              alt="Product upload example"
-              className="h-24 w-24 -rotate-6 rounded-2xl border-4 border-secondary object-cover shadow-soft"
-            />
-            <h2 className="mt-6 font-display text-xl font-semibold">Upload Product Image</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Use JPG, PNG, or WEBP (max 10 MB).</p>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => void handleUpload(e.target.files?.[0])}
-            />
-            <Button
-              variant="outline"
-              className="mt-6 rounded-full px-6"
-              onClick={() => inputRef.current?.click()}
-            >
-              <Upload /> Upload Image
-            </Button>
-          </div>
-
-          <div className="flex flex-col items-center rounded-3xl border border-border bg-card px-8 py-10 text-center shadow-soft">
-            <img
-              src={productUrlIcon}
-              alt="Product URL"
-              className="h-16 w-16 rounded-2xl object-contain"
-            />
-
-            <h2 className="mt-6 font-display text-xl font-semibold">Enter Your Product URL</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Works with any Shopify product page.
-            </p>
-            <div className="mt-6 flex w-full max-w-md rounded-full border border-input bg-background p-1.5 pl-4">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") analyzeUrl();
-                }}
-                placeholder="https://yourstore.com/products/..."
-                className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none"
-              />
-              <Button className="rounded-full" onClick={analyzeUrl}>
-                Analyze
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <h2 className="font-display text-xl font-medium">Recent Generated Ads</h2>
-            <Button asChild variant="outline" className="rounded-full">
-              <Link to="/gallery">View All</Link>
-            </Button>
-          </div>
-          {ads.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center shadow-soft">
-              <Sparkles className="mx-auto size-8 text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">No ads yet.</p>
-              <Button asChild className="mt-5 rounded-full">
-                <Link to="/create">Generate your first ad</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {ads.map((ad) => (
-                <AdCard
-                  key={ad.id}
-                  ad={ad}
-                  compact
-                  onChange={(next) =>
-                    setAds((prev) => prev.map((a) => (a.id === next.id ? next : a)))
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <ReferralCard />
+function UpgradePromo() {
+  return (
+    <section className="v2-promo-fill relative flex flex-col overflow-hidden rounded-[18px] p-4 lg:h-[324px] lg:flex-row lg:items-center lg:justify-end lg:p-0 lg:pr-[21px]">
+      {/* Blurred, fanned previews of premium templates (Figma group 543:5005). */}
+      <div
+        aria-hidden
+        className="relative mx-auto h-[270px] w-[345px] shrink-0 lg:absolute lg:left-[93px] lg:top-[28px] lg:mx-0"
+      >
+        {/* Positions are the unrotated boxes whose rotated bounds match Figma. */}
+        <FannedCard src={promoBack} rotate={21.56} left={148.91} top={31.84} />
+        <FannedCard src={promoMiddle} rotate={8.03} left={85.46} top={10.29} radius={13.99} />
+        <FannedCard src={promoFront} rotate={-10} left={17.25} top={20.88} radius={12.243} crop />
+        <span className="absolute left-[107px] top-[175px] flex w-[130px] items-center justify-center gap-2.5 rounded-[32px] bg-white p-2 drop-shadow-[-2px_4px_4.5px_rgba(0,0,0,0.1)]">
+          <span className="flex size-5 items-center justify-center">
+            <Icon name="lock" width={12.5} height={17.5} className="text-black" />
+          </span>
+          <span className="font-archivo text-base leading-[1.4] text-black/[0.76]">Unlock All</span>
+        </span>
       </div>
 
-    </AppShell>
+      <div className="relative w-full rounded-[12px] bg-v2-surface px-6 py-6 lg:w-[459px] lg:pl-8 lg:pr-6">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-[9px]">
+              <h2 className="font-archivo text-[26px] font-medium leading-[1.12] tracking-[-1.04px] text-black sm:text-[30px] sm:tracking-[-1.2px] night:text-v2-ink">
+                Unlock premium templates, Concept Ads and more credits
+              </h2>
+              <p className="font-inter-tight text-sm leading-[1.41] text-v2-muted">
+                Everything in Free, plus the tools brands use to scale.
+              </p>
+            </div>
+            <ul className="flex flex-col gap-[9px]">
+              {PRO_FEATURES.map((feature) => (
+                <li
+                  key={feature}
+                  className="flex items-center gap-2.5 font-inter-tight text-xs leading-[1.41] text-v2-muted"
+                >
+                  <CheckCircleIcon className="text-v2-icon" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex items-center gap-[18px]">
+            <PillLink to="/upgrade">See Plans</PillLink>
+            <PillLink to="/upgrade" hash="compare" variant="outline">
+              Compare
+            </PillLink>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FannedCard({
+  src,
+  rotate,
+  left,
+  top,
+  radius = 12,
+  crop = false,
+}: {
+  src: string;
+  rotate: number;
+  left: number;
+  top: number;
+  radius?: number;
+  crop?: boolean;
+}) {
+  return (
+    <div
+      className="absolute h-[212.85px] w-[162.37px] overflow-hidden border-[2.19px] border-solid border-white blur-[2.15px]"
+      style={{ left, top, borderRadius: radius, transform: `rotate(${rotate}deg)` }}
+    >
+      {crop ? (
+        <img
+          src={src}
+          alt=""
+          className="absolute left-[-11.56%] top-0 h-[100.31%] w-[123.37%] max-w-none"
+        />
+      ) : (
+        <img src={src} alt="" className="size-full object-cover" />
+      )}
+    </div>
+  );
+}
+
+const COMMUNITY_FILTERS: readonly { value: "all" | CreationKind; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "ugc", label: "UGC ads" },
+  { value: "product-short", label: "Product Shorts" },
+  { value: "photoshoot", label: "Photoshoots" },
+  { value: "ad", label: "Ads" },
+  { value: "concept", label: "Concept ads" },
+];
+
+function CommunitySection() {
+  const [filter, setFilter] = useState<"all" | CreationKind>("all");
+  const { data, isLoading } = useCommunityCreations();
+  const items = useMemo(
+    () => (data ?? []).filter((item) => filter === "all" || item.kind === filter),
+    [data, filter],
+  );
+
+  return (
+    <section className="flex flex-col gap-[30px]">
+      <div className="flex flex-col gap-[18px]">
+        <SectionTitle>See what others made with Replix</SectionTitle>
+        <FilterTabs
+          label="Filter community creations"
+          options={COMMUNITY_FILTERS}
+          value={filter}
+          onChange={setFilter}
+          className="self-start"
+        />
+      </div>
+      <div className="rounded-[18px] bg-v2-surface p-3 sm:px-[27px] sm:py-7">
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-[19px] sm:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "animate-pulse rounded-[12px] bg-v2-canvas",
+                  i % 2 ? "h-[298px]" : "h-[231px]",
+                )}
+              />
+            ))}
+          </div>
+        ) : items.length ? (
+          <Masonry
+            items={items}
+            minColumnWidth={170}
+            maxColumns={6}
+            columnGap={19}
+            rowGap={18}
+            getKey={(item) => item.id}
+            renderItem={(item) => <CommunityCard item={item} />}
+          />
+        ) : (
+          <p className="py-16 text-center font-inter-tight text-sm text-v2-muted">
+            Nothing here yet. Check back soon for new work from the community.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CommunityCard({ item }: { item: CommunityCreation }) {
+  return (
+    <figure
+      className="group relative overflow-hidden rounded-[12px]"
+      style={{ aspectRatio: item.aspect }}
+    >
+      <img
+        src={item.imageUrl}
+        alt={item.title}
+        loading="lazy"
+        className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+      />
+      <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-3 font-inter-tight text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        {item.title}
+      </figcaption>
+    </figure>
   );
 }

@@ -1,0 +1,130 @@
+/*
+ * Replix 2.0 design tokens.
+ * Light values come straight from the Figma "Experimentation." page; dark values are
+ * derived so every surface keeps the same contrast relationships.
+ * Theme is selected with <html data-theme="light|dark"> (set before paint in __root).
+ */
+
+/* Variant for the 2.0 dark theme (the legacy `dark:` variant keys off a .dark class). */
+@custom-variant night (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --color-v2-canvas: var(--v2-canvas);
+  --color-v2-surface: var(--v2-surface);
+  --color-v2-surface-2: var(--v2-surface-2);
+  --color-v2-ink: var(--v2-ink);
+  --color-v2-ink-70: var(--v2-ink-70);
+  --color-v2-ink-60: var(--v2-ink-60);
+  --color-v2-muted: var(--v2-muted);
+  --color-v2-subtle: var(--v2-subtle);
+  --color-v2-icon: var(--v2-icon);
+  --color-v2-line: var(--v2-line);
+  --color-v2-border: var(--v2-border);
+  --color-v2-nav-active: var(--v2-nav-active);
+  --color-v2-blue: var(--v2-blue);
+  --color-v2-pill: var(--v2-pill);
+  --color-v2-pill-ink: var(--v2-pill-ink);
+  --color-v2-pill-muted: var(--v2-pill-muted);
+  --color-v2-cream: var(--v2-cream);
+  --color-v2-pro: var(--v2-pro);
+  --color-v2-pro-ink: var(--v2-pro-ink);
+
+  --font-archivo: "Archivo", system-ui, sans-serif;
+  /* Figma "auto" line height for Archivo (browsers render "normal" much taller). */
+  --leading-archivo: 1.088;
+  --font-inter-tight: "Inter Tight", "Inter", system-ui, sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+:root,
+[data-theme="light"] {
+  --v2-canvas: #f5f5f5;
+  --v2-dot: #f3f3f3;
+  --v2-surface: #ffffff;
+  --v2-surface-2: #fafafa;
+  --v2-ink: #12213d;
+  --v2-ink-70: rgb(18 33 61 / 0.7);
+  --v2-ink-60: rgb(18 33 61 / 0.6);
+  --v2-muted: #737373;
+  --v2-subtle: #a9a9a9;
+  --v2-icon: #000000;
+  --v2-line: rgb(0 0 0 / 0.17);
+  --v2-border: rgb(0 0 0 / 0.19);
+  --v2-nav-active: #f2f7ff;
+  --v2-blue: #375daa;
+  --v2-pill: #0c2b60;
+  --v2-pill-ink: #ffffff;
+  --v2-pill-muted: rgb(12 43 96 / 0.6);
+  --v2-cream: #fff6e7;
+  --v2-pro: #f3ffc1;
+  --v2-pro-ink: #12213d;
+  --v2-promo-from: rgb(255 235 201);
+  --v2-promo-to: rgb(219 252 201);
+  --v2-shadow-card: 0 0 13.4px 0 rgb(0 0 0 / 0.04);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --v2-canvas: #0b1120;
+  --v2-dot: #0f1729;
+  --v2-surface: #131c2f;
+  --v2-surface-2: #182339;
+  --v2-ink: #e8edf7;
+  --v2-ink-70: rgb(232 237 247 / 0.72);
+  --v2-ink-60: rgb(232 237 247 / 0.6);
+  --v2-muted: #9aa4b8;
+  --v2-subtle: #6b7489;
+  --v2-icon: #e8edf7;
+  --v2-line: rgb(255 255 255 / 0.12);
+  --v2-border: rgb(255 255 255 / 0.14);
+  --v2-nav-active: #1d2b48;
+  --v2-blue: #6f93e0;
+  --v2-pill: #375daa;
+  --v2-pill-ink: #ffffff;
+  --v2-pill-muted: rgb(232 237 247 / 0.6);
+  --v2-cream: #2a2418;
+  --v2-pro: #3a4419;
+  --v2-pro-ink: #eef7c8;
+  --v2-promo-from: rgb(52 46 34);
+  --v2-promo-to: rgb(24 48 44);
+  --v2-shadow-card: 0 0 13.4px 0 rgb(0 0 0 / 0.3);
+}
+
+/* Canvas behind every 2.0 app screen: 14x12.46 dots on a 34 x 30.26 grid. */
+@utility v2-canvas {
+  background-color: var(--v2-canvas);
+  background-image: radial-gradient(7px 6.23px at 7px 6.23px, var(--v2-dot) 98%, transparent 100%);
+  background-size: 34px 30.258px;
+}
+
+/* Primary pill fill. Figma uses a banded radial gradient; this reproduces its stops. */
+@utility v2-brand-fill {
+  background-image: linear-gradient(
+    112deg,
+    #375daa 0%,
+    #274177 26.2%,
+    #1e335e 39.3%,
+    #162544 52.4%,
+    #1e335e 64.3%,
+    #274177 76.2%,
+    #375daa 100%
+  );
+}
+
+@utility v2-promo-fill {
+  background-image: linear-gradient(
+    167.44deg,
+    var(--v2-promo-from) 20.834%,
+    var(--v2-promo-to) 79.166%
+  );
+}
+
+/* Icons are the exact Figma SVGs used as masks, so they take the current text colour. */
+@utility v2-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
