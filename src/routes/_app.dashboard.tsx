@@ -7,11 +7,21 @@ import { AppShell } from "@/v2/components/shell/AppShell";
 import { CheckCircleIcon, Icon } from "@/v2/components/Icon";
 import { Masonry } from "@/v2/components/Masonry";
 import { FilterTabs, PillLink, SectionTitle } from "@/v2/components/primitives";
-import { useBrandKits, useCommunityCreations } from "@/v2/data/api";
+import { useBrandKits, useCommunityCreations, useRecentGenerations } from "@/v2/data/api";
 import type { CommunityCreation, CreationKind } from "@/v2/data/types";
 import createPhoto from "@/assets/v2/home/create-photo.png";
 import createAd from "@/assets/v2/home/create-ad.png";
 import createVideo from "@/assets/v2/home/create-video.png";
+import photo02 from "@/assets/v2/templates/photo-02.png";
+import photo05 from "@/assets/v2/templates/photo-05.png";
+import photo09 from "@/assets/v2/templates/photo-09.png";
+import themeBeforeAfter from "@/assets/v2/themes/before-after.png";
+import themeBoldOffer from "@/assets/v2/themes/bold-offer.png";
+import video03 from "@/assets/v2/video/recent-03.png";
+import video05 from "@/assets/v2/video/recent-05.png";
+import video08 from "@/assets/v2/video/recent-08.png";
+import playIcon from "@/assets/v2/icons/play.svg";
+import { LoopingPreview } from "@/v2/components/LoopingPreview";
 import promoBack from "@/assets/v2/gallery/44dcb.png";
 import promoMiddle from "@/assets/v2/gallery/d726d.png";
 import promoFront from "@/assets/v2/gallery/d1a08.png";
@@ -51,6 +61,7 @@ function HomePage() {
       <div className="mt-10 flex flex-col gap-10">
         {needsBrandKit ? <BrandKitBanner /> : null}
         <CreateSection />
+        <RecentGenerations />
         {plan === "free" ? <UpgradePromo /> : null}
         <CommunitySection />
       </div>
@@ -87,18 +98,21 @@ const CREATE_CARDS = [
     title: "Photo Studio",
     description: "Product photoshoots from templates or your own scene.",
     image: createPhoto,
+    frames: [createPhoto, photo02, photo05, photo09],
   },
   {
     to: "/ad-studio",
     title: "Ad Studio",
     description: "Static ad creatives from one product.",
     image: createAd,
+    frames: [createAd, themeBeforeAfter, themeBoldOffer],
   },
   {
     to: "/video-studio",
     title: "Video Studio",
     description: "UGC ads, product shorts and story ads.",
     image: createVideo,
+    frames: [createVideo, video03, video05, video08],
   },
 ] as const;
 
@@ -114,11 +128,8 @@ function CreateSection() {
             className="group flex flex-col overflow-hidden rounded-[14px] border border-transparent bg-v2-surface pb-[17px] transition-[border-color,box-shadow] duration-200 hover:border-v2-border hover:shadow-[var(--v2-shadow-card)] focus-visible:border-v2-border focus-visible:outline-none"
           >
             <div className="aspect-[333/217] overflow-hidden rounded-[10px]">
-              <img
-                src={card.image}
-                alt=""
-                className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-              />
+              {/* Dummy loops from studio art until the final preview videos arrive. */}
+              <LoopingPreview frames={[...card.frames]} />
             </div>
             <div className="mx-[18px] mt-[27px] flex flex-col gap-1">
               <h3 className="font-archivo text-lg font-medium leading-archivo tracking-[-0.36px] text-v2-ink">
@@ -130,6 +141,73 @@ function CreateSection() {
             </div>
           </Link>
         ))}
+      </div>
+    </section>
+  );
+}
+
+const KIND_LABEL = { photo: "Photo", ad: "Ad", video: "Video" } as const;
+
+/** Wireframe item 4: the user's latest work; hidden entirely until they've generated. */
+function RecentGenerations() {
+  const { data: recent = [] } = useRecentGenerations();
+  if (!recent.length) return null;
+  return (
+    <section className="flex flex-col gap-[30px]">
+      <div className="flex items-end justify-between gap-4">
+        <SectionTitle>Recent generations</SectionTitle>
+        <Link
+          to="/assets"
+          className="font-inter-tight text-sm text-v2-ink-70 underline-offset-4 hover:text-v2-ink hover:underline"
+        >
+          View all
+        </Link>
+      </div>
+      <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        {recent.slice(0, 8).map((g) => {
+          const content = (
+            <>
+              <img
+                src={g.thumbnailUrl}
+                alt=""
+                loading="lazy"
+                className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+              />
+              {g.kind === "video" ? (
+                <span className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[26px] bg-white px-[12.4px] py-[11.8px] shadow-sm">
+                  <img src={playIcon} alt="" className="h-[12.4px] w-[11.2px]" />
+                </span>
+              ) : null}
+              <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 font-inter-tight text-[10px] font-medium text-[#12213d]">
+                {KIND_LABEL[g.kind]}
+              </span>
+              <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/60 to-transparent px-2.5 pb-2 pt-6 font-inter-tight text-xs text-white">
+                {g.title}
+              </span>
+            </>
+          );
+          const className =
+            "group relative aspect-[4/5] w-[150px] shrink-0 snap-start overflow-hidden rounded-[12px] bg-v2-surface sm:w-[170px]";
+          return g.jobId ? (
+            <Link
+              key={g.id}
+              to="/generations/$jobId"
+              params={{ jobId: g.jobId }}
+              className={className}
+            >
+              {content}
+            </Link>
+          ) : (
+            <Link
+              key={g.id}
+              to="/assets"
+              className={className}
+              aria-label={`Open ${g.title} in Assets`}
+            >
+              {content}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

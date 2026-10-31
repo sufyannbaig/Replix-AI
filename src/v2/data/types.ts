@@ -101,6 +101,8 @@ export type Generation = {
   title: string;
   thumbnailUrl: string;
   createdAt: string;
+  /** Set for generations made in this session; opens their result page. */
+  jobId?: string;
 };
 
 export type UgcStyle = "tutorial" | "review" | "unboxing" | "reveal" | "try-on";

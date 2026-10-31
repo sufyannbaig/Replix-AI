@@ -155,8 +155,33 @@ export function adGenerationCost(adCount: number) {
 export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
   return useQuery({
     queryKey: queryKeys.recent(kind),
-    queryFn: async (): Promise<Generation[]> =>
-      recentGenerations.filter((g) => kind === "all" || g.kind === kind),
+    queryFn: async (): Promise<Generation[]> => {
+      /* Finished jobs from this session first (front-end stand-in for the user's history). */
+      const fromJobs: Generation[] = Object.values(readJobs())
+        .filter((job) => job.status === "done" && job.outputs.length)
+        .map((job) => ({
+          id: job.id,
+          jobId: job.id,
+          kind: job.request.kind,
+          title: job.request.product.name,
+          thumbnailUrl: job.outputs[0].imageUrl,
+          createdAt: job.createdAt,
+        }));
+      /* Same sample photos and ads that Assets lists as generations. */
+      const day = (n: number) => new Date(Date.UTC(2026, 9, 31 - n)).toISOString();
+      const stills: Generation[] = communityCreations
+        .filter((c) => c.kind === "photoshoot" || c.kind === "ad")
+        .map((c, i) => ({
+          id: `asset_${c.id}`,
+          kind: c.kind === "ad" ? ("ad" as const) : ("photo" as const),
+          title: c.title,
+          thumbnailUrl: c.imageUrl,
+          createdAt: day(i + 2),
+        }));
+      return [...fromJobs, ...recentGenerations, ...stills]
+        .filter((g) => kind === "all" || g.kind === kind)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
   });
 }
 
@@ -382,13 +407,18 @@ export function useStartGeneration() {
 
 /** One job, polled every half second until it finishes. `null` when the id is unknown. */
 export function useGenerationJob(jobId: string) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.job(jobId),
     queryFn: async (): Promise<GenerationJob | null> => {
       const stored = readJobs()[jobId];
       if (!stored) return null;
       const next = advanceJob(stored);
-      if (next !== stored) writeJob(next);
+      if (next !== stored) {
+        writeJob(next);
+        if (next.status === "done")
+          void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
+      }
       return next;
     },
     refetchInterval: (query) => {
