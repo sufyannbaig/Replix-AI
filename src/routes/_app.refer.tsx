@@ -63,7 +63,7 @@ function ReferPage() {
     <AppShell title="Refer & Earn" subtitle="Invite friends and earn credits together">
       <div className="mt-[18px] flex flex-col gap-[60px]">
         <section className="relative flex min-h-[287px] items-center overflow-hidden rounded-[18px] bg-v2-surface px-6 py-10 sm:px-10">
-          <div className="relative z-10 flex max-w-[480px] flex-col gap-3">
+          <div className="relative z-10 flex w-full max-w-[480px] flex-col gap-3">
             <span className="self-start rounded-[15px] bg-[#d9e7ff] px-2.5 py-1.5 font-archivo text-[11px] text-[#12213d]">
               Refer &amp; Earn
             </span>
@@ -96,15 +96,17 @@ function ReferPage() {
             {steps.map((step) => (
               <article
                 key={step.title}
-                className="flex flex-col gap-3 rounded-[14px] bg-v2-surface p-5"
+                className="flex flex-col gap-4 rounded-[14px] bg-v2-surface pb-10 pl-5 pr-[34px] pt-5"
               >
                 <span className="flex size-[52px] items-center justify-center rounded-[8px] bg-v2-nav-active">
-                  <step.icon className="size-6 text-v2-ink" strokeWidth={1.4} />
+                  <step.icon className="size-7 text-v2-ink" strokeWidth={1.4} />
                 </span>
-                <h3 className="font-archivo text-lg font-medium leading-archivo text-v2-ink">
-                  {step.title}
-                </h3>
-                <p className="font-inter-tight text-sm leading-[1.4] text-v2-muted">{step.body}</p>
+                <span className="flex flex-col gap-4">
+                  <h3 className="font-archivo text-xl font-medium leading-archivo text-v2-ink">
+                    {step.title}
+                  </h3>
+                  <p className="font-inter-tight text-sm leading-5 text-v2-muted">{step.body}</p>
+                </span>
               </article>
             ))}
           </div>

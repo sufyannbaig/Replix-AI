@@ -83,11 +83,11 @@ function UpgradePage() {
                   <h2 className="font-archivo text-[28px] font-normal leading-none text-black night:text-v2-ink">
                     {plan.name}
                   </h2>
-                  <p className="font-inter-tight text-sm tracking-[0.42px] text-[#343434]/80 night:text-v2-ink-70">
+                  <p className="font-inter-tight text-sm leading-[17px] tracking-[0.42px] text-[#343434]/80 night:text-v2-ink-70">
                     {plan.desc}
                   </p>
                 </div>
-                <p className="font-archivo text-[30px] font-semibold tracking-[0.66px] text-[#0d2348] night:text-v2-ink">
+                <p className="font-archivo text-[30px] font-semibold leading-[39px] tracking-[0.66px] text-[#0d2348] night:text-v2-ink">
                   {formatPlanPrice(plan.price)}
                   <span className="text-sm font-medium tracking-[-0.14px] text-[#0d2348]/70 night:text-v2-ink-70">
                     /month

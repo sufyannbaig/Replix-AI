@@ -101,7 +101,7 @@ function EmptyKit({
   };
 
   return (
-    <section className="mx-auto mt-10 flex max-w-[686px] flex-col items-center rounded-[18px] bg-v2-surface px-6 pb-10 pt-[42px] sm:px-[90px]">
+    <section className="mx-auto mt-10 flex max-w-[686px] flex-col items-center rounded-[18px] bg-v2-surface px-6 pb-10 pt-[42px] sm:px-[90px] sm:pb-[27px]">
       {/* Brand moodboard illustration: colours, logo, type and assets around a card. */}
       <div
         aria-hidden
@@ -156,7 +156,7 @@ function EmptyKit({
         </Callout>
       </div>
 
-      <div className="mt-10 flex w-full flex-col items-center gap-[13px] text-center">
+      <div className="mt-[22px] flex w-full flex-col items-center gap-[13px] text-center">
         <h2 className="font-archivo text-[28px] font-medium leading-archivo tracking-[-1.12px] text-v2-ink sm:text-[32px] sm:tracking-[-1.28px]">
           {pending ? "Reading your website…" : "Set up your brand kit"}
         </h2>
