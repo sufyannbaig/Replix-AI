@@ -189,3 +189,38 @@ export function useExtractBrandKit() {
     },
   });
 }
+
+/** Add a product from a product page URL or the manual form. Front-end stand-in. */
+export function useAddProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: Omit<Product, "id" | "createdAt">): Promise<Product> => ({
+      ...input,
+      id: `product_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    }),
+    onSuccess: (product) => {
+      queryClient.setQueryData<Product[]>(queryKeys.products, (prev = products) => [
+        product,
+        ...prev,
+      ]);
+    },
+  });
+}
+
+/**
+ * Read a product page and return its name, description and main image.
+ * Backend: reuse the v1 URL intake (product-intake / analysis). Here: a sample after 1.2s.
+ */
+export async function importProductFromUrl(
+  url: string,
+): Promise<Omit<Product, "id" | "createdAt">> {
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  const sample = products.find((p) => p.id === "p_cookie") ?? products[0];
+  return {
+    name: "Cookie Dough Spread",
+    description: `Imported from ${new URL(url).hostname}. A rich, spoonable cookie dough spread with real chocolate chips.`,
+    imageUrl: sample.imageUrl,
+    source: "upload",
+  };
+}
