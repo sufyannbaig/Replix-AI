@@ -1,6 +1,29 @@
 # Replix AI 2.0 front end: handover
 
-Last updated: 2026-10-31 (end of session 1). Branch: `v2` (local; not pushed yet). `main` = the live v1 site, untouched.
+Last updated: 2026-10-31 (session 1 stopped at ~93–95% weekly usage). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
+
+## 0. Status at a glance
+
+| Area | Route / file | Status |
+|---|---|---|
+| Shell, sidebar, header, mobile drawer, dark mode | `src/v2/components/shell/*`, `src/v2/theme.*` | ✅ Done |
+| Profile popup (avatar) | `ProfileMenu.tsx` | ✅ Done |
+| Home | `/dashboard` | ✅ Done (no "Recent generations" row or card videos yet) |
+| Photo Studio (Templates, Piece by piece) | `/photo-studio` | ✅ Done. "Build it yourself" mode is a placeholder (ask the client whether to cut it) |
+| Product Picker (shared) | `studio/ProductPicker.tsx` | ✅ Done |
+| Ad Studio | `/ad-studio` | ✅ Done |
+| Video Studio hub, UGC (templates + custom), Product Shorts (templates + custom), Concept Ads | `/video-studio`, `/video-studio/{ugc,shorts,concept}` | ✅ Done |
+| Brand Kit (empty + filled), Products + Add Product | `/brand-kit`, `/products` | ✅ Done |
+| Assets, Library | `/assets`, `/library` | ✅ Done |
+| Upgrade, Connect Shopify, Settings | `/upgrade`, `/connect`, `/settings` | ✅ Done |
+| Refer & Earn | `/refer` (`543:41114`) | ⏳ Placeholder. Reuse v1 `src/components/ReferralCard.tsx` and `src/lib/referrals/*` |
+| Help & Support | `/help` (`543:51477`) | ⏳ Still the v1 page; restyle in 2.0 (v1 FAQ data: `src/lib/faqs.ts`) |
+| Login / Sign up | `/login` (`543:168449`) | ⏳ Still v1. Keep auth and the registration-tracking helper unchanged (AGENTS.md) |
+| Generate → Result screen | none yet | ⏳ Not designed; we design it. Every studio's Generate currently shows a toast |
+| Old v1 app routes | `/create`, `/generate/*`, `/gallery`, `/campaigns`, `/collections`, `/analytics`, `/billing`, `/pricing`, `/ads/$adId` | ⏳ Redirect to 2.0 equivalents at the end (`/billing` and `/pricing` are still used by the Upgrade and Settings links for checkout) |
+| Full QA pass | all | ⏳ Phone/tablet and dark mode checked on Home only; spot-check every screen |
+
+Every screen above was measured against Figma at 1440px with JS bounding boxes (usually within 1–5px; the browser scrollbar takes 15px of width that Figma doesn't have).
 
 ## 1. Brief (from the client, via Sufyan)
 
