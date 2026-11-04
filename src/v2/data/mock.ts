@@ -136,21 +136,23 @@ function catalogImage(folder: string, slug: string): string {
   return key ? catalogImages[key] : "";
 }
 
-const PHOTO_TEMPLATE_META: [string, string, PhotoTemplateCategory[]][] = [
-  ["clean-white", "Clean White", ["without-model", "studio"]],
-  ["golden-hour-model", "Golden Hour", ["with-model", "lifestyle"]],
-  ["hand-hero", "Hand Hero", ["with-model", "lifestyle"]],
-  ["linen-studio", "Linen Studio", ["without-model", "studio"]],
-  ["weekend-flat-lay", "Weekend Flat Lay", ["without-model", "flat-lay"]],
+/* Names, categories and Pro flags in this catalog follow the Replix Library Playbook. */
+const PHOTO_TEMPLATE_META: [string, string, PhotoTemplateCategory[], boolean][] = [
+  ["linen-studio", "Linen Studio", ["studio", "without-model"], false],
+  ["clean-white", "Clean White", ["studio", "without-model"], false],
+  ["morning-kitchen", "Morning Kitchen", ["lifestyle", "without-model"], false],
+  ["hand-hero", "Hand Hero", ["with-model"], true],
+  ["weekend-flat-lay", "Weekend Flat Lay", ["flat-lay", "without-model"], false],
+  ["golden-hour-model", "Golden Hour Model", ["with-model"], true],
 ];
 
 export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
-  ([slug, name, categories]) => ({
+  ([slug, name, categories, isPro]) => ({
     id: `pt_${slug}`,
     name,
     imageUrl: catalogImage("photo", slug),
     categories,
-    isPro: false,
+    isPro,
   }),
 );
 
@@ -188,13 +190,13 @@ export const products: Product[] = [
   },
 ];
 
-function pieces(kind: PieceKind, entries: [string, string][]): PieceOption[] {
-  return entries.map(([slug, name]) => ({
+function pieces(kind: PieceKind, entries: [string, string, boolean?][]): PieceOption[] {
+  return entries.map(([slug, name, isPro = false]) => ({
     id: `${kind}_${slug}`,
     kind,
     name,
     imageUrl: catalogImage(kind, slug),
-    isPro: false,
+    isPro,
     /* Prop cut-outs have no background of their own. */
     background: kind === "prop" ? "#f2f2f2" : undefined,
   }));
@@ -202,79 +204,81 @@ function pieces(kind: PieceKind, entries: [string, string][]): PieceOption[] {
 
 export const pieceOptions: PieceOption[] = [
   ...pieces("scene", [
-    ["white-seamless", "White Seamless"],
-    ["pastel-blue-sweep", "Pastel Blue Sweep"],
-    ["sand-linen-studio", "Sand Linen Studio"],
-    ["linen-tabletop", "Linen Tabletop"],
-    ["black-gloss-with-rim-light", "Black Gloss"],
-    ["terrazzo-top", "Terrazzo Top"],
-    ["marble-kitchen", "Marble Kitchen"],
-    ["bathroom-vanity", "Bathroom Vanity"],
-    ["cafe-window-table", "Café Window Table"],
-    ["home-office-desk", "Home Office Desk"],
-    ["living-room-sofa", "Living Room Sofa"],
-    ["cozy-bedroom", "Cozy Bedroom"],
-    ["gym-corner", "Gym Corner"],
-    ["sunny-balcony", "Sunny Balcony"],
-    ["beach-at-golden-hour", "Beach at Golden Hour"],
+    ["white-seamless", "White seamless"],
+    ["sand-linen-studio", "Sand linen studio"],
+    ["pastel-blue-sweep", "Pastel blue sweep"],
+    ["black-gloss-with-rim-light", "Black gloss with rim light", true],
+    ["marble-kitchen", "Marble kitchen"],
+    ["bathroom-vanity", "Bathroom vanity"],
+    ["cozy-bedroom", "Cozy bedroom"],
+    ["cafe-window-table", "Cafe window table", true],
+    ["living-room-sofa", "Living room sofa"],
+    ["home-office-desk", "Home office desk"],
+    ["gym-corner", "Gym corner"],
+    ["sunny-balcony", "Sunny balcony"],
+    ["beach-at-golden-hour", "Beach at golden hour", true],
+    ["linen-tabletop", "Linen tabletop"],
+    ["terrazzo-top", "Terrazzo top", true],
   ]),
   ...pieces("prop", [
-    ["marble-plinth", "Marble Plinth"],
-    ["wooden-tray", "Wooden Tray"],
-    ["fresh-flowers-in-a-vase", "Fresh Flowers"],
-    ["monstera-plant", "Monstera Plant"],
-    ["cactus", "Cactus"],
-    ["lemons", "Lemons"],
-    ["ice-cubes", "Ice Cubes"],
-    ["water-splash", "Water Splash"],
-    ["candle", "Candle"],
-    ["rolled-towel", "Rolled Towel"],
-    ["silk-scarf", "Silk Scarf"],
+    ["city-bike", "City bike"],
+    ["monstera-plant", "Monstera plant"],
+    ["cactus", "Small cactus"],
+    ["fresh-flowers-in-a-vase", "Fresh flowers in a vase"],
+    ["coffee-mug", "Coffee mug"],
+    ["croissant-on-a-plate", "Croissant on a plate"],
+    ["stack-of-books", "Stack of books"],
     ["sunglasses", "Sunglasses"],
-    ["coffee-mug", "Coffee Mug"],
-    ["croissant-on-a-plate", "Croissant"],
-    ["gift-box-with-ribbon", "Gift Box"],
-    ["plain-shopping-bag", "Shopping Bag"],
-    ["stack-of-books", "Stack of Books"],
+    ["silk-scarf", "Silk scarf", true],
+    ["lemons", "Lemons"],
+    ["ice-cubes", "Ice cubes"],
+    ["water-splash", "Water splash"],
+    ["rolled-towel", "Rolled towel"],
+    ["candle", "Candle", true],
+    ["wooden-tray", "Wooden tray"],
+    ["marble-plinth", "Marble plinth", true],
     ["headphones", "Headphones"],
     ["laptop", "Laptop"],
-    ["city-bike", "City Bike"],
-    ["classic-car", "Classic Car"],
+    ["plain-shopping-bag", "Plain shopping bag"],
+    ["gift-box-with-ribbon", "Gift box with ribbon", true],
+    /* In the Drive folder but not the playbook; names are ours. */
+    ["classic-car", "Classic car"],
     ["motorcycle", "Motorcycle"],
-    ["street-lamp", "Street Lamp"],
+    ["street-lamp", "Street lamp"],
   ]),
   ...pieces("character", [
-    ["sara", "Sara"],
-    ["daniel", "Daniel"],
-    ["alliea", "Alliea"],
-    ["joseph", "Joseph"],
-    ["ayesha", "Ayesha"],
-    ["carlos", "Carlos"],
-    ["hira", "Hira"],
-    ["lena", "Lena"],
-    ["mei", "Mei"],
-    ["omar", "Omar"],
-    ["robert", "Robert"],
+    ["sara", "Sara M."],
+    ["robert", "Robert M."],
     ["zain", "Zain"],
+    ["alliea", "Alliea"],
+    ["daniel", "Daniel O."],
+    ["joseph", "Joseph"],
+    ["hira", "Hira M."],
+    ["lena", "Lena C.", true],
+    ["mei", "Mei L.", true],
+    ["ayesha", "Ayesha K."],
+    ["carlos", "Carlos R.", true],
+    ["omar", "Omar A."],
   ]),
   ...pieces("style", [
-    ["hand-holding-product-close-up", "Hand Holding Product"],
-    ["two-hands-presenting", "Two Hands Presenting"],
-    ["product-at-face-level", "Product at Face Level"],
-    ["over-the-shoulder-look", "Over the Shoulder"],
-    ["mirror-selfie", "Mirror Selfie"],
-    ["sitting-with-product-on-lap", "Product on Lap"],
-    ["walking-with-product", "Walking with Product"],
-    ["hand-reaching-into-a-flat-lay", "Reaching into Flat Lay"],
-    ["linen-121751", "Chin Rest"],
-    ["linen-122011", "Back Glance"],
-    ["linen-122220", "Phone Selfie"],
-    ["linen-123504", "Seated on Chair"],
-    ["linen-123724", "Reach to Camera"],
-    ["linen-123936", "Side Turn"],
-    ["linen-124220", "Cuff Adjust"],
-    ["linen-134905", "Seated on Block"],
-    ["linen-135807", "Laptop on Stool"],
+    ["hand-holding-product-close-up", "Hand holding product close up"],
+    ["two-hands-presenting", "Two hands presenting"],
+    ["sitting-with-product-on-lap", "Sitting with product on lap"],
+    ["walking-with-product", "Walking with product"],
+    ["mirror-selfie", "Mirror selfie"],
+    ["over-the-shoulder-look", "Over the shoulder look"],
+    ["product-at-face-level", "Product at face level"],
+    ["hand-reaching-into-a-flat-lay", "Hand reaching into a flat lay"],
+    /* In the Drive folder but not the playbook; names are ours. */
+    ["linen-121751", "Chin rest"],
+    ["linen-122011", "Back glance"],
+    ["linen-122220", "Phone selfie"],
+    ["linen-123504", "Seated on chair"],
+    ["linen-123724", "Reach to camera"],
+    ["linen-123936", "Side turn"],
+    ["linen-124220", "Cuff adjust"],
+    ["linen-134905", "Seated on block"],
+    ["linen-135807", "Laptop on stool"],
   ]),
 ];
 
@@ -357,12 +361,12 @@ export const recentGenerations: Generation[] = RECENT_VIDEO_TITLES.map((title, i
 
 /* Videos live in public/ so they stream on demand instead of going through the bundler. */
 const UGC_META: [string, string, UgcStyle, boolean][] = [
-  ["first-unboxing", "First Unboxing", "unboxing", false],
-  ["honest-review", "Honest Review", "review", false],
-  ["morning-routine", "Morning Routine", "tutorial", false],
-  ["gym-quick-take", "Gym Quick Take", "review", false],
-  ["the-reveal", "The Reveal", "reveal", true],
-  ["try-on-check", "Try-On Check", "try-on", true],
+  ["honest-review", "Honest review", "review", false],
+  ["morning-routine", "Morning routine", "tutorial", false],
+  ["first-unboxing", "First unboxing", "unboxing", false],
+  ["the-reveal", "The reveal", "reveal", true],
+  ["try-on-check", "Try-on check", "try-on", true],
+  ["gym-quick-take", "Gym quick take", "review", false],
 ];
 
 export const ugcTemplates: UgcTemplate[] = UGC_META.map(([slug, name, style, isPro]) => ({
@@ -378,12 +382,12 @@ export const ugcTemplates: UgcTemplate[] = UGC_META.map(([slug, name, style, isP
 export const VIDEO_CREDITS_PER_15S = 10;
 
 const SHORT_META: [string, string, ShortStyle[], boolean][] = [
-  ["360-spin", "360 Spin", ["spin", "studio"], false],
-  ["studio-turn", "Studio Turn", ["spin", "studio"], false],
-  ["floating", "Floating", ["floating", "studio"], false],
+  ["studio-turn", "Studio Turn", ["studio"], false],
+  ["floating", "Floating", ["floating"], false],
+  ["360-spin", "360 Spin", ["spin"], false],
+  ["dramatic-light", "Dramatic Light", ["dramatic"], true],
   ["morning-light", "Morning Light", ["lifestyle"], false],
-  ["dramatic-light", "Dramatic Light", ["dramatic", "studio"], true],
-  ["splash", "Splash", ["dramatic", "lifestyle"], true],
+  ["splash", "Splash", ["dramatic"], true],
 ];
 
 export const shortTemplates: ShortTemplate[] = SHORT_META.map(([slug, name, styles, isPro]) => ({
