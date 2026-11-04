@@ -135,6 +135,7 @@ Differences from the playbook and open points:
 - **Product mismatch:** the playbook has Morning Kitchen with Acme Charge; the delivered preview shows Acme Glow Serum.
 - `tpl-short_splash_start.pro .jpg` shows the serum in a kitchen, not the splash, so the Splash poster is the video's first frame. The Floating and Studio Turn start frames show a different product from their videos (Acme Charge vs serum, serum vs buds), so they use the video's first frame too.
 - `omar-a_smile`, `robert-m_card` and `sara-m_card` had a pale band at the bottom, which was trimmed.
+- The composer's Select Product tile is a 96 x 96 square at the client's request (Figma has 87 x 96).
 - Home's Create cards changed from 333:217 to 16:9, so the loops' text isn't cut off.
 - Still placeholders because no replacement was supplied: Recent generations, the brand kit sample and the studio mode-card illustrations.
 

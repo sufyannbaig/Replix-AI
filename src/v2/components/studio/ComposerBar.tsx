@@ -97,7 +97,7 @@ export function ComposerBar({
         onClick={onPickProduct}
         aria-label={product ? `Change product: ${product.name}` : "Select product"}
         className={cn(
-          "relative flex h-24 w-[87px] shrink-0 flex-col items-center justify-center gap-[11px] overflow-hidden rounded-[5px] border-[0.9px] border-dashed border-black/[0.37] bg-[#f5f5f5] transition-colors hover:border-v2-blue night:border-[#dddada]/40 night:bg-transparent",
+          "relative flex size-24 shrink-0 flex-col items-center justify-center gap-[11px] overflow-hidden rounded-[5px] border-[0.9px] border-dashed border-black/[0.37] bg-[#f5f5f5] transition-colors hover:border-v2-blue night:border-[#dddada]/40 night:bg-transparent",
           product && "rounded-[8px] border-0",
         )}
       >
