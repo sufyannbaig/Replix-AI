@@ -40,7 +40,7 @@ Every screen above was measured against Figma at 1440px with JS bounding boxes (
 | Rollout | Build on branch `v2`, replacing the current app routes. Merge to `main` only after the user approves. |
 | Generate → Result screen | Not designed in Figma. Design it ourselves in the 2.0 style (loading, viewer, variations, regenerate, download, save to Assets). |
 | Responsive | Yes: tablet + phone (sidebar becomes a drawer). |
-| Dark mode | Yes: built from tokens. **Light is the default**; user picks Light/Dark/System (Profile popup → Appearance; Settings). |
+| Dark mode | Yes: built from tokens, values from the Figma **Dark Theme** section `614:93651` (see §9). **Light is the default**; user picks Light/Dark/System (Profile popup → Appearance; Settings). |
 
 ## 2. Where things are
 
@@ -184,3 +184,35 @@ Leftovers from the QA list, done after the user asked for "all of it":
 - **Home** (`93f2c89`): "Recent generations" row (hidden when empty) from `useRecentGenerations()`, which now merges finished jobs from this session (open their result page) with the sample video, photo and ad history Assets uses. Create cards use `src/v2/components/LoopingPreview.tsx`: pass `videoSrc` for the real clips; until then it cross-fades the studio's own art with a slow push-in (respects reduced motion).
 - **Re-measure against Figma** (`5e0db0c`): text layers of 15 session-1 frames were extracted from Figma metadata and matched to the live page at a 1455px viewport (1440 content + scrollbar). Within 0–3px: Home (above the new row), Photo Studio, Ad Studio, Video hub, UGC, Shorts, Concept, Assets, Library, Settings, Products. Fixed: **Refer** (link field 480px, step cards 334×206; "Your Rewards" now at Figma's y=798), **Brand Kit empty** (title and card height 560 on Figma's numbers), **Upgrade** (description/price line heights; card internals within 1px). Explained, not changed: Connect sits lower because Figma shows the connected-store row; Connect and Brand Kit cards are centred where Figma is ~15–20px left of centre.
 - **Still not covered** (needs a person or an account): a real iPhone/Safari pass, and signed-in flows (credits, Shopify connect, Stripe/Shopify checkout, billing portal).
+
+## 9. Dark theme and real templates
+
+**Dark theme.** Colours come from the Figma section "Dark Theme" (`614:93651`: Home `613:5192`, Photo Studio templates `613:20868`, piece by piece `613:62178`). Only those three screens are designed, so every other screen follows the same tokens in `src/v2/theme.css`. New tokens: `v2-panel` (sidebar, credits), `v2-composer`, `v2-chip`, `v2-active` (active filter), `v2-selected` (selected card stroke). A subtree with `data-theme="light"` stays light in dark mode, which is how the Home promo banner works, as in Figma.
+
+The three Figma frames disagree in places. Followed the two Photo Studio frames: blue Upgrade pill, grey active nav, grey Free badge. The Home frame alone has a cream Upgrade pill, a navy active nav and a blue Free badge. Dot opacity follows Home and templates (4%); the piece-by-piece frame's dots are stronger. The legacy free-offer popup stays white in dark.
+
+**Templates.** Source: the client's Drive folder "Replix templates" (`1pBAFZ1-GMUwsINgpI-MkVDdpOHQJ-d7x`). Images are compressed to webp in `src/assets/v2/catalog/<kind>/` and loaded in `src/v2/data/mock.ts`; videos are compressed to mp4 in `public/v2/videos/` (about 11 MB) so they stream rather than bundle. Originals stay in Drive.
+
+| Drive folder | Used for |
+| --- | --- |
+| Photo Shoot Templates Base | 5 Photo Studio templates (`_preview` files). `_base` plates are for the backend, not bundled |
+| Scenes, Props, Style and poses | Piece by Piece and Library (15 scenes, 23 props, 17 poses) |
+| Characters | 12 characters; card shows the `smile` or `card` shot. Other angles are for the backend |
+| Ad Studio | 5 creative themes |
+| Products | 4 demo products (front or folded shot) |
+| UGC Ads, UGC start frames | 6 UGC templates; video plays muted on hover and when selected (`HoverVideo`) |
+| Product short, start frames | 6 Shorts templates |
+| App loops | Animation chips on Shorts → Custom |
+| feed picks | Looping cards on Home and the Video Studio hub |
+| UGC voices | Not used: the UGC videos already include audio |
+
+Decisions to confirm with the client:
+- Held back the cigarette prop (`Props/image 1.png`). Ad platforms restrict tobacco.
+- Named the unnamed files ourselves: `image 2-4` are Classic Car, Street Lamp and Motorcycle; `prop_monstera-plant.png-1` is Cactus; the 9 `hf_*` poses have descriptive names in `mock.ts`.
+- Only Shorts and UGC filenames mark Pro (`.pro`), so all photo templates and pieces are free for now.
+- `tpl-short_splash_start.pro .jpg` shows the serum in a kitchen, not the splash, so the Splash poster is the video's first frame.
+- `omar-a_smile`, `robert-m_card` and `sara-m_card` had a pale band at the bottom, which was trimmed.
+- Home's Create cards changed from 333:217 to 16:9, so the loops' text isn't cut off.
+- Still placeholders because no replacement was supplied: the Home community feed, Recent generations, brand kit sample and the studio mode-card illustrations.
+
+**Backend TODO:** seed templates from the originals, serve video from storage or a CDN instead of `public/`, and add `baseUrl` for compositing.

@@ -64,7 +64,7 @@ export type Product = {
   createdAt: string;
 };
 
-export type PieceKind = "scene" | "prop" | "character";
+export type PieceKind = "scene" | "prop" | "character" | "style";
 
 /** A pre-made (or user-uploaded) building block for Photo Studio's piece-by-piece mode. */
 export type PieceOption = {
@@ -113,6 +113,7 @@ export type UgcTemplate = {
   name: string;
   style: UgcStyle;
   posterUrl: string;
+  videoUrl: string;
   isPro: boolean;
 };
 
@@ -124,6 +125,7 @@ export type ShortTemplate = {
   name: string;
   styles: ShortStyle[];
   posterUrl: string;
+  videoUrl: string;
   isPro: boolean;
 };
 

@@ -250,7 +250,7 @@ export async function importProductFromUrl(
   url: string,
 ): Promise<Omit<Product, "id" | "createdAt">> {
   await new Promise((resolve) => setTimeout(resolve, 1200));
-  const sample = products.find((p) => p.id === "p_cookie") ?? products[0];
+  const sample = products.find((p) => p.id === "p_buds") ?? products[0];
   return {
     name: "Cookie Dough Spread",
     description: `Imported from ${new URL(url).hostname}. A rich, spoonable cookie dough spread with real chocolate chips.`,

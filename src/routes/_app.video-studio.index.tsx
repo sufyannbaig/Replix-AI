@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
 import { useRecentGenerations } from "@/v2/data/api";
-import hubUgc from "@/assets/v2/video/hub-ugc.png";
-import hubShorts from "@/assets/v2/video/hub-shorts.png";
+import hubUgc from "@/assets/v2/catalog/loops/hub-ugc.webp";
+import hubShorts from "@/assets/v2/catalog/loops/hub-shorts.webp";
 import hubConcept from "@/assets/v2/video/hub-concept.png";
 import playIcon from "@/assets/v2/icons/play.svg";
+import { LoopingPreview } from "@/v2/components/LoopingPreview";
 
 export const Route = createFileRoute("/_app/video-studio/")({
   head: () => ({ meta: [{ title: "Video Studio · Replix AI" }] }),
@@ -23,6 +24,7 @@ const STUDIOS = [
     description: "A creator talks about, unboxes or uses your product",
     tag: "Template + Custom",
     image: hubUgc,
+    videoSrc: "/v2/videos/loops/hub-ugc.mp4",
   },
   {
     to: "/video-studio/shorts",
@@ -30,6 +32,7 @@ const STUDIOS = [
     description: "5–10 sec product motion: pan, zoom, floating",
     tag: "Template + Custom",
     image: hubShorts,
+    videoSrc: "/v2/videos/loops/hub-shorts.mp4",
   },
   {
     to: "/video-studio/concept",
@@ -37,6 +40,7 @@ const STUDIOS = [
     description: "A short story ad with a hook, climax and ending",
     tag: "Custom · New",
     image: hubConcept,
+    videoSrc: undefined,
   },
 ] as const;
 
@@ -54,9 +58,9 @@ function VideoHubPage() {
               className="group flex flex-col overflow-hidden rounded-[14px] border-[0.8px] border-transparent bg-v2-surface transition-colors hover:border-black night:hover:border-v2-ink"
             >
               <span className="block aspect-[334/317] overflow-hidden rounded-[14px]">
-                <img
-                  src={studio.image}
-                  alt=""
+                <LoopingPreview
+                  frames={[studio.image]}
+                  videoSrc={studio.videoSrc}
                   className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                 />
               </span>

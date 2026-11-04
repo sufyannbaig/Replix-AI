@@ -216,7 +216,7 @@ export function PieceByPiece({
   const isSelected = (piece: PieceOption) =>
     piece.kind === "prop"
       ? selection.props.some((p) => p.id === piece.id)
-      : selection[piece.kind]?.id === piece.id;
+      : piece.kind !== "style" && selection[piece.kind]?.id === piece.id;
 
   const toggle = (piece: PieceOption) => {
     if (piece.isPro && isFreePlan) {

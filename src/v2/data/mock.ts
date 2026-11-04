@@ -18,15 +18,18 @@ import type {
   ProductInsights,
   ShortStyle,
   ShortTemplate,
+  UgcStyle,
   UgcTemplate,
 } from "./types";
-import ugc1 from "@/assets/v2/ugc/template-01.png";
-import ugc2 from "@/assets/v2/ugc/template-02.png";
-import ugc3 from "@/assets/v2/ugc/template-03.png";
-import ugc4 from "@/assets/v2/ugc/template-04.png";
-import themeBeforeAfter from "@/assets/v2/themes/before-after.png";
-import themeBoldOffer from "@/assets/v2/themes/bold-offer.png";
-import cookieDough from "@/assets/v2/gallery/d1471.png";
+import themeBeforeAfter from "@/assets/v2/catalog/ad/before-after.webp";
+import themeBoldOffer from "@/assets/v2/catalog/ad/bold-offer.webp";
+import themeLifestyle from "@/assets/v2/catalog/ad/lifestyle.webp";
+import themeProblemFix from "@/assets/v2/catalog/ad/problem-fix.webp";
+import themeTestimonial from "@/assets/v2/catalog/ad/testimonial.webp";
+import acmeBuds from "@/assets/v2/catalog/product/acme-buds.webp";
+import acmeCharge from "@/assets/v2/catalog/product/acme-charge.webp";
+import acmeSerum from "@/assets/v2/catalog/product/acme-glow-serum.webp";
+import acmeShirt from "@/assets/v2/catalog/product/acme-linen-shirt.webp";
 import mercuryLogo from "@/assets/v2/home/mercury-logo.svg";
 import brandLogoPrimary from "@/assets/v2/brand/logo-primary.png";
 import brandLogoLight from "@/assets/v2/brand/logo-light.png";
@@ -118,142 +121,180 @@ export const communityCreations: CommunityCreation[] = [
   creation("c20", "concept", sodaCherry, 183, 219, "Cherry on top"),
 ];
 
-const photoTemplateImages = import.meta.glob<string>("@/assets/v2/templates/photo-*.png", {
+/*
+ * Template catalog from the client's Drive folder ("Replix templates"), compressed to webp
+ * and mp4. The full-resolution files, and the blank "base" plates the backend composites
+ * products onto, stay in Drive. See docs/V2_HANDOVER.md.
+ */
+const catalogImages = import.meta.glob<string>("@/assets/v2/catalog/*/*.webp", {
   eager: true,
   import: "default",
 });
 
-const PHOTO_TEMPLATE_META: [string, PhotoTemplateCategory[], boolean][] = [
-  ["Sunlit Denim", ["with-model", "lifestyle"], false],
-  ["Cocoa Gloss", ["without-model", "studio"], false],
-  ["Blush Studio", ["with-model", "studio"], false],
-  ["Poolside Shade", ["with-model", "lifestyle"], true],
-  ["Sky Blue Serum", ["with-model", "studio"], false],
-  ["Golden Hour Glow", ["with-model", "lifestyle"], false],
-  ["Rose Light", ["with-model", "studio"], false],
-  ["Street Edge", ["with-model", "lifestyle"], true],
-  ["Clean White", ["with-model", "studio"], false],
-  ["Salon Shine", ["with-model", "lifestyle"], false],
-  ["Monochrome Muse", ["with-model", "flat-lay"], false],
-  ["Statement Bag", ["with-model", "flat-lay"], true],
+function catalogImage(folder: string, slug: string): string {
+  const key = Object.keys(catalogImages).find((k) => k.endsWith(`/catalog/${folder}/${slug}.webp`));
+  return key ? catalogImages[key] : "";
+}
+
+const PHOTO_TEMPLATE_META: [string, string, PhotoTemplateCategory[]][] = [
+  ["clean-white", "Clean White", ["without-model", "studio"]],
+  ["golden-hour-model", "Golden Hour", ["with-model", "lifestyle"]],
+  ["hand-hero", "Hand Hero", ["with-model", "lifestyle"]],
+  ["linen-studio", "Linen Studio", ["without-model", "studio"]],
+  ["weekend-flat-lay", "Weekend Flat Lay", ["without-model", "flat-lay"]],
 ];
 
 export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
-  ([name, categories, isPro], i) => {
-    const n = String(i + 1).padStart(2, "0");
-    const key = Object.keys(photoTemplateImages).find((k) => k.endsWith(`photo-${n}.png`));
-    return {
-      id: `pt_${n}`,
-      name,
-      imageUrl: key ? photoTemplateImages[key] : "",
-      categories,
-      isPro,
-    };
-  },
+  ([slug, name, categories]) => ({
+    id: `pt_${slug}`,
+    name,
+    imageUrl: catalogImage("photo", slug),
+    categories,
+    isPro: false,
+  }),
 );
 
 /** Credits charged per generated photo; the backend will own this value. */
 export const PHOTO_CREDITS_PER_IMAGE = 2;
 
-/* Figma labels every product "Chocolate Truffle"; each fixture gets its own name. */
 export const products: Product[] = [
   {
-    id: "p_truffle",
-    name: "Chocolate Truffle Sauce",
-    imageUrl: truffle,
+    id: "p_charge",
+    name: "Acme Charge",
+    imageUrl: acmeCharge,
     source: "shopify",
     createdAt: "2026-10-01T10:00:00Z",
   },
   {
-    id: "p_vanilla",
-    name: "Vanilla Coffee Creamer",
-    imageUrl: vanilla,
+    id: "p_serum",
+    name: "Acme Glow Serum",
+    imageUrl: acmeSerum,
     source: "shopify",
     createdAt: "2026-10-02T10:00:00Z",
   },
   {
-    id: "p_cookie",
-    name: "Cookie Dough Spread",
-    imageUrl: cookieDough,
+    id: "p_buds",
+    name: "Acme Buds",
+    imageUrl: acmeBuds,
     source: "upload",
     createdAt: "2026-10-20T10:00:00Z",
   },
   {
-    id: "p_mocha",
-    name: "Chocolate Mocha Mix",
-    imageUrl: mocha,
+    id: "p_shirt",
+    name: "Acme Linen Shirt",
+    imageUrl: acmeShirt,
     source: "upload",
     createdAt: "2026-10-25T10:00:00Z",
   },
 ];
 
-const pieceImages = import.meta.glob<string>("@/assets/v2/pieces/*.png", {
-  eager: true,
-  import: "default",
-});
-
-function piece(
-  kind: PieceKind,
-  file: string,
-  name: string,
-  isPro = false,
-  background?: string,
-): PieceOption {
-  const key = Object.keys(pieceImages).find((k) => k.endsWith(`/${file}.png`));
-  return {
-    id: `${kind}_${file}`,
+function pieces(kind: PieceKind, entries: [string, string][]): PieceOption[] {
+  return entries.map(([slug, name]) => ({
+    id: `${kind}_${slug}`,
     kind,
     name,
-    imageUrl: key ? pieceImages[key] : "",
-    isPro,
-    background,
-  };
+    imageUrl: catalogImage(kind, slug),
+    isPro: false,
+    /* Prop cut-outs have no background of their own. */
+    background: kind === "prop" ? "#f2f2f2" : undefined,
+  }));
 }
 
-/* Grid order and Pro flags follow the Figma piece-by-piece screens. */
 export const pieceOptions: PieceOption[] = [
-  piece("scene", "scene-01", "Sky Plinth"),
-  piece("scene", "scene-02", "Violet Grip"),
-  piece("scene", "scene-03", "Torn Paper Peach"),
-  piece("scene", "scene-04", "Lemon Burst", true),
-  piece("scene", "scene-05", "Lilac Balloons", true),
-  piece("scene", "scene-06", "Periwinkle Arch"),
-  piece("scene", "scene-07", "Ribbon Mint"),
-  piece("scene", "scene-08", "Satin Ribbons", true),
-  piece("prop", "prop-01", "Tropical Leaves", false, "#5dc966"),
-  piece("prop", "prop-02", "Stone Plinth"),
-  piece("prop", "prop-03", "Dried Florals"),
-  piece("prop", "prop-04", "Glass Orbs", true),
-  piece("prop", "prop-05", "Linen Drape"),
-  piece("prop", "prop-06", "Citrus Slices"),
-  piece("prop", "prop-07", "Water Ripple"),
-  piece("character", "character-01", "Maya"),
-  piece("character", "character-02", "Jonah"),
-  piece("character", "character-03", "Aisha"),
-  piece("character", "character-04", "Leo", true),
-  piece("character", "character-05", "Sofia"),
-  piece("character", "character-06", "Kenji"),
-  piece("character", "character-07", "Noor", true),
+  ...pieces("scene", [
+    ["white-seamless", "White Seamless"],
+    ["pastel-blue-sweep", "Pastel Blue Sweep"],
+    ["sand-linen-studio", "Sand Linen Studio"],
+    ["linen-tabletop", "Linen Tabletop"],
+    ["black-gloss-with-rim-light", "Black Gloss"],
+    ["terrazzo-top", "Terrazzo Top"],
+    ["marble-kitchen", "Marble Kitchen"],
+    ["bathroom-vanity", "Bathroom Vanity"],
+    ["cafe-window-table", "Café Window Table"],
+    ["home-office-desk", "Home Office Desk"],
+    ["living-room-sofa", "Living Room Sofa"],
+    ["cozy-bedroom", "Cozy Bedroom"],
+    ["gym-corner", "Gym Corner"],
+    ["sunny-balcony", "Sunny Balcony"],
+    ["beach-at-golden-hour", "Beach at Golden Hour"],
+  ]),
+  ...pieces("prop", [
+    ["marble-plinth", "Marble Plinth"],
+    ["wooden-tray", "Wooden Tray"],
+    ["fresh-flowers-in-a-vase", "Fresh Flowers"],
+    ["monstera-plant", "Monstera Plant"],
+    ["cactus", "Cactus"],
+    ["lemons", "Lemons"],
+    ["ice-cubes", "Ice Cubes"],
+    ["water-splash", "Water Splash"],
+    ["candle", "Candle"],
+    ["rolled-towel", "Rolled Towel"],
+    ["silk-scarf", "Silk Scarf"],
+    ["sunglasses", "Sunglasses"],
+    ["coffee-mug", "Coffee Mug"],
+    ["croissant-on-a-plate", "Croissant"],
+    ["gift-box-with-ribbon", "Gift Box"],
+    ["plain-shopping-bag", "Shopping Bag"],
+    ["stack-of-books", "Stack of Books"],
+    ["headphones", "Headphones"],
+    ["laptop", "Laptop"],
+    ["city-bike", "City Bike"],
+    ["classic-car", "Classic Car"],
+    ["motorcycle", "Motorcycle"],
+    ["street-lamp", "Street Lamp"],
+  ]),
+  ...pieces("character", [
+    ["sara", "Sara"],
+    ["daniel", "Daniel"],
+    ["alliea", "Alliea"],
+    ["joseph", "Joseph"],
+    ["ayesha", "Ayesha"],
+    ["carlos", "Carlos"],
+    ["hira", "Hira"],
+    ["lena", "Lena"],
+    ["mei", "Mei"],
+    ["omar", "Omar"],
+    ["robert", "Robert"],
+    ["zain", "Zain"],
+  ]),
+  ...pieces("style", [
+    ["hand-holding-product-close-up", "Hand Holding Product"],
+    ["two-hands-presenting", "Two Hands Presenting"],
+    ["product-at-face-level", "Product at Face Level"],
+    ["over-the-shoulder-look", "Over the Shoulder"],
+    ["mirror-selfie", "Mirror Selfie"],
+    ["sitting-with-product-on-lap", "Product on Lap"],
+    ["walking-with-product", "Walking with Product"],
+    ["hand-reaching-into-a-flat-lay", "Reaching into Flat Lay"],
+    ["linen-121751", "Chin Rest"],
+    ["linen-122011", "Back Glance"],
+    ["linen-122220", "Phone Selfie"],
+    ["linen-123504", "Seated on Chair"],
+    ["linen-123724", "Reach to Camera"],
+    ["linen-123936", "Side Turn"],
+    ["linen-124220", "Cuff Adjust"],
+    ["linen-134905", "Seated on Block"],
+    ["linen-135807", "Laptop on Stool"],
+  ]),
 ];
 
 /* Figma's "pain points" listed packaging traits; these are customer problems instead. */
 export const sampleInsights: ProductInsights = {
   painPoints: [
-    "Store-bought sauces taste artificial or overly sweet",
-    "Hard to make café-style drinks and desserts at home",
-    "Most chocolate sauces skip real fruit flavour",
-    "Premium toppings feel too expensive for everyday use",
+    "Hard to tell apart from similar products when scrolling",
+    "Customers want proof it works before they buy",
+    "Stock product photos don't show it in real life",
+    "Premium price needs a clear reason to pay it",
   ],
-  adAngles: ["Indulgence", "Café at home", "Real ingredients", "Gift"],
+  adAngles: ["Everyday upgrade", "Real results", "Quality you can see", "Gift"],
 };
 
-/* Figma pairs images with the wrong themes; each theme now gets a matching visual. */
 export const adThemes: AdTheme[] = [
   {
     id: "problem-fix",
     name: "Problem → Fix",
     description: "Name the pain, then show the product solving it",
-    imageUrl: themeBeforeAfter,
+    imageUrl: themeProblemFix,
   },
   {
     id: "before-after",
@@ -265,7 +306,7 @@ export const adThemes: AdTheme[] = [
     id: "testimonial",
     name: "Testimonials",
     description: "Real-feeling customer quotes around the product",
-    imageUrl: themeBeforeAfter,
+    imageUrl: themeTestimonial,
   },
   {
     id: "bold-offer",
@@ -277,7 +318,7 @@ export const adThemes: AdTheme[] = [
     id: "lifestyle",
     name: "Lifestyle",
     description: "The product in a real moment of everyday use",
-    imageUrl: themeBoldOffer,
+    imageUrl: themeLifestyle,
   },
 ];
 
@@ -314,48 +355,45 @@ export const recentGenerations: Generation[] = RECENT_VIDEO_TITLES.map((title, i
   };
 });
 
-export const ugcTemplates: UgcTemplate[] = [
-  {
-    id: "ugc_app_walkthrough",
-    name: "App Walkthrough",
-    style: "tutorial",
-    posterUrl: ugc1,
-    isPro: false,
-  },
-  { id: "ugc_food_review", name: "Honest Review", style: "review", posterUrl: ugc2, isPro: true },
-  {
-    id: "ugc_asmr_unboxing",
-    name: "ASMR Unboxing",
-    style: "unboxing",
-    posterUrl: ugc3,
-    isPro: false,
-  },
-  { id: "ugc_case_reveal", name: "Colour Reveal", style: "reveal", posterUrl: ugc4, isPro: true },
+/* Videos live in public/ so they stream on demand instead of going through the bundler. */
+const UGC_META: [string, string, UgcStyle, boolean][] = [
+  ["first-unboxing", "First Unboxing", "unboxing", false],
+  ["honest-review", "Honest Review", "review", false],
+  ["morning-routine", "Morning Routine", "tutorial", false],
+  ["gym-quick-take", "Gym Quick Take", "review", false],
+  ["the-reveal", "The Reveal", "reveal", true],
+  ["try-on-check", "Try-On Check", "try-on", true],
 ];
+
+export const ugcTemplates: UgcTemplate[] = UGC_META.map(([slug, name, style, isPro]) => ({
+  id: `ugc_${slug}`,
+  name,
+  style,
+  isPro,
+  posterUrl: catalogImage("ugc", slug),
+  videoUrl: `/v2/videos/ugc/${slug}.mp4`,
+}));
 
 /** Video pricing placeholder: credits per started 15 seconds. The backend owns this. */
 export const VIDEO_CREDITS_PER_15S = 10;
 
-const shortImages = import.meta.glob<string>("@/assets/v2/shorts/template-*.png", {
-  eager: true,
-  import: "default",
-});
-
-const SHORT_META: [string, ShortStyle[], boolean, string][] = [
-  ["Desert Drift", ["lifestyle", "dramatic"], false, "01"],
-  ["Garden Glow", ["studio", "dramatic"], true, "02"],
-  ["Creator Close-up", ["lifestyle"], false, "03"],
-  ["Case Float", ["floating", "spin"], true, "04"],
-  ["Couch Levitation", ["floating", "lifestyle"], false, "05"],
-  ["Hand Reveal", ["lifestyle"], true, "06"],
-  ["Clean Unpack", ["studio"], false, "07"],
-  ["Case Spin", ["spin", "studio"], true, "04"],
+const SHORT_META: [string, string, ShortStyle[], boolean][] = [
+  ["360-spin", "360 Spin", ["spin", "studio"], false],
+  ["studio-turn", "Studio Turn", ["spin", "studio"], false],
+  ["floating", "Floating", ["floating", "studio"], false],
+  ["morning-light", "Morning Light", ["lifestyle"], false],
+  ["dramatic-light", "Dramatic Light", ["dramatic", "studio"], true],
+  ["splash", "Splash", ["dramatic", "lifestyle"], true],
 ];
 
-export const shortTemplates: ShortTemplate[] = SHORT_META.map(([name, styles, isPro, n], i) => {
-  const key = Object.keys(shortImages).find((k) => k.endsWith(`template-${n}.png`));
-  return { id: `short_${i + 1}`, name, styles, isPro, posterUrl: key ? shortImages[key] : "" };
-});
+export const shortTemplates: ShortTemplate[] = SHORT_META.map(([slug, name, styles, isPro]) => ({
+  id: `short_${slug}`,
+  name,
+  styles,
+  isPro,
+  posterUrl: catalogImage("short", slug),
+  videoUrl: `/v2/videos/shorts/${slug}.mp4`,
+}));
 
 /** Support inbox, same address as the v1 help page. */
 export const SUPPORT_EMAIL = "benjamin@replixai.co.uk";

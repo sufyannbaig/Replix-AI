@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/library")({
 const TABS: { value: LibraryTab; label: string; singular: string; kind: PieceKind | null }[] = [
   { value: "characters", label: "Characters", singular: "Character", kind: "character" },
   { value: "scenes", label: "Scenes", singular: "Scene", kind: "scene" },
-  { value: "styles", label: "Styles & Poses", singular: "Style or Pose", kind: null },
+  { value: "styles", label: "Styles & Poses", singular: "Style or Pose", kind: "style" },
 ];
 
 type Owner = "all" | "replix" | "yours";

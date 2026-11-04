@@ -9,17 +9,9 @@ import { Masonry } from "@/v2/components/Masonry";
 import { FilterTabs, PillLink, SectionTitle } from "@/v2/components/primitives";
 import { useBrandKits, useCommunityCreations, useRecentGenerations } from "@/v2/data/api";
 import type { CommunityCreation, CreationKind } from "@/v2/data/types";
-import createPhoto from "@/assets/v2/home/create-photo.png";
-import createAd from "@/assets/v2/home/create-ad.png";
-import createVideo from "@/assets/v2/home/create-video.png";
-import photo02 from "@/assets/v2/templates/photo-02.png";
-import photo05 from "@/assets/v2/templates/photo-05.png";
-import photo09 from "@/assets/v2/templates/photo-09.png";
-import themeBeforeAfter from "@/assets/v2/themes/before-after.png";
-import themeBoldOffer from "@/assets/v2/themes/bold-offer.png";
-import video03 from "@/assets/v2/video/recent-03.png";
-import video05 from "@/assets/v2/video/recent-05.png";
-import video08 from "@/assets/v2/video/recent-08.png";
+import createPhoto from "@/assets/v2/catalog/loops/home-photo.webp";
+import createAd from "@/assets/v2/catalog/loops/home-ad.webp";
+import createVideo from "@/assets/v2/catalog/loops/home-video.webp";
 import playIcon from "@/assets/v2/icons/play.svg";
 import { LoopingPreview } from "@/v2/components/LoopingPreview";
 import promoBack from "@/assets/v2/gallery/44dcb.png";
@@ -98,21 +90,21 @@ const CREATE_CARDS = [
     title: "Photo Studio",
     description: "Product photoshoots from templates or your own scene.",
     image: createPhoto,
-    frames: [createPhoto, photo02, photo05, photo09],
+    videoSrc: "/v2/videos/loops/home-photo.mp4",
   },
   {
     to: "/ad-studio",
     title: "Ad Studio",
     description: "Static ad creatives from one product.",
     image: createAd,
-    frames: [createAd, themeBeforeAfter, themeBoldOffer],
+    videoSrc: "/v2/videos/loops/home-ad.mp4",
   },
   {
     to: "/video-studio",
     title: "Video Studio",
     description: "UGC ads, product shorts and story ads.",
     image: createVideo,
-    frames: [createVideo, video03, video05, video08],
+    videoSrc: "/v2/videos/loops/home-video.mp4",
   },
 ] as const;
 
@@ -127,9 +119,8 @@ function CreateSection() {
             to={card.to}
             className="group flex flex-col overflow-hidden rounded-[14px] border border-transparent bg-v2-surface pb-[17px] transition-[border-color,box-shadow] duration-200 hover:border-v2-border hover:shadow-[var(--v2-shadow-card)] focus-visible:border-v2-border focus-visible:outline-none"
           >
-            <div className="aspect-[333/217] overflow-hidden rounded-[10px]">
-              {/* Dummy loops from studio art until the final preview videos arrive. */}
-              <LoopingPreview frames={[...card.frames]} />
+            <div className="aspect-video overflow-hidden rounded-[10px]">
+              <LoopingPreview frames={[card.image]} videoSrc={card.videoSrc} />
             </div>
             <div className="mx-[18px] mt-[27px] flex flex-col gap-1">
               <h3 className="font-archivo text-lg font-medium leading-archivo tracking-[-0.36px] text-v2-ink">

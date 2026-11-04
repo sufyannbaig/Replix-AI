@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { useCredits } from "@/hooks/use-credits";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
+import { HoverVideo } from "@/v2/components/HoverVideo";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
@@ -116,6 +117,8 @@ const STYLES: readonly { value: "all" | ShortStyle; label: string }[] = [
 const ANIMATIONS = ["Auto", "Camera pan", "Zoom in", "Zoom out", "Orbit", "Floating"] as const;
 type Animation = (typeof ANIMATIONS)[number];
 
+const animationLoop = (a: Animation) => `/v2/videos/chips/${a.toLowerCase().replace(" ", "-")}.mp4`;
+
 /* Product Shorts are 5–10 second clips. */
 const DURATIONS = [5, 8, 10] as const;
 
@@ -187,11 +190,7 @@ function ShortsPage() {
                       active ? "border-black night:border-v2-ink" : "border-transparent",
                     )}
                   >
-                    <img
-                      src={t.posterUrl}
-                      alt=""
-                      className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    />
+                    <HoverVideo poster={t.posterUrl} src={t.videoUrl} active={active} />
                     {t.isPro ? (
                       <span className="absolute right-[14px] top-[14px] rounded-[18px] bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] px-[14px] py-[7px] font-archivo text-base font-medium leading-archivo tracking-[-0.64px] text-[#12213d]">
                         Pro
@@ -239,12 +238,21 @@ function ShortsPage() {
                     aria-checked={animation === a}
                     onClick={() => setAnimation(a)}
                     className={cn(
-                      "rounded-[50px] border px-4 py-2 font-inter-tight text-sm transition-colors",
+                      "flex items-center gap-2 rounded-[50px] border py-1.5 pl-1.5 pr-4 font-inter-tight text-sm transition-colors",
                       animation === a
                         ? "border-black bg-v2-surface text-black night:border-v2-ink night:text-v2-ink"
                         : "border-black/15 bg-v2-surface text-black/45 hover:text-black/75 night:border-v2-border night:text-v2-ink-60",
                     )}
                   >
+                    <video
+                      src={animationLoop(a)}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      aria-hidden
+                      className="size-7 rounded-full object-cover"
+                    />
                     {a}
                   </button>
                 ))}

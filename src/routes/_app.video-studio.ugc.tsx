@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { useCredits } from "@/hooks/use-credits";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
+import { HoverVideo } from "@/v2/components/HoverVideo";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
@@ -266,13 +267,11 @@ function UgcPage() {
                         active && "ring-[1.7px] ring-[#124498]",
                       )}
                     >
-                      <img
-                        src={t.posterUrl}
-                        alt=""
-                        className={cn(
-                          "size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]",
-                          active && "rounded-[12px] border-2 border-white",
-                        )}
+                      <HoverVideo
+                        poster={t.posterUrl}
+                        src={t.videoUrl}
+                        active={active}
+                        className={cn(active && "rounded-[12px] border-2 border-white")}
                       />
                       {t.isPro ? (
                         <span className="absolute right-[14px] top-[14px] rounded-[18px] bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] px-[14px] py-[7px] font-archivo text-base font-medium leading-archivo tracking-[-0.64px] text-[#12213d]">
