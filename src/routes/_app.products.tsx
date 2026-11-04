@@ -80,7 +80,7 @@ function ProductsPage() {
                 className={cn(
                   "flex h-7 items-center rounded-[50px] border-[0.7px] px-3 font-inter-tight text-sm font-medium tracking-[0.28px] transition-opacity",
                   filter === f.value
-                    ? "border-black bg-black text-white night:border-v2-ink night:bg-v2-ink night:text-v2-canvas"
+                    ? "border-black bg-black text-white night:border-transparent night:bg-v2-active night:text-white"
                     : "border-black/60 text-[#616161] opacity-45 hover:opacity-80 night:border-v2-border night:text-v2-ink-60",
                 )}
               >

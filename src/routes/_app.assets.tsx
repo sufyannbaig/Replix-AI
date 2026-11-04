@@ -108,7 +108,7 @@ function AssetsPage() {
                   className={cn(
                     "flex h-7 items-center rounded-[50px] px-3 font-inter-tight text-sm font-medium capitalize tracking-[0.28px]",
                     order === o
-                      ? "bg-[#1f55ae] text-white"
+                      ? "bg-v2-active text-white"
                       : "border-[0.7px] border-black/60 text-[#616161] opacity-45 hover:opacity-80 night:border-v2-border night:text-v2-ink-60",
                   )}
                 >

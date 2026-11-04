@@ -71,7 +71,7 @@ function HomePage() {
 
 function BrandKitBanner() {
   return (
-    <section className="flex flex-col gap-5 rounded-[18px] bg-v2-cream px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-[38px] sm:py-7">
+    <section className="flex flex-col gap-5 rounded-[18px] bg-v2-cream px-6 py-6 night:bg-v2-surface-2 sm:flex-row sm:items-center sm:justify-between sm:px-[38px] sm:py-7">
       <div className="flex max-w-[499px] flex-col gap-1">
         <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.8px] text-v2-ink sm:text-2xl sm:tracking-[-0.96px]">
           Need consistent results? Create a brand kit
@@ -221,7 +221,10 @@ const PRO_FEATURES = [
 
 function UpgradePromo() {
   return (
-    <section className="v2-promo-fill relative flex flex-col overflow-hidden rounded-[18px] p-4 lg:h-[324px] lg:flex-row lg:items-center lg:justify-end lg:p-0 lg:pr-[21px]">
+    <section
+      data-theme="light"
+      className="v2-promo-fill relative flex flex-col overflow-hidden rounded-[18px] p-4 lg:h-[324px] lg:flex-row lg:items-center lg:justify-end lg:p-0 lg:pr-[21px]"
+    >
       {/* Blurred, fanned previews of premium templates (Figma group 543:5005). */}
       <div
         aria-hidden

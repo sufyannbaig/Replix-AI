@@ -40,7 +40,7 @@ function AppLayout() {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-background night:bg-v2-canvas">
         <Loader2 className="size-6 animate-spin text-brand" />
       </div>
     );

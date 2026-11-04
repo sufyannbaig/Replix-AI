@@ -70,7 +70,7 @@ function UpgradePage() {
                 className={cn(
                   "relative flex flex-col gap-[14px] rounded-[16px] px-[26px] pb-[30px] pt-[23px]",
                   plan.highlight
-                    ? "bg-[linear-gradient(180deg,#ffeccb_0%,#c8d9fb_100%)] night:bg-[linear-gradient(180deg,#3a3220_0%,#1d2b48_100%)]"
+                    ? "bg-[linear-gradient(180deg,#ffeccb_0%,#c8d9fb_100%)] night:bg-[linear-gradient(180deg,#3a3a3a_0%,#161616_100%)]"
                     : "bg-v2-surface",
                 )}
               >

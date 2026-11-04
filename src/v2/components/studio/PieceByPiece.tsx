@@ -37,7 +37,7 @@ const CHEVRON = "polygon(0 0, calc(100% - 27px) 0, 100% 50%, calc(100% - 27px) 1
 function Stepper({ step, onStep }: { step: number; onStep: (index: number) => void }) {
   return (
     <div
-      className="relative flex h-[71px] overflow-hidden rounded-[14px] bg-v2-surface"
+      className="relative flex h-[71px] overflow-hidden rounded-[14px] bg-v2-surface night:bg-white"
       role="tablist"
       aria-label="Shot steps"
     >
@@ -47,7 +47,7 @@ function Stepper({ step, onStep }: { step: number; onStep: (index: number) => vo
             ? "bg-[#162544] text-white"
             : i === step + 1
               ? "bg-[#7c95c9] text-white"
-              : "text-black/40 night:text-v2-ink-60";
+              : "text-black/40";
         return (
           <button
             key={s.kind}

@@ -42,7 +42,7 @@ export function ModeSwitcher<T extends string>({
             className={cn(
               "relative h-[260px] overflow-hidden rounded-[14px] border-[1.5px] bg-v2-surface text-left transition-[border-color,box-shadow] duration-150",
               active
-                ? "border-[#5d81c4]"
+                ? "border-v2-selected"
                 : "border-transparent hover:border-v2-border hover:shadow-[var(--v2-shadow-card)]",
             )}
           >

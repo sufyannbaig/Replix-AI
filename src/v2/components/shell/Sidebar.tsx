@@ -120,7 +120,9 @@ function NavRow({
       className={cn(
         "flex w-full items-center gap-3 rounded-[49px] px-[19px] py-3 font-archivo text-base leading-archivo text-v2-ink transition-[background-color,opacity] duration-150",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v2-blue/40",
-        active ? "bg-v2-nav-active" : cn(dimClass, "hover:bg-v2-nav-active/60 hover:opacity-100"),
+        active
+          ? "bg-v2-nav-active night:ring-1 night:ring-inset night:ring-white/50"
+          : cn(dimClass, "hover:bg-v2-nav-active/60 hover:opacity-100"),
       )}
     >
       <NavGlyph icon={item.icon} />
@@ -291,7 +293,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar({ footer }: { footer?: ReactNode }) {
   return (
-    <aside className="sticky top-0 hidden h-screen w-[308px] shrink-0 overflow-y-auto rounded-r-[40px] bg-v2-surface [scrollbar-width:none] lg:block">
+    <aside className="sticky top-0 hidden h-screen w-[308px] shrink-0 overflow-y-auto rounded-r-[40px] bg-v2-panel [scrollbar-width:none] night:border-r night:border-v2-line lg:block">
       <SidebarContent />
       {footer}
     </aside>

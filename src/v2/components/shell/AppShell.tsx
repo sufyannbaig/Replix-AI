@@ -70,11 +70,11 @@ function CreditsCard() {
   const { planInfo, remaining, loading } = useAccountSummary();
 
   return (
-    <div className="flex items-center gap-2.5 rounded-[36px] bg-v2-surface px-[15px] py-2 drop-shadow-[0px_1px_4.3px_rgba(0,0,0,0.03)]">
+    <div className="flex items-center gap-2.5 rounded-[36px] bg-v2-panel px-[15px] py-2 night:border-[0.6px] night:border-white/35 drop-shadow-[0px_1px_4.3px_rgba(0,0,0,0.03)]">
       <Link
         to="/upgrade"
         aria-label={`${remaining} of ${planInfo.ads} credits left on the ${planInfo.name} plan`}
-        className="flex h-[41px] w-[185px] items-center justify-center rounded-[41px] border border-black/[0.04] bg-v2-surface px-2 py-1 drop-shadow-[0px_0px_14.75px_rgba(0,0,0,0.03)] night:border-v2-border"
+        className="flex h-[41px] w-[185px] items-center justify-center rounded-[41px] border border-black/[0.04] bg-v2-surface px-2 py-1 drop-shadow-[0px_0px_14.75px_rgba(0,0,0,0.03)] night:border-transparent night:bg-white/20"
       >
         <span className="flex w-[156px] items-center justify-between">
           <span className="flex items-center gap-[9px]">
@@ -158,7 +158,7 @@ export function AppShell({
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[308px] max-w-[85vw] overflow-y-auto rounded-r-[40px] border-none bg-v2-surface p-0 sm:max-w-[308px]"
+              className="w-[308px] max-w-[85vw] overflow-y-auto rounded-r-[40px] border-none bg-v2-panel p-0 sm:max-w-[308px]"
             >
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <SidebarContent onNavigate={() => setDrawerOpen(false)} />

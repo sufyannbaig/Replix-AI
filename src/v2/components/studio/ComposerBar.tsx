@@ -24,7 +24,7 @@ export const ASPECT_OPTIONS: readonly { value: AspectRatio; label: string }[] = 
 ];
 
 const chip =
-  "flex h-9 shrink-0 items-center gap-2.5 rounded-[5.69px] bg-[#f5f5f5] font-inter-tight text-xs tracking-[0.24px] text-black night:bg-v2-surface-2 night:text-v2-ink";
+  "flex h-9 shrink-0 items-center gap-2.5 rounded-[5.69px] bg-v2-chip font-inter-tight text-xs tracking-[0.24px] text-black night:text-v2-ink";
 
 function MaskIcon({ src, width, height }: { src: string; width: number; height: number }) {
   return (
@@ -91,13 +91,13 @@ export function ComposerBar({
   const aspectLabel = ASPECT_OPTIONS.find((o) => o.value === aspect)?.label ?? aspect;
 
   return (
-    <div className="flex w-full max-w-[622px] gap-4 rounded-[12px] bg-v2-surface px-[11px] py-[13px] shadow-[0_0_44.2px_rgba(0,0,0,0.08)]">
+    <div className="flex w-full max-w-[622px] gap-4 rounded-[12px] bg-v2-composer px-[11px] py-[13px] shadow-[0_0_44.2px_rgba(0,0,0,0.08)]">
       <button
         type="button"
         onClick={onPickProduct}
         aria-label={product ? `Change product: ${product.name}` : "Select product"}
         className={cn(
-          "relative flex h-24 w-[87px] shrink-0 flex-col items-center justify-center gap-[11px] overflow-hidden rounded-[5px] border-[0.9px] border-dashed border-black/[0.37] bg-[#f5f5f5] transition-colors hover:border-v2-blue night:border-v2-border night:bg-v2-surface-2",
+          "relative flex h-24 w-[87px] shrink-0 flex-col items-center justify-center gap-[11px] overflow-hidden rounded-[5px] border-[0.9px] border-dashed border-black/[0.37] bg-[#f5f5f5] transition-colors hover:border-v2-blue night:border-[#dddada]/40 night:bg-transparent",
           product && "rounded-[8px] border-0",
         )}
       >
