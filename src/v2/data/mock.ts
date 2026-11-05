@@ -282,36 +282,6 @@ export const adThemes: AdTheme[] = [
 /** Credits charged per static ad; the backend will own this value. */
 export const AD_CREDITS_PER_IMAGE = 2;
 
-const recentVideoImages = import.meta.glob<string>("@/assets/v2/video/recent-*.png", {
-  eager: true,
-  import: "default",
-});
-
-const RECENT_VIDEO_TITLES = [
-  "Skincare set reveal",
-  "Travel pouch unboxing",
-  "Sunny bath duck short",
-  "Greens powder sky pan",
-  "Kiwi juice float",
-  "Citrus soda splash",
-  "Blackberry serum orbit",
-  "Night serum glow",
-  "Sneaker turntable",
-  "Runner color burst",
-];
-
-export const recentGenerations: Generation[] = RECENT_VIDEO_TITLES.map((title, i) => {
-  const n = String(i + 1).padStart(2, "0");
-  const key = Object.keys(recentVideoImages).find((k) => k.endsWith(`recent-${n}.png`));
-  return {
-    id: `gen_video_${n}`,
-    kind: "video",
-    title,
-    thumbnailUrl: key ? recentVideoImages[key] : "",
-    createdAt: new Date(Date.UTC(2026, 9, 30 - i)).toISOString(),
-  };
-});
-
 /* Videos live in public/ so they stream on demand instead of going through the bundler. */
 const UGC_META: [string, string, UgcStyle, boolean][] = [
   ["honest-review", "Honest review", "review", false],
@@ -352,6 +322,18 @@ export const shortTemplates: ShortTemplate[] = SHORT_META.map(([slug, name, styl
   videoUrl: `/v2/videos/shorts/${slug}.mp4`,
 }));
 
+/* Sample history for Recent generations and Assets, built from the real templates. */
+export const recentGenerations: Generation[] = ugcTemplates
+  .flatMap((t, i) => [t, shortTemplates[i]])
+  .slice(0, 10)
+  .map((t, i) => ({
+    id: `gen_video_${String(i + 1).padStart(2, "0")}`,
+    kind: "video",
+    title: t.name,
+    thumbnailUrl: t.posterUrl,
+    createdAt: new Date(Date.UTC(2026, 9, 30 - i)).toISOString(),
+  }));
+
 type FeedKind = Exclude<CreationKind, "concept">;
 
 function feedCard(kind: FeedKind, slug: string): CommunityCreation {
@@ -378,22 +360,32 @@ function feedCard(kind: FeedKind, slug: string): CommunityCreation {
   return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 4 / 3, title: t?.name ?? slug };
 }
 
-/* The 12 Home feed picks, three per format. Cards deal left to right into columns, so this
-   order keeps the columns even and the same product from stacking. */
+/* Community feed: every finished template, mixed so the formats sit side by side. */
 export const communityCreations: CommunityCreation[] = (
   [
     ["ugc", "honest-review"],
     ["photoshoot", "golden-hour-model"],
-    ["ad", "before-after"],
-    ["product-short", "dramatic-light"],
-    ["product-short", "morning-light"],
-    ["photoshoot", "linen-studio"],
-    ["ugc", "gym-quick-take"],
-    ["product-short", "splash"],
-    ["ugc", "the-reveal"],
     ["ad", "bold-offer"],
-    ["photoshoot", "weekend-flat-lay"],
+    ["product-short", "dramatic-light"],
+    ["photoshoot", "hand-hero"],
     ["ad", "testimonial"],
+    ["ugc", "the-reveal"],
+    ["product-short", "floating"],
+    ["photoshoot", "linen-studio"],
+    ["ugc", "morning-routine"],
+    ["product-short", "splash"],
+    ["photoshoot", "weekend-flat-lay"],
+    ["ugc", "first-unboxing"],
+    ["ad", "before-after"],
+    ["product-short", "morning-light"],
+    ["photoshoot", "clean-white"],
+    ["ad", "lifestyle"],
+    ["photoshoot", "morning-kitchen"],
+    ["ugc", "try-on-check"],
+    ["ad", "problem-fix"],
+    ["ugc", "gym-quick-take"],
+    ["product-short", "360-spin"],
+    ["product-short", "studio-turn"],
   ] as [FeedKind, string][]
 ).map(([kind, slug]) => feedCard(kind, slug));
 
@@ -476,6 +468,5 @@ export function mockGenerationImages(kind: GenerationKind): string[] {
   return [
     ...ugcTemplates.map((t) => t.posterUrl),
     ...shortTemplates.map((t) => t.posterUrl),
-    ...recentGenerations.map((g) => g.thumbnailUrl),
   ].filter(Boolean);
 }

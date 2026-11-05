@@ -3,34 +3,57 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PillButton } from "@/v2/components/primitives";
-import { usePieceOptions } from "@/v2/data/api";
+import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
 import type { PieceKind, PieceOption } from "@/v2/data/types";
 import plusSmall from "@/assets/v2/pieces/plus-small.svg";
-import artBack from "@/assets/v2/pieces/scene-05.png";
-import artMiddle from "@/assets/v2/gallery/908f4.png";
-import artFront from "@/assets/v2/pieces/scene-04.png";
+import artBack from "@/assets/v2/catalog/scene/marble-kitchen.webp";
+import artMiddle from "@/assets/v2/catalog/scene/sand-linen-studio.webp";
+import artFront from "@/assets/v2/catalog/scene/pastel-blue-sweep.webp";
 
 export type PieceSelection = {
   scene: PieceOption | null;
   props: PieceOption[];
   character: PieceOption | null;
+  pose: PieceOption | null;
 };
 
-export const EMPTY_SELECTION: PieceSelection = { scene: null, props: [], character: null };
+export const EMPTY_SELECTION: PieceSelection = {
+  scene: null,
+  props: [],
+  character: null,
+  pose: null,
+};
 
-/** Props can be stacked (a plant behind, something in hand); scene and character are single. */
+/** Props can be stacked (a plant behind, something in hand); the others are single. */
 const MAX_PROPS = 3;
 
 const STEPS: { kind: PieceKind; label: string; plural: string }[] = [
   { kind: "scene", label: "Scene", plural: "Scene" },
   { kind: "prop", label: "Props", plural: "Props" },
   { kind: "character", label: "Character", plural: "Character" },
+  { kind: "style", label: "Pose", plural: "Pose" },
 ];
+
+export function pieceStepIndex(kind: PieceKind) {
+  return Math.max(
+    0,
+    STEPS.findIndex((s) => s.kind === kind),
+  );
+}
+
+/** The selection with one more piece in it (props stack, the rest replace). */
+export function addPiece(selection: PieceSelection, piece: PieceOption): PieceSelection {
+  if (piece.kind === "prop")
+    return selection.props.some((p) => p.id === piece.id) || selection.props.length >= MAX_PROPS
+      ? selection
+      : { ...selection, props: [...selection.props, piece] };
+  return { ...selection, [piece.kind === "style" ? "pose" : piece.kind]: piece };
+}
 
 const CHEVRON = "polygon(0 0, calc(100% - 27px) 0, 100% 50%, calc(100% - 27px) 100%, 0 100%)";
 
 /**
- * Scene → Props → Character stepper. Steps up to the current one are navy, the next one
+ * Scene → Props → Character → Pose stepper. Steps up to the current one are navy, the next one
  * is light blue, later ones stay on the white track (Figma 543:134077). Steps are free
  * tabs: users can jump back to change a piece.
  */
@@ -212,11 +235,12 @@ export function PieceByPiece({
 }) {
   const current = STEPS[step];
   const { data: options = [] } = usePieceOptions(current.kind);
+  const upload = useAddLibraryUpload();
 
   const isSelected = (piece: PieceOption) =>
     piece.kind === "prop"
       ? selection.props.some((p) => p.id === piece.id)
-      : piece.kind !== "style" && selection[piece.kind]?.id === piece.id;
+      : selection[piece.kind === "style" ? "pose" : piece.kind]?.id === piece.id;
 
   const toggle = (piece: PieceOption) => {
     if (piece.isPro && isFreePlan) {
@@ -235,24 +259,35 @@ export function PieceByPiece({
       });
       return;
     }
-    onChange({ ...selection, [piece.kind]: isSelected(piece) ? null : piece });
+    const slot = piece.kind === "style" ? "pose" : piece.kind;
+    onChange({ ...selection, [slot]: isSelected(piece) ? null : piece });
   };
 
-  const addUpload = (file: File) => {
-    const piece: PieceOption = {
-      id: `${current.kind}_upload_${Date.now()}`,
-      kind: current.kind,
-      name: file.name.replace(/\.[^.]+$/, ""),
-      imageUrl: URL.createObjectURL(file),
-      isPro: false,
-    };
-    toggle(piece);
-  };
+  const addUpload = (file: File) =>
+    upload.mutate(
+      { file, kind: current.kind },
+      {
+        onSuccess: toggle,
+        onError: () => toast.error("Upload failed. Please try again."),
+      },
+    );
 
   return (
     <div className="flex flex-col gap-[29px] xl:flex-row xl:items-start">
       <div className="flex min-w-0 flex-1 flex-col gap-8">
         <Stepper step={step} onStep={onStep} />
+        {current.kind === "style" && !selection.character ? (
+          <p className="-mt-3 font-inter-tight text-sm text-v2-muted">
+            Poses apply when your shot has a character.{" "}
+            <button
+              type="button"
+              onClick={() => onStep(pieceStepIndex("character"))}
+              className="text-v2-ink underline underline-offset-2"
+            >
+              Choose a character
+            </button>
+          </p>
+        ) : null}
         <div className="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-3 xl:gap-y-10">
           <UploadTile label={current.label} onFile={addUpload} />
           {options.map((piece) => {
@@ -297,7 +332,7 @@ export function PieceByPiece({
         <h3 className="font-archivo text-base font-medium leading-archivo tracking-[-0.32px] text-v2-ink">
           Your Shot
         </h3>
-        <div className="grid grid-cols-3 gap-3 xl:grid-cols-1 xl:gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-1 xl:gap-4">
           <SummarySlot
             label="Scene"
             piece={selection.scene}
@@ -316,6 +351,12 @@ export function PieceByPiece({
             piece={selection.character}
             onClick={() => onStep(2)}
             onRemove={() => onChange({ ...selection, character: null })}
+          />
+          <SummarySlot
+            label="Pose"
+            piece={selection.pose}
+            onClick={() => onStep(3)}
+            onRemove={() => onChange({ ...selection, pose: null })}
           />
         </div>
         {step < STEPS.length - 1 ? (

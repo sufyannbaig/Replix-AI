@@ -25,10 +25,12 @@ export function ModeSwitcher<T extends string>({
     <div
       role="radiogroup"
       aria-label="How do you want to create?"
-      className={cn(
-        "grid grid-cols-1 gap-4",
-        modes.length === 2 ? "sm:grid-cols-2 xl:gap-[44px]" : "sm:grid-cols-3 xl:gap-[54px]",
-      )}
+      className={
+        modes.length === 2
+          ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:gap-[44px]"
+          : /* Three cards don't fit below xl: they swipe sideways at full size. */
+            "-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] xl:mx-0 xl:grid xl:grid-cols-3 xl:gap-[54px] xl:overflow-visible xl:px-0 xl:pb-0"
+      }
     >
       {modes.map((mode) => {
         const active = mode.value === value;
@@ -41,6 +43,7 @@ export function ModeSwitcher<T extends string>({
             onClick={() => onChange(mode.value)}
             className={cn(
               "relative h-[260px] overflow-hidden rounded-[14px] border-[1.5px] bg-v2-surface text-left transition-[border-color,box-shadow] duration-150",
+              modes.length > 2 && "w-[312px] shrink-0 snap-start xl:w-auto",
               active
                 ? "border-v2-selected"
                 : "border-transparent hover:border-v2-border hover:shadow-[var(--v2-shadow-card)]",

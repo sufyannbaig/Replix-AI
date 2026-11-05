@@ -1,14 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
-import { usePieceOptions } from "@/v2/data/api";
+import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
 import type { PieceKind } from "@/v2/data/types";
-import artBack from "@/assets/v2/pieces/scene-05.png";
-import artMiddle from "@/assets/v2/pieces/character-02.png";
-import artFront from "@/assets/v2/pieces/character-01.png";
+import artBack from "@/assets/v2/catalog/scene/marble-kitchen.webp";
+import artMiddle from "@/assets/v2/catalog/character/sara.webp";
+import artFront from "@/assets/v2/catalog/character/robert.webp";
 
 type LibraryTab = "characters" | "scenes" | "styles";
 
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_app/library")({
   component: LibraryPage,
 });
 
-const TABS: { value: LibraryTab; label: string; singular: string; kind: PieceKind | null }[] = [
+const TABS: { value: LibraryTab; label: string; singular: string; kind: PieceKind }[] = [
   { value: "characters", label: "Characters", singular: "Character", kind: "character" },
   { value: "scenes", label: "Scenes", singular: "Scene", kind: "scene" },
   { value: "styles", label: "Styles & Poses", singular: "Style or Pose", kind: "style" },
@@ -29,43 +29,30 @@ const TABS: { value: LibraryTab; label: string; singular: string; kind: PieceKin
 
 type Owner = "all" | "replix" | "yours";
 
-type LibraryItem = { id: string; name: string; imageUrl: string; owner: "replix" | "yours" };
-
 function LibraryPage() {
   const { tab = "characters" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const current = TABS.find((t) => t.value === tab) ?? TABS[0];
-  const { data: pieces = [] } = usePieceOptions(current.kind ?? "character");
+  const { data: pieces = [] } = usePieceOptions(current.kind);
+  const upload = useAddLibraryUpload();
   const [owner, setOwner] = useState<Owner>("all");
-  /* Front-end only: uploads live in memory until the backend stores them. */
-  const [uploads, setUploads] = useState<Record<LibraryTab, LibraryItem[]>>({
-    characters: [],
-    scenes: [],
-    styles: [],
-  });
 
-  const items = useMemo<LibraryItem[]>(() => {
-    const made = current.kind
-      ? pieces.map((p) => ({
-          id: p.id,
-          name: p.name,
-          imageUrl: p.imageUrl,
-          owner: "replix" as const,
-        }))
-      : [];
-    return [...uploads[tab], ...made].filter((i) => owner === "all" || i.owner === owner);
-  }, [current.kind, pieces, uploads, tab, owner]);
+  const items = useMemo(
+    () =>
+      pieces.filter(
+        (p) => owner === "all" || (owner === "yours" ? p.owner === "yours" : p.owner !== "yours"),
+      ),
+    [pieces, owner],
+  );
 
-  const addUpload = (file: File) => {
-    const item: LibraryItem = {
-      id: `${tab}_${Date.now()}`,
-      name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
-      imageUrl: URL.createObjectURL(file),
-      owner: "yours",
-    };
-    setUploads((prev) => ({ ...prev, [tab]: [item, ...prev[tab]] }));
-    toast.success(`${current.singular} added to your library`);
-  };
+  const addUpload = (file: File) =>
+    upload.mutate(
+      { file, kind: current.kind },
+      {
+        onSuccess: () => toast.success(`${current.singular} added to your library`),
+        onError: () => toast.error("Upload failed. Please try again."),
+      },
+    );
 
   return (
     <AppShell
@@ -132,21 +119,31 @@ function LibraryPage() {
             key={item.id}
             className="flex flex-col overflow-hidden rounded-[12px] bg-v2-surface"
           >
-            <img
-              src={item.imageUrl}
-              alt=""
-              className="aspect-[245/227] w-full rounded-[12px] object-cover"
-            />
+            <div className="group relative aspect-[245/227] w-full overflow-hidden rounded-[12px]">
+              <img
+                src={item.imageUrl}
+                alt=""
+                loading="lazy"
+                className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+              />
+              <Link
+                to="/photo-studio"
+                search={{ mode: "piece", use: item.id }}
+                className="absolute inset-x-3 bottom-3 flex h-9 items-center justify-center rounded-full bg-white/95 font-archivo text-sm text-[#12213d] shadow-sm transition-opacity hover:bg-white focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+              >
+                Use in Photo Studio
+              </Link>
+            </div>
             <div className="flex items-center justify-between gap-2 px-[14px] py-[13px]">
               <p className="truncate font-archivo text-sm font-medium leading-archivo text-black night:text-v2-ink">
                 {item.name}
               </p>
               <span
                 className={cn(
-                  "flex h-7 shrink-0 items-center rounded-[50px] border-[0.7px] bg-white px-3 font-inter-tight text-xs font-medium tracking-[0.24px] night:bg-transparent",
+                  "h-7 shrink-0 items-center rounded-[50px] border-[0.7px] bg-white px-3 font-inter-tight text-xs font-medium tracking-[0.24px] night:bg-transparent",
                   item.owner === "yours"
-                    ? "border-[#55932c] text-[#55932c]"
-                    : "border-[#12213d] text-[#12213d] night:border-v2-ink night:text-v2-ink",
+                    ? "flex border-[#55932c] text-[#55932c]"
+                    : "hidden border-[#12213d] text-[#12213d] night:border-v2-ink night:text-v2-ink sm:flex",
                 )}
               >
                 {item.owner === "yours" ? "Yours" : "Replix Made"}

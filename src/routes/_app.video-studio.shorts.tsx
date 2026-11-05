@@ -8,17 +8,30 @@ import { HoverVideo } from "@/v2/components/HoverVideo";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
-import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import {
+  ChipSelect,
+  ComposerBar,
+  missingHint,
+  TemplateChip,
+} from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
-import { UploadCard, type UploadedImage } from "@/v2/components/studio/UploadCard";
+import {
+  StackArt,
+  UploadCard,
+  UploadTip,
+  type UploadedImage,
+} from "@/v2/components/studio/UploadCard";
 import { useShortTemplates, videoGenerationCost } from "@/v2/data/api";
 import type { AspectRatio, Product, ShortStyle, ShortTemplate } from "@/v2/data/types";
-import s1 from "@/assets/v2/shorts/template-01.png";
-import s2 from "@/assets/v2/shorts/template-02.png";
-import s3 from "@/assets/v2/shorts/template-03.png";
-import s5 from "@/assets/v2/shorts/template-05.png";
-import s6 from "@/assets/v2/shorts/template-06.png";
-import s7 from "@/assets/v2/shorts/template-07.png";
+import s1 from "@/assets/v2/catalog/short/studio-turn.webp";
+import s2 from "@/assets/v2/catalog/short/floating.webp";
+import s3 from "@/assets/v2/catalog/short/360-spin.webp";
+import s5 from "@/assets/v2/catalog/short/dramatic-light.webp";
+import s6 from "@/assets/v2/catalog/short/morning-light.webp";
+import s7 from "@/assets/v2/catalog/short/splash.webp";
+import sceneBack from "@/assets/v2/catalog/scene/pastel-blue-sweep.webp";
+import sceneMiddle from "@/assets/v2/catalog/scene/marble-kitchen.webp";
+import sceneFront from "@/assets/v2/catalog/scene/sand-linen-studio.webp";
 import modeWand from "@/assets/v2/studio/mode-wand.svg";
 import modeSliders from "@/assets/v2/studio/mode-sliders.svg";
 import modeCrop from "@/assets/v2/studio/mode-crop.svg";
@@ -43,7 +56,10 @@ const STILLS: { src: string; left: number; top: number; w: number; h: number }[]
 ];
 
 const TemplatesArt = (
-  <span aria-hidden className="absolute inset-0 overflow-hidden rounded-[14px]">
+  <span
+    aria-hidden
+    className="absolute inset-0 rounded-[14px] max-xl:-translate-x-[130px] max-xl:translate-y-[60px]"
+  >
     {STILLS.map((still, i) => (
       <img
         key={i}
@@ -58,7 +74,7 @@ const TemplatesArt = (
 );
 
 const CustomArt = (
-  <span aria-hidden className="absolute inset-0 overflow-hidden rounded-[14px]">
+  <span aria-hidden className="absolute inset-0 rounded-[14px] max-xl:-translate-x-[50px]">
     <img
       src={s2}
       alt=""
@@ -119,6 +135,14 @@ type Animation = (typeof ANIMATIONS)[number];
 
 const animationLoop = (a: Animation) => `/v2/videos/chips/${a.toLowerCase().replace(" ", "-")}.mp4`;
 
+const ANIMATION_OPTIONS = ANIMATIONS.map((value) => ({
+  value,
+  previewSrc: animationLoop(value),
+}));
+
+const SceneArt = <StackArt images={[sceneBack, sceneMiddle, sceneFront]} />;
+const ReferenceArt = <StackArt images={[s7, s6, s5]} />;
+
 /* Product Shorts are 5–10 second clips. */
 const DURATIONS = [5, 8, 10] as const;
 
@@ -159,7 +183,7 @@ function ShortsPage() {
         </>
       }
     >
-      <div className="mt-10 flex flex-col gap-10 pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
         <ModeSwitcher
           modes={MODES}
           value={mode}
@@ -186,11 +210,16 @@ function ShortsPage() {
                     aria-pressed={active}
                     aria-label={`${t.name}${t.isPro ? " (Pro)" : ""}`}
                     className={cn(
-                      "group relative aspect-[244/353] overflow-hidden rounded-[12px] border outline-none",
-                      active ? "border-black night:border-v2-ink" : "border-transparent",
+                      "group relative aspect-[244/353] overflow-hidden rounded-[12px] outline-none",
+                      active && "ring-[1.7px] ring-[#124498]",
                     )}
                   >
-                    <HoverVideo poster={t.posterUrl} src={t.videoUrl} active={active} />
+                    <HoverVideo
+                      poster={t.posterUrl}
+                      src={t.videoUrl}
+                      active={active}
+                      className={cn(active && "rounded-[12px] border-2 border-white")}
+                    />
                     {t.isPro ? (
                       <span className="absolute right-[14px] top-[14px] rounded-[18px] bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] px-[14px] py-[7px] font-archivo text-base font-medium leading-archivo tracking-[-0.64px] text-[#12213d]">
                         Pro
@@ -205,62 +234,33 @@ function ShortsPage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-10">
-            <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-5 xl:gap-10">
+            <div className="flex flex-col gap-3">
               <UploadCard
-                title="Upload Scene"
+                title="Upload Your Scene"
                 subtitle="The background your product sits in"
-                button="Upload Image"
-                art={null}
+                button="Upload Scene"
+                art={SceneArt}
                 value={scene}
                 onChange={setScene}
+                libraryKind="scene"
               />
+              <UploadTip>
+                A clear, empty spot in the frame gives the product room to move.
+              </UploadTip>
+            </div>
+            <div className="flex flex-col gap-3">
               <UploadCard
-                title="Upload Reference (optional)"
-                subtitle="An image or video of the motion you want"
+                title="Upload a Reference"
+                subtitle="Optional: an image or video of the motion you want"
                 button="Upload Reference"
-                art={null}
+                art={ReferenceArt}
                 value={reference}
                 onChange={setReference}
                 acceptVideo
               />
+              <UploadTip>A short clip works best. We copy its motion, not its look.</UploadTip>
             </div>
-            <section className="flex flex-col gap-3">
-              <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
-                Animation type
-              </h2>
-              <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Animation type">
-                {ANIMATIONS.map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    role="radio"
-                    aria-checked={animation === a}
-                    onClick={() => setAnimation(a)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-[50px] border py-1.5 pl-1.5 pr-4 font-inter-tight text-sm transition-colors",
-                      animation === a
-                        ? "border-black bg-v2-surface text-black night:border-v2-ink night:text-v2-ink"
-                        : "border-black/15 bg-v2-surface text-black/45 hover:text-black/75 night:border-v2-border night:text-v2-ink-60",
-                    )}
-                  >
-                    <video
-                      src={animationLoop(a)}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      aria-hidden
-                      className="size-7 rounded-full object-cover"
-                    />
-                    {a}
-                  </button>
-                ))}
-              </div>
-              <p className="font-inter-tight text-sm text-v2-muted">
-                If nothing is chosen, we pick a default animation.
-              </p>
-            </section>
           </div>
         )}
       </div>
@@ -271,11 +271,18 @@ function ShortsPage() {
             product={product}
             onPickProduct={() => setPickerOpen(true)}
             chips={
-              mode === "templates" && template ? (
-                <TemplateChip name={template.name} imageUrl={template.posterUrl} />
-              ) : mode === "custom" ? (
-                <TemplateChip name={`Animation: ${animation}`} imageUrl={scene?.url ?? s1} />
-              ) : null
+              mode === "templates" ? (
+                template ? (
+                  <TemplateChip name={template.name} imageUrl={template.posterUrl} />
+                ) : null
+              ) : (
+                <ChipSelect
+                  label="Animation"
+                  value={animation}
+                  options={ANIMATION_OPTIONS}
+                  onChange={setAnimation}
+                />
+              )
             }
             aspect={aspect}
             onAspectChange={setAspect}
@@ -287,6 +294,10 @@ function ShortsPage() {
             notePlaceholder="Anything to add about the shot? (optional)"
             cost={cost}
             canGenerate={!!product && (mode === "templates" ? !!template : !!scene)}
+            generateHint={missingHint([
+              mode === "templates" ? !template && "a template" : !scene && "a scene",
+              !product && "a product",
+            ])}
             onGenerate={() =>
               generate({
                 studio: "shorts",

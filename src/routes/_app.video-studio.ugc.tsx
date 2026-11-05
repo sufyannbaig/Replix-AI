@@ -9,26 +9,36 @@ import { HoverVideo } from "@/v2/components/HoverVideo";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
-import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import {
+  ChipSelect,
+  ComposerBar,
+  missingHint,
+  TemplateChip,
+} from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
-import { UploadCard, type UploadedImage } from "@/v2/components/studio/UploadCard";
+import {
+  StackArt,
+  UploadCard,
+  UploadTip,
+  type UploadedImage,
+} from "@/v2/components/studio/UploadCard";
 import { useUgcTemplates, videoGenerationCost } from "@/v2/data/api";
 import type { AspectRatio, Product, UgcStyle, UgcTemplate } from "@/v2/data/types";
-import artSkincare from "@/assets/v2/video/recent-01.png";
-import artPouch from "@/assets/v2/video/recent-02.png";
-import artSneaker from "@/assets/v2/video/recent-10.png";
-import artSerum from "@/assets/v2/video/recent-07.png";
-import artSoda from "@/assets/v2/gallery/e9c3b.png";
-import artMocha from "@/assets/v2/gallery/d726d.png";
-import artTruffle from "@/assets/v2/gallery/908f4.png";
+import artSkincare from "@/assets/v2/catalog/ugc/try-on-check.webp";
+import artSneaker from "@/assets/v2/catalog/ugc/the-reveal.webp";
+import artSerum from "@/assets/v2/catalog/ugc/morning-routine.webp";
+import artSoda from "@/assets/v2/catalog/ugc/gym-quick-take.webp";
+import artMocha from "@/assets/v2/catalog/ugc/first-unboxing.webp";
+import artTruffle from "@/assets/v2/catalog/ugc/honest-review.webp";
 import modeWand from "@/assets/v2/studio/mode-wand.svg";
 import modeSliders from "@/assets/v2/studio/mode-sliders.svg";
 import modeCrop from "@/assets/v2/studio/mode-crop.svg";
-import sceneBack from "@/assets/v2/pieces/scene-05.png";
-import sceneFront from "@/assets/v2/pieces/scene-04.png";
-import castBack from "@/assets/v2/pieces/character-02.png";
-import castMiddle from "@/assets/v2/pieces/character-05.png";
-import castFront from "@/assets/v2/pieces/character-08.png";
+import sceneBack from "@/assets/v2/catalog/scene/gym-corner.webp";
+import sceneMiddle from "@/assets/v2/catalog/scene/living-room-sofa.webp";
+import sceneFront from "@/assets/v2/catalog/scene/cozy-bedroom.webp";
+import castBack from "@/assets/v2/catalog/character/omar.webp";
+import castMiddle from "@/assets/v2/catalog/character/hira.webp";
+import castFront from "@/assets/v2/catalog/character/daniel.webp";
 
 type UgcMode = "templates" | "custom";
 
@@ -51,7 +61,10 @@ const WALL: { src: string; left: number; top: number; radius: number }[] = [
 ];
 
 const TemplatesArt = (
-  <span aria-hidden className="absolute inset-0 overflow-hidden rounded-[14px]">
+  <span
+    aria-hidden
+    className="absolute inset-0 rounded-[14px] max-xl:-translate-x-[130px] max-xl:translate-y-[60px]"
+  >
     {WALL.map((tile, i) => (
       <span
         key={i}
@@ -100,7 +113,7 @@ function Tile({
 }
 
 const CustomArt = (
-  <span aria-hidden className="absolute inset-0 overflow-hidden rounded-[14px]">
+  <span aria-hidden className="absolute inset-0 rounded-[14px] max-xl:-translate-x-[60px]">
     <img
       src={artSoda}
       alt=""
@@ -149,46 +162,8 @@ const STYLES: readonly { value: "all" | UgcStyle; label: string }[] = [
 const TRANSITIONS = ["Auto", "Cut", "Whip pan", "Zoom", "Match Cut"] as const;
 type Transition = (typeof TRANSITIONS)[number];
 
-const SceneArt = (
-  <span aria-hidden className="absolute left-[calc(50%-96px)] top-[55px] h-[134px] w-[202px]">
-    <img
-      src={sceneBack}
-      alt=""
-      className="absolute left-[102.7px] top-[14.7px] h-[113.4px] w-[92.9px] rotate-[7.6deg] rounded-[6px] object-cover"
-    />
-    <img
-      src={artTruffle}
-      alt=""
-      className="absolute left-[54.25px] top-[8.1px] h-[114.4px] w-[93px] rounded-[6px] object-cover"
-    />
-    <img
-      src={sceneFront}
-      alt=""
-      className="absolute left-[8.3px] top-[7.2px] h-[113.4px] w-[93px] -rotate-[9.79deg] rounded-[6px] object-cover"
-    />
-    <span className="absolute left-[-11px] top-[84px] h-[50px] w-[207px] bg-gradient-to-b from-transparent to-[var(--v2-surface)]" />
-  </span>
-);
-
-const CastArt = (
-  <span aria-hidden className="absolute left-[calc(50%-103px)] top-[52px] h-[146px] w-[235px]">
-    <img
-      src={castBack}
-      alt=""
-      className="absolute left-[140.6px] top-[32px] h-[113.4px] w-[93px] rounded-[6px] object-cover"
-    />
-    <img
-      src={castMiddle}
-      alt=""
-      className="absolute left-[72.6px] top-[18px] h-[113.4px] w-[93px] rounded-[6px] object-cover"
-    />
-    <img
-      src={castFront}
-      alt=""
-      className="absolute left-[0.6px] top-0 h-[113.4px] w-[93px] rounded-[6px] border border-white object-cover"
-    />
-  </span>
-);
+const SceneArt = <StackArt images={[sceneBack, sceneMiddle, sceneFront]} />;
+const CastArt = <StackArt images={[castBack, castMiddle, castFront]} />;
 
 /* UGC ads run 15–60s; 30s is the common default for TikTok and Reels. */
 const DURATIONS = [15, 30, 45, 60] as const;
@@ -225,7 +200,7 @@ function UgcPage() {
 
   return (
     <AppShell
-      title="Video Studio"
+      title="AI UGC Ads"
       subtitle={
         <>
           <Link to="/video-studio" className="hover:underline">
@@ -235,7 +210,7 @@ function UgcPage() {
         </>
       }
     >
-      <div className="mt-10 flex flex-col gap-10 pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
         <ModeSwitcher
           modes={MODES}
           value={mode}
@@ -292,23 +267,31 @@ function UgcPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-            <UploadCard
-              title="Upload Your Scene"
-              subtitle="Where the creator films"
-              button="Upload Image"
-              art={SceneArt}
-              value={scene}
-              onChange={setScene}
-            />
-            <UploadCard
-              title="Upload Your Character"
-              subtitle="The creator who presents your product"
-              button="Upload Character"
-              art={CastArt}
-              value={character}
-              onChange={setCharacter}
-            />
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-5 xl:gap-10">
+            <div className="flex flex-col gap-3">
+              <UploadCard
+                title="Upload Your Scene"
+                subtitle="Where the creator films"
+                button="Upload Scene"
+                art={SceneArt}
+                value={scene}
+                onChange={setScene}
+                libraryKind="scene"
+              />
+              <UploadTip>A real room looks most natural: a bedroom, kitchen or desk.</UploadTip>
+            </div>
+            <div className="flex flex-col gap-3">
+              <UploadCard
+                title="Upload Your Character"
+                subtitle="The creator who presents your product"
+                button="Upload Character"
+                art={CastArt}
+                value={character}
+                onChange={setCharacter}
+                libraryKind="character"
+              />
+              <UploadTip>One person looking at the camera, with their hands free.</UploadTip>
+            </div>
           </div>
         )}
       </div>
@@ -319,37 +302,18 @@ function UgcPage() {
             product={product}
             onPickProduct={() => setPickerOpen(true)}
             chips={
-              mode === "templates" && template ? (
-                <TemplateChip name={template.name} imageUrl={template.posterUrl} />
-              ) : null
-            }
-            extraPanel={
-              mode === "custom" ? (
-                <div className="mt-3 flex flex-col gap-2.5">
-                  <p className="font-archivo text-base font-medium leading-archivo text-v2-ink">
-                    Transitions
-                  </p>
-                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Transitions">
-                    {TRANSITIONS.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        role="radio"
-                        aria-checked={transition === t}
-                        onClick={() => setTransition(t)}
-                        className={cn(
-                          "rounded-[50px] border px-3 py-1 font-inter-tight text-sm transition-colors",
-                          transition === t
-                            ? "border-black text-black night:border-v2-ink night:text-v2-ink"
-                            : "border-black/15 text-black/35 hover:text-black/70 night:border-v2-border night:text-v2-ink-60",
-                        )}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null
+              mode === "templates" ? (
+                template ? (
+                  <TemplateChip name={template.name} imageUrl={template.posterUrl} />
+                ) : null
+              ) : (
+                <ChipSelect
+                  label="Transition"
+                  value={transition}
+                  options={TRANSITIONS.map((value) => ({ value }))}
+                  onChange={setTransition}
+                />
+              )
             }
             aspect={aspect}
             onAspectChange={setAspect}
@@ -358,7 +322,7 @@ function UgcPage() {
             duration={{ value: seconds, options: DURATIONS, onChange: setSeconds }}
             note={script}
             onNoteChange={setScript}
-            notePlaceholder="What should the creator say? Type it, or let AI write it from your product."
+            notePlaceholder="What should the creator say?"
             noteAction={
               <button
                 type="button"
@@ -380,6 +344,16 @@ function UgcPage() {
               !!product &&
               (mode === "templates" ? !!template : !!scene && !!character && !!script.trim())
             }
+            generateHint={missingHint(
+              mode === "templates"
+                ? [!template && "a template", !product && "a product"]
+                : [
+                    !scene && "a scene",
+                    !character && "a character",
+                    !script.trim() && "a script",
+                    !product && "a product",
+                  ],
+            )}
             onGenerate={() =>
               generate({
                 studio: "ugc",

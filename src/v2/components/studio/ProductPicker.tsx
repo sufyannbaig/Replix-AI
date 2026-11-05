@@ -8,9 +8,9 @@ import { useProducts, useUploadProduct } from "@/v2/data/api";
 import type { Product } from "@/v2/data/types";
 import closeIcon from "@/assets/v2/icons/close.svg";
 import searchIcon from "@/assets/v2/icons/search.svg";
-import stackBack from "@/assets/v2/gallery/d726d.png";
-import stackMiddle from "@/assets/v2/gallery/d1471.png";
-import stackFront from "@/assets/v2/gallery/908f4.png";
+import stackBack from "@/assets/v2/catalog/product/acme-buds.webp";
+import stackMiddle from "@/assets/v2/catalog/product/acme-charge.webp";
+import stackFront from "@/assets/v2/catalog/product/acme-glow-serum.webp";
 
 type Tab = "all" | "shopify" | "recent";
 
@@ -187,7 +187,7 @@ export function ProductPicker({
             aria-label="Close"
             className="-m-1.5 rounded-full p-1.5 hover:bg-v2-canvas"
           >
-            <img src={closeIcon} alt="" className="size-[14px]" />
+            <img src={closeIcon} alt="" className="size-[14px] night:invert" />
           </button>
         </div>
 

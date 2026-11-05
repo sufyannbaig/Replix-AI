@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Column masonry that deals items round-robin, so a row-ordered list reads left to right
- * like the Figma grids. Column count follows the container width.
+ * Column masonry. Items are dealt round-robin so a row-ordered list reads left to right,
+ * or, with `getHeight`, each goes to the shortest column so the columns end level.
+ * Column count follows the container width.
  */
 export function Masonry<T>({
   items,
@@ -12,6 +13,7 @@ export function Masonry<T>({
   columnGap,
   rowGap,
   getKey,
+  getHeight,
   renderItem,
   className,
 }: {
@@ -21,6 +23,8 @@ export function Masonry<T>({
   columnGap: number;
   rowGap: number;
   getKey: (item: T) => string;
+  /** Item height relative to its width. */
+  getHeight?: (item: T) => number;
   renderItem: (item: T) => ReactNode;
   className?: string;
 }) {
@@ -41,7 +45,24 @@ export function Masonry<T>({
   }, [columnGap, minColumnWidth, maxColumns]);
 
   const buckets: T[][] = Array.from({ length: columns }, () => []);
-  items.forEach((item, i) => buckets[i % columns].push(item));
+  const heights = buckets.map(() => 0);
+  items.forEach((item, i) => {
+    const target = getHeight ? heights.indexOf(Math.min(...heights)) : i % columns;
+    buckets[target].push(item);
+    if (getHeight) heights[target] += getHeight(item);
+  });
+  /* Even out the column ends: move a card from the tallest column to the shortest. */
+  for (let pass = 0; getHeight && pass < 12; pass++) {
+    const tall = heights.indexOf(Math.max(...heights));
+    const short = heights.indexOf(Math.min(...heights));
+    const gap = heights[tall] - heights[short];
+    const index = buckets[tall].map((item) => getHeight(item) < gap).lastIndexOf(true);
+    if (index < 0) break;
+    const [moved] = buckets[tall].splice(index, 1);
+    buckets[short].push(moved);
+    heights[tall] -= getHeight(moved);
+    heights[short] += getHeight(moved);
+  }
 
   return (
     <div ref={ref} className={cn("flex items-start", className)} style={{ gap: columnGap }}>

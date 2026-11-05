@@ -4,24 +4,24 @@ Last updated: 2026-11-01 (session 2, second round: leftovers done, draft PR open
 
 ## 0. Status at a glance
 
-| Area | Route / file | Status |
-|---|---|---|
-| Shell, sidebar, header, mobile drawer, dark mode | `src/v2/components/shell/*`, `src/v2/theme.*` | ✅ Done |
-| Profile popup (avatar) | `ProfileMenu.tsx` | ✅ Done |
-| Home | `/dashboard` | ✅ Done, incl. Recent generations row and looping card previews (§9) |
-| Photo Studio (Templates, Piece by piece, Build it yourself) | `/photo-studio` | ✅ Done. Build it yourself added in session 2 (user chose to build it, not cut it) |
-| Product Picker (shared) | `studio/ProductPicker.tsx` | ✅ Done |
-| Ad Studio | `/ad-studio` | ✅ Done |
-| Video Studio hub, UGC (templates + custom), Product Shorts (templates + custom), Concept Ads | `/video-studio`, `/video-studio/{ugc,shorts,concept}` | ✅ Done |
-| Brand Kit (empty + filled), Products + Add Product | `/brand-kit`, `/products` | ✅ Done |
-| Assets, Library | `/assets`, `/library` | ✅ Done |
-| Upgrade, Connect Shopify, Settings | `/upgrade`, `/connect`, `/settings` | ✅ Done |
-| Refer & Earn | `/refer` | ✅ Done on the real `getMyReferralStats` (same `/login?ref=` link as v1). Fixes: "Afrimode" → Replix; stats show what is tracked (friends joined, credits earned, reward per friend) |
-| Help & Support | `/help` (`543:51477`) | ✅ Done (session 2). See §5 item 9a |
-| Login / Sign up | `/login` (`543:168449`) | ✅ Done (session 2). See §5 item 9 |
-| Generate → Result screen | `/generations/$jobId` | ✅ Done (session 2, our own design). See §5 item 10 |
-| Old v1 app routes | `/create`, `/generate/*`, `/gallery`, `/campaigns`, `/collections`, `/analytics`, `/ads/$adId` | ✅ Redirected (session 2). `/pricing` and `/billing` kept (checkout). See §5 item 11 |
-| Full QA pass | all | ✅ Session 2: no overflow at 390/768/1440, dark contrast scan clean. See §8 |
+| Area                                                                                         | Route / file                                                                                   | Status                                                                                                                                                                               |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell, sidebar, header, mobile drawer, dark mode                                             | `src/v2/components/shell/*`, `src/v2/theme.*`                                                  | ✅ Done                                                                                                                                                                              |
+| Profile popup (avatar)                                                                       | `ProfileMenu.tsx`                                                                              | ✅ Done                                                                                                                                                                              |
+| Home                                                                                         | `/dashboard`                                                                                   | ✅ Done, incl. Recent generations row and looping card previews (§9)                                                                                                                 |
+| Photo Studio (Templates, Piece by piece, Build it yourself)                                  | `/photo-studio`                                                                                | ✅ Done. Build it yourself added in session 2 (user chose to build it, not cut it)                                                                                                   |
+| Product Picker (shared)                                                                      | `studio/ProductPicker.tsx`                                                                     | ✅ Done                                                                                                                                                                              |
+| Ad Studio                                                                                    | `/ad-studio`                                                                                   | ✅ Done                                                                                                                                                                              |
+| Video Studio hub, UGC (templates + custom), Product Shorts (templates + custom), Concept Ads | `/video-studio`, `/video-studio/{ugc,shorts,concept}`                                          | ✅ Done                                                                                                                                                                              |
+| Brand Kit (empty + filled), Products + Add Product                                           | `/brand-kit`, `/products`                                                                      | ✅ Done                                                                                                                                                                              |
+| Assets, Library                                                                              | `/assets`, `/library`                                                                          | ✅ Done                                                                                                                                                                              |
+| Upgrade, Connect Shopify, Settings                                                           | `/upgrade`, `/connect`, `/settings`                                                            | ✅ Done                                                                                                                                                                              |
+| Refer & Earn                                                                                 | `/refer`                                                                                       | ✅ Done on the real `getMyReferralStats` (same `/login?ref=` link as v1). Fixes: "Afrimode" → Replix; stats show what is tracked (friends joined, credits earned, reward per friend) |
+| Help & Support                                                                               | `/help` (`543:51477`)                                                                          | ✅ Done (session 2). See §5 item 9a                                                                                                                                                  |
+| Login / Sign up                                                                              | `/login` (`543:168449`)                                                                        | ✅ Done (session 2). See §5 item 9                                                                                                                                                   |
+| Generate → Result screen                                                                     | `/generations/$jobId`                                                                          | ✅ Done (session 2, our own design). See §5 item 10                                                                                                                                  |
+| Old v1 app routes                                                                            | `/create`, `/generate/*`, `/gallery`, `/campaigns`, `/collections`, `/analytics`, `/ads/$adId` | ✅ Redirected (session 2). `/pricing` and `/billing` kept (checkout). See §5 item 11                                                                                                 |
+| Full QA pass                                                                                 | all                                                                                            | ✅ Session 2: no overflow at 390/768/1440, dark contrast scan clean. See §8                                                                                                          |
 
 Every screen above was measured against Figma at 1440px with JS bounding boxes (usually within 1–5px; the browser scrollbar takes 15px of width that Figma doesn't have).
 
@@ -34,13 +34,13 @@ Every screen above was measured against Figma at 1440px with JS bounding boxes (
 
 ### Decisions already agreed with the user (don't re-ask)
 
-| Topic | Decision |
-|---|---|
-| Scope | All app screens + new login/sign-up. Marketing landing page stays as is. |
-| Rollout | Build on branch `v2`, replacing the current app routes. Merge to `main` only after the user approves. |
-| Generate → Result screen | Not designed in Figma. Design it ourselves in the 2.0 style (loading, viewer, variations, regenerate, download, save to Assets). |
-| Responsive | Yes: tablet + phone (sidebar becomes a drawer). |
-| Dark mode | Yes: built from tokens, values from the Figma **Dark Theme** section `614:93651` (see §9). **Light is the default**; user picks Light/Dark/System (Profile popup → Appearance; Settings). |
+| Topic                    | Decision                                                                                                                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope                    | All app screens + new login/sign-up. Marketing landing page stays as is.                                                                                                                  |
+| Rollout                  | Build on branch `v2`, replacing the current app routes. Merge to `main` only after the user approves.                                                                                     |
+| Generate → Result screen | Not designed in Figma. Design it ourselves in the 2.0 style (loading, viewer, variations, regenerate, download, save to Assets).                                                          |
+| Responsive               | Yes: tablet + phone (sidebar becomes a drawer).                                                                                                                                           |
+| Dark mode                | Yes: built from tokens, values from the Figma **Dark Theme** section `614:93651` (see §9). **Light is the default**; user picks Light/Dark/System (Profile popup → Appearance; Settings). |
 
 ## 2. Where things are
 
@@ -49,32 +49,33 @@ Every screen above was measured against Figma at 1440px with JS bounding boxes (
   - Read-me / rules: section `544:169869`. Wireframes with MUST HAVE / EXPLORE notes: sections `544:169937` (01 Shell+Home) … `544:172584` (07 Account). Read the wireframe notes for a screen before building it.
   - Final screens (1440 wide) are top-level frames on that page. Key ids:
 
-| Screen | Node |
-|---|---|
-| Shell + Home | `543:13` |
-| Profile popup | `543:165690` |
-| Login / Sign up | `543:168449` |
-| Photo Studio: Templates | `543:5192` |
-| Photo Studio: Piece by piece (+ Scene / Props / Character) | `543:149958`, `543:129040`, `543:134273`, `543:139501`, `543:144728` |
-| Product Picker / Add product (shared popup) | `543:155194`, `543:160463` |
-| Ad Studio: start / product analysed | `543:118699`, `543:123873` |
-| Video Studio: hub (no generate / generate) | `543:10385`, `543:98003` |
-| Video Studio: Product Shorts template (3 states) | `543:15462`, `543:87530`, `543:92804` |
-| UGC Ads: from templates / custom (2) | `543:103130`, `543:108319`, `543:113511` |
-| Brand Kit: empty / filled / product list / add product popup | `543:20654`, `543:72077`, `543:77213`, `543:82363` |
-| Assets | `543:25782` |
-| Library / add characters / upload scenes-style-pose | `543:56631`, `543:61775`, `543:66931` |
-| Connect Shopify | `543:30922` |
-| Settings (profile tab) | `543:36015` |
-| Refer & Earn | `543:41114` |
-| Upgrade plan | `543:46267` |
-| Help & Support | `543:51477` |
+| Screen                                                       | Node                                                                 |
+| ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Shell + Home                                                 | `543:13`                                                             |
+| Profile popup                                                | `543:165690`                                                         |
+| Login / Sign up                                              | `543:168449`                                                         |
+| Photo Studio: Templates                                      | `543:5192`                                                           |
+| Photo Studio: Piece by piece (+ Scene / Props / Character)   | `543:149958`, `543:129040`, `543:134273`, `543:139501`, `543:144728` |
+| Product Picker / Add product (shared popup)                  | `543:155194`, `543:160463`                                           |
+| Ad Studio: start / product analysed                          | `543:118699`, `543:123873`                                           |
+| Video Studio: hub (no generate / generate)                   | `543:10385`, `543:98003`                                             |
+| Video Studio: Product Shorts template (3 states)             | `543:15462`, `543:87530`, `543:92804`                                |
+| UGC Ads: from templates / custom (2)                         | `543:103130`, `543:108319`, `543:113511`                             |
+| Brand Kit: empty / filled / product list / add product popup | `543:20654`, `543:72077`, `543:77213`, `543:82363`                   |
+| Assets                                                       | `543:25782`                                                          |
+| Library / add characters / upload scenes-style-pose          | `543:56631`, `543:61775`, `543:66931`                                |
+| Connect Shopify                                              | `543:30922`                                                          |
+| Settings (profile tab)                                       | `543:36015`                                                          |
+| Refer & Earn                                                 | `543:41114`                                                          |
+| Upgrade plan                                                 | `543:46267`                                                          |
+| Help & Support                                               | `543:51477`                                                          |
 
 - **Figma MCP tips:** whole frames are too large for `get_design_context`. Run `get_metadata` on the page, then call `get_design_context` on child groups. The sidebar, header and dot-grid background are already built, so skip those nodes. Download every asset with `curl` into `src/assets/v2/...`, because Figma asset URLs expire after 7 days.
 
 ## 3. What's built (commit `b243a5d` on `v2`, plus this doc)
 
 ### Foundation
+
 - `src/v2/theme.css`: 2.0 tokens (`--v2-*`, Tailwind colours `v2-*`), dark theme under `[data-theme="dark"]`, the **`night:`** variant for dark-only tweaks (the old `dark:` variant targets a `.dark` class, so don't use it in v2 code), plus utilities `v2-canvas` (dot grid), `v2-brand-fill` (primary pill gradient), `v2-promo-fill` and `v2-icon` (mask icons).
 - **Line-height:** Figma's "auto" line-height for Archivo is 1.088. Use `leading-archivo` instead of `leading-normal` on Archivo text, or headings come out about 14px too tall.
 - Fonts: Archivo (headings, buttons, nav), Inter Tight (body and small copy), Plus Jakarta Sans (plan chip). Loaded in `src/routes/__root.tsx` (Archivo 400 was added).
@@ -88,6 +89,7 @@ Every screen above was measured against Figma at 1440px with JS bounding boxes (
 - `src/routes/_app.tsx`: dev-only preview switch. Open any app URL with `?preview=1` to see screens without signing in (stored in sessionStorage; `?preview=0` turns it off). It's gated on `import.meta.env.DEV`, so production behaviour is unchanged.
 
 ### Screens
+
 - **Home** (`src/routes/_app.dashboard.tsx`, kept at `/dashboard` so existing login/OAuth/Shopify redirects still land on it). Verified at 1440px: positions match Figma within about 1px (the remaining 15px of width is the browser scrollbar). Phone (390px) and dark mode also checked.
   - The brand-kit banner only shows when no brand kit is complete, and the upgrade promo only on the free plan (per the wireframe).
   - Copy fix: the promo subtitle was a copy of the brand-kit text, so it was replaced with "Everything in Free, plus the tools brands use to scale."
@@ -95,6 +97,7 @@ Every screen above was measured against Figma at 1440px with JS bounding boxes (
 - **Placeholders** (render "X is being built."): `/assets`, `/photo-studio`, `/ad-studio`, `/video-studio`, `/library` (search `tab=characters|scenes|styles`), `/brand-kit` (search `new=1`), `/products`, `/connect`, `/settings`, `/upgrade`, `/refer`. `/help` is still the old v1 page.
 
 ### Old v1 code to keep in mind
+
 - Removed from Home but still needed elsewhere: Shopify product list (`getShopifyProducts` in `src/lib/shopify.functions.ts`), product intake from URL or upload (`setProductIntake` in `src/lib/product-intake.ts`) and recent ads (`ads` table). These belong in the **Product Picker** and **Products** screens. The old dashboard is in git: `git show main:src/routes/_app.dashboard.tsx`.
 - Old routes not yet replaced: `/create`, `/generate/*`, `/gallery`, `/campaigns`, `/collections`, `/analytics`, `/billing`, `/pricing`, `/ads/$adId`. At the end, redirect them to their 2.0 equivalents or delete the routes (keep the server functions).
 - `AGENTS.md` rule: registration tracking stays in the shared helper (`src/lib/meta-registration.ts`). When rebuilding login/sign-up, call the same helper and don't change auth or billing behaviour.
@@ -102,12 +105,14 @@ Every screen above was measured against Figma at 1440px with JS bounding boxes (
 ## 4. Photo Studio: Templates mode done (commit `fa1e592`)
 
 Built and measured at 1440px: mode cards at y=149, filters at 449, grid at 541 with a 40px row gap, all matching Figma.
+
 - `src/v2/components/studio/ModeSwitcher.tsx` and `ComposerBar.tsx` (+ `TemplateChip`) are the shared components; reuse them in Ad and Video studios.
 - `src/routes/_app.photo-studio.tsx`: mode is held in the URL (`?mode=piece|diy`, default templates). Templates, filters, the Pro upgrade dialog and the sticky composer are in place. Mode illustrations are rebuilt from Figma pieces.
 - Data: `usePhotoTemplates()` and `photoGenerationCost(count)` in `api.ts` (2 credits per image in `mock.ts`).
 - **Still to do on this screen:** route Generate to the Result screen once it exists (a toast for now), Piece-by-piece and Build-it-yourself modes are placeholders, and the Photo Studio phone layout hasn't been checked yet.
 
 Original specs from Figma (`543:5192`), kept for reference:
+
 - Page header: "Photo Studio" / "Select how you want to create".
 - **Mode Switcher** (shared component, also used by Ad and Video studios): 3 cards, 312/310/312 × 260, gap 54, white, radius 14. Selected card has a `1.5px #5d81c4` border. Title Archivo 20 medium, tracking -0.4; description Inter Tight 12 `#737373`. Illustrations use assets in `src/assets/v2/studio/mode-*.svg` plus gallery images; offsets are in the `543:10152` design context.
 - Filter tabs (reuse `FilterTabs`): All, With Model, Without Model, Studio shots, Lifestyle, Flat lay. 40px below the mode cards.
@@ -129,7 +134,9 @@ Original specs from Figma (`543:5192`), kept for reference:
 8. ~~Upgrade~~ **done** (`_app.upgrade.tsx`, `#compare` anchor for Home's Compare button). Plans render from `PRICING_PLANS` (the design's copy had typos), with a "Current plan" state. **Names, categories and Pro flags follow the **Replix Library Playbook** (https://claude.ai/artifact/18bKDFydRTVrqsRfp5RFK6). Pro items: photo templates Hand Hero and Golden Hour Model; scenes Black gloss, Cafe window table, Beach at golden hour and Terrazzo top; props Silk scarf, Candle, Marble plinth and Gift box; characters Lena C., Mei L. and Carlos R.; UGC The reveal and Try-on check; Shorts Dramatic Light and Splash.
 
 Differences from the playbook and open points:
-- **Home community feed:** the playbook asks for 12 feed picks listed in a sheet, but no list was delivered (Drive's `Videos/feed picks` folder holds app loops). We chose 12: UGC Honest review, Gym quick take, The reveal; Shorts Dramatic Light, Morning Light, Splash; photos Golden Hour Model, Linen Studio, Weekend Flat Lay; ads Before and after, Bold offer, Testimonial. To change them, edit `communityCreations` in `mock.ts`. UGC and Shorts play on hover. The Concept ads tab stays hidden until the feed has one. These are Replix's own template examples, not real customer work. Assets and Recent generations reuse this list for sample photos and ads, so they show these too.
+
+- **Differences from Figma made on request (client review):** the composer's note and Generate share the top row, with settings as chips below; Generate stays clickable and says what's missing. Transitions (UGC) and animation (Shorts) are chips in the bar. "Pick from Library" opens `LibraryPicker` in place, and uploads made anywhere are saved to the Library (`useAddLibraryUpload`, in memory until the backend). Photo Studio gained a Pose step (Piece by Piece) and a Pose slot (Build It Yourself). Library cards have "Use in Photo Studio". The Ad Studio and Video Studio menu icons were swapped: the camera marked "AD" is now on Ad Studio.
+- **Home community feed:** the playbook asks for 12 feed picks listed in a sheet, but no list was delivered (Drive's `Videos/feed picks` folder holds app loops). The client asked for more than 12, so the feed shows all 23 finished templates (6 photo, 5 ad, 6 UGC, 6 Shorts), placed so the columns end level, with video on hover. Edit `communityCreations` in `mock.ts` to change them. The Concept ads tab stays hidden until the feed has one. These are Replix's own template examples, not real customer work.
 - **In the playbook, not in Drive:** `hub_concept.mp4`, `upgrade_montage.mp4` and the concept ad (`concept_charge-mosquito.mp4`). The Concept hub card and Upgrade page are unchanged until these arrive.
 - **In Drive, not in the playbook:** the cigarette (`Props/image 1.png`, held back because ad platforms restrict tobacco), Classic car, Street lamp, Motorcycle and 9 `hf_*` linen poses. All but the cigarette are in the app under names we chose.
 - **Aspect ratio:** the playbook asks for 4:5 photo templates at 1600 x 2000, but Drive has 4:3 at 4096 x 3072. The Photo Studio cards were changed from Figma's 244:285 to 4:3 so nothing is cropped.

@@ -4,15 +4,15 @@ import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
-import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { adGenerationCost, useAdThemes, useProductInsights } from "@/v2/data/api";
 import type { AdTheme, AspectRatio, Product } from "@/v2/data/types";
 import plusJoin from "@/assets/v2/icons/plus-join.svg";
-import artMocha from "@/assets/v2/gallery/d726d.png";
-import artSodaHand from "@/assets/v2/gallery/35540.png";
-import artSodaCherry from "@/assets/v2/gallery/e9c3b.png";
-import artTruffle from "@/assets/v2/gallery/908f4.png";
+import artMocha from "@/assets/v2/catalog/product/acme-linen-shirt.webp";
+import artSodaHand from "@/assets/v2/catalog/ad/testimonial.webp";
+import artSodaCherry from "@/assets/v2/catalog/product/acme-charge.webp";
+import artTruffle from "@/assets/v2/catalog/product/acme-glow-serum.webp";
 
 export const Route = createFileRoute("/_app/ad-studio")({
   head: () => ({ meta: [{ title: "Ad Studio · Replix AI" }] }),
@@ -32,7 +32,7 @@ function AdStudioPage() {
 
   return (
     <AppShell title="Ad Studio" subtitle="Turn one product into ready-to-run ad creatives">
-      <div className="mt-10 flex flex-col gap-10 pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
         <section className="relative grid gap-5 lg:grid-cols-[454fr_512fr] lg:gap-[74px]">
           {product ? (
             <ProductCard
@@ -126,6 +126,10 @@ function AdStudioPage() {
             onNoteChange={setNote}
             cost={adGenerationCost(count)}
             canGenerate={!!product && !!theme && !insights.isLoading}
+            generateHint={
+              missingHint([!product && "a product", !theme && "a creative theme"]) ??
+              "Still reading your product. One moment."
+            }
             onGenerate={() =>
               generate({
                 studio: "ad",

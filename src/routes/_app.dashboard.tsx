@@ -15,9 +15,9 @@ import createVideo from "@/assets/v2/catalog/loops/home-video.webp";
 import playIcon from "@/assets/v2/icons/play.svg";
 import { HoverVideo } from "@/v2/components/HoverVideo";
 import { LoopingPreview } from "@/v2/components/LoopingPreview";
-import promoBack from "@/assets/v2/gallery/44dcb.png";
-import promoMiddle from "@/assets/v2/gallery/d726d.png";
-import promoFront from "@/assets/v2/gallery/d1a08.png";
+import promoBack from "@/assets/v2/catalog/product/acme-charge.webp";
+import promoMiddle from "@/assets/v2/catalog/product/acme-glow-serum.webp";
+import promoFront from "@/assets/v2/catalog/product/acme-buds.webp";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Home · Replix AI" }] }),
@@ -118,12 +118,12 @@ function CreateSection() {
           <Link
             key={card.to}
             to={card.to}
-            className="group flex flex-col overflow-hidden rounded-[14px] border border-transparent bg-v2-surface pb-[17px] transition-[border-color,box-shadow] duration-200 hover:border-v2-border hover:shadow-[var(--v2-shadow-card)] focus-visible:border-v2-border focus-visible:outline-none"
+            className="group flex flex-col overflow-hidden rounded-[14px] border border-transparent bg-v2-surface pb-5 transition-[border-color,box-shadow] duration-200 hover:border-v2-border hover:shadow-[var(--v2-shadow-card)] focus-visible:border-v2-border focus-visible:outline-none"
           >
             <div className="aspect-video overflow-hidden rounded-[10px]">
               <LoopingPreview frames={[card.image]} videoSrc={card.videoSrc} />
             </div>
-            <div className="mx-[18px] mt-[27px] flex flex-col gap-1">
+            <div className="mx-5 mt-5 flex flex-col gap-1">
               <h3 className="font-archivo text-lg font-medium leading-archivo tracking-[-0.36px] text-v2-ink">
                 {card.title}
               </h3>
@@ -361,6 +361,7 @@ function CommunitySection() {
             columnGap={19}
             rowGap={18}
             getKey={(item) => item.id}
+            getHeight={(item) => 1 / item.aspect}
             renderItem={(item) => <CommunityCard item={item} />}
           />
         ) : (

@@ -101,12 +101,12 @@ function EmptyKit({
   };
 
   return (
-    <section className="mx-auto mt-10 flex max-w-[686px] flex-col items-center rounded-[18px] bg-v2-surface px-6 pb-10 pt-[42px] sm:px-[90px] sm:pb-[27px]">
+    <section className="mx-auto mt-10 flex max-w-[686px] flex-col items-center overflow-hidden rounded-[18px] bg-v2-surface px-6 pb-10 pt-[42px] sm:px-[90px] sm:pb-[27px]">
       {/* Brand moodboard illustration: colours, logo, type and assets around a card. */}
       <div
         aria-hidden
         className={cn(
-          "relative h-[201px] w-[392px] max-w-full origin-top scale-90 sm:scale-100",
+          "relative h-[201px] w-[392px] shrink-0 origin-top max-sm:-mb-[50px] max-sm:scale-75",
           pending && "animate-pulse",
         )}
       >
@@ -179,7 +179,7 @@ function EmptyKit({
             inputMode="url"
             placeholder="Paste your website link, e.g. acme.com"
             aria-label="Website"
-            className="h-[49px] min-w-0 flex-1 rounded-[50px] border border-[#a2a2a2] bg-transparent px-5 font-inter-tight text-sm text-v2-ink outline-none placeholder:text-xs placeholder:text-v2-ink-70 focus:border-v2-blue night:border-v2-border"
+            className="h-[49px] w-full min-w-0 shrink-0 rounded-[50px] border border-[#a2a2a2] sm:w-auto sm:flex-1 bg-transparent px-5 font-inter-tight text-sm text-v2-ink outline-none placeholder:text-xs placeholder:text-v2-ink-70 focus:border-v2-blue night:border-v2-border"
           />
           <PillButton type="submit" disabled={pending} className="h-[49.88px]">
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}

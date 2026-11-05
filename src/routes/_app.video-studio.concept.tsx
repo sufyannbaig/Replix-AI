@@ -5,11 +5,12 @@ import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
-import { ComposerBar } from "@/v2/components/studio/ComposerBar";
+import { LibraryPicker } from "@/v2/components/studio/LibraryPicker";
+import { ComposerBar, missingHint } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import type { UploadedImage } from "@/v2/components/studio/UploadCard";
 import { videoGenerationCost } from "@/v2/data/api";
-import type { AspectRatio, Product } from "@/v2/data/types";
+import type { AspectRatio, PieceKind, Product } from "@/v2/data/types";
 import plusCircle from "@/assets/v2/icons/plus-circle.svg";
 
 export const Route = createFileRoute("/_app/video-studio/concept")({
@@ -85,16 +86,27 @@ function SlotUpload({
   value,
   onChange,
   acceptVideo,
+  libraryKind,
 }: {
   label: string;
   hint: string;
+  libraryKind?: PieceKind;
   value: UploadedImage | null;
   onChange: (value: UploadedImage | null) => void;
   acceptVideo?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   return (
-    <div className="relative">
+    <div className="relative flex flex-col gap-1.5">
+      {libraryKind ? (
+        <LibraryPicker
+          kind={libraryKind}
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          onSelect={(piece) => onChange({ name: piece.name, url: piece.imageUrl })}
+        />
+      ) : null}
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -128,6 +140,15 @@ function SlotUpload({
           </>
         )}
       </button>
+      {libraryKind ? (
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="self-center font-inter-tight text-xs text-v2-muted underline underline-offset-2 hover:text-v2-ink"
+        >
+          or pick from Library
+        </button>
+      ) : null}
       {value ? (
         <button
           type="button"
@@ -206,7 +227,7 @@ function ConceptPage() {
         </>
       }
     >
-      <div className="mt-[50px] flex flex-col gap-10 pb-[160px] xl:flex-row xl:items-start xl:gap-[62px]">
+      <div className="mt-[50px] flex flex-col gap-10 pb-[250px] sm:pb-[160px] xl:flex-row xl:items-start xl:gap-[62px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[60px] xl:max-w-[686px]">
           <StoryField
             title="Concept"
@@ -267,13 +288,15 @@ function ConceptPage() {
         <aside className="flex w-full shrink-0 flex-col gap-6 rounded-[14px] bg-v2-surface p-[26px] xl:sticky xl:top-6 xl:w-[292px]">
           <SlotUpload
             label="Character"
-            hint="Upload or pick from Library"
+            hint="Click to upload"
+            libraryKind="character"
             value={character}
             onChange={setCharacter}
           />
           <SlotUpload
             label="Scene"
-            hint="Upload or pick from Library"
+            hint="Click to upload"
+            libraryKind="scene"
             value={scene}
             onChange={setScene}
           />
@@ -302,6 +325,12 @@ function ConceptPage() {
             notePlaceholder="Anything else the director should know? (optional)"
             cost={cost}
             canGenerate={!!product && !!concept.trim() && !!character && !!scene}
+            generateHint={missingHint([
+              !concept.trim() && "a concept",
+              !character && "a character",
+              !scene && "a scene",
+              !product && "a product",
+            ])}
             onGenerate={() =>
               generate({
                 studio: "concept",

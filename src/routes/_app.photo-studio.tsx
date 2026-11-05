@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
-import { ComposerBar, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import {
+  addPiece,
   EMPTY_SELECTION,
   PieceByPiece,
+  pieceStepIndex,
   type PieceSelection,
 } from "@/v2/components/studio/PieceByPiece";
 import {
@@ -19,12 +21,12 @@ import {
   EMPTY_DIY,
   type DiySelection,
 } from "@/v2/components/studio/BuildItYourself";
-import { photoGenerationCost, usePhotoTemplates } from "@/v2/data/api";
+import { photoGenerationCost, usePhotoTemplates, usePiece } from "@/v2/data/api";
 import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
-import mocha from "@/assets/v2/gallery/d726d.png";
-import sodaHand from "@/assets/v2/gallery/35540.png";
-import sodaCherry from "@/assets/v2/gallery/e9c3b.png";
-import truffle from "@/assets/v2/gallery/908f4.png";
+import mocha from "@/assets/v2/catalog/photo/weekend-flat-lay.webp";
+import sodaHand from "@/assets/v2/catalog/photo/hand-hero.webp";
+import sodaCherry from "@/assets/v2/catalog/product/acme-charge.webp";
+import truffle from "@/assets/v2/catalog/photo/linen-studio.webp";
 import modeScene from "@/assets/v2/studio/mode-scene.svg";
 import modeText from "@/assets/v2/studio/mode-text.svg";
 import modePalette from "@/assets/v2/studio/mode-palette.svg";
@@ -36,8 +38,10 @@ import modeCrop from "@/assets/v2/studio/mode-crop.svg";
 type PhotoMode = "templates" | "piece" | "diy";
 
 export const Route = createFileRoute("/_app/photo-studio")({
-  validateSearch: (search: Record<string, unknown>): { mode?: PhotoMode } =>
-    search.mode === "piece" || search.mode === "diy" ? { mode: search.mode } : {},
+  validateSearch: (search: Record<string, unknown>): { mode?: PhotoMode; use?: string } => ({
+    ...(search.mode === "piece" || search.mode === "diy" ? { mode: search.mode } : {}),
+    ...(typeof search.use === "string" ? { use: search.use } : {}),
+  }),
   head: () => ({ meta: [{ title: "Photo Studio · Replix AI" }] }),
   component: PhotoStudioPage,
 });
@@ -232,7 +236,7 @@ const FILTERS: readonly { value: "all" | PhotoTemplateCategory; label: string }[
 /* ---------- Page ---------- */
 
 function PhotoStudioPage() {
-  const { mode = "templates" } = Route.useSearch();
+  const { mode = "templates", use } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { plan } = useCredits();
   const { generate, pending: generating } = useGenerate();
@@ -248,6 +252,17 @@ function PhotoStudioPage() {
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
   const [count, setCount] = useState(1);
   const [note, setNote] = useState("");
+
+  /* "Use in Photo Studio" from the Library: add the piece, then clean up the URL. */
+  const { data: incoming } = usePiece(use);
+  useEffect(() => {
+    if (!incoming) return;
+    if (incoming.isPro && plan === "free") setUpgradeFor(incoming);
+    else setPieces((prev) => addPiece(prev, incoming));
+    setPieceStep(pieceStepIndex(incoming.kind));
+    void navigate({ search: { mode: "piece" }, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per incoming piece
+  }, [incoming]);
 
   const { data: templates = [], isLoading } = usePhotoTemplates();
   const visible = useMemo(
@@ -266,12 +281,24 @@ function PhotoStudioPage() {
   /* What the composer shows and the result screen records for the current mode. */
   const style =
     mode === "piece"
-      ? pieces.scene && { label: `Scene: ${pieces.scene.name}`, imageUrl: pieces.scene.imageUrl }
+      ? pieces.scene && {
+          label: [
+            pieces.scene.name,
+            pieces.props.length &&
+              `${pieces.props.length} prop${pieces.props.length > 1 ? "s" : ""}`,
+            pieces.character?.name,
+            pieces.pose?.name,
+          ]
+            .filter(Boolean)
+            .join(" + "),
+          imageUrl: pieces.scene.imageUrl,
+        }
       : mode === "diy"
         ? diy.scene && {
             label: [
               "Your scene",
               diy.character && "your model",
+              diy.pose && diy.pose.name,
               diy.props.length && `${diy.props.length} prop${diy.props.length > 1 ? "s" : ""}`,
             ]
               .filter(Boolean)
@@ -282,7 +309,7 @@ function PhotoStudioPage() {
 
   return (
     <AppShell title="Photo Studio" subtitle="Select how you want to create">
-      <div className="mt-10 flex flex-col gap-10 pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
         <ModeSwitcher
           modes={MODES}
           value={mode}
@@ -345,6 +372,10 @@ function PhotoStudioPage() {
             onNoteChange={setNote}
             cost={photoGenerationCost(count)}
             canGenerate={!!product && !!style}
+            generateHint={missingHint([
+              !style && (mode === "templates" ? "a template" : "a scene"),
+              !product && "a product",
+            ])}
             onGenerate={() =>
               generate({
                 studio: "photo",

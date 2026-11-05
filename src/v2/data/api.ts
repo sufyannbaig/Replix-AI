@@ -86,8 +86,12 @@ export function photoGenerationCost(imageCount: number) {
   return imageCount * PHOTO_CREDITS_PER_IMAGE;
 }
 
+/* Front-end stand-in for the user's rows; survives refetches until the page reloads. */
+const addedProducts: Product[] = [];
+const libraryUploads: PieceOption[] = [];
+
 async function fetchProducts(): Promise<Product[]> {
-  return products;
+  return [...addedProducts, ...products];
 }
 
 export function useProducts() {
@@ -101,26 +105,64 @@ export function useProducts() {
 export function useUploadProduct() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File): Promise<Product> => ({
-      id: `upload_${Date.now()}`,
-      name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") || "Uploaded product",
-      imageUrl: URL.createObjectURL(file),
-      source: "upload",
-      createdAt: new Date().toISOString(),
-    }),
-    onSuccess: (product) => {
-      queryClient.setQueryData<Product[]>(queryKeys.products, (prev = []) => [product, ...prev]);
+    mutationFn: async (file: File): Promise<Product> => {
+      const product: Product = {
+        id: `upload_${Date.now()}`,
+        name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") || "Uploaded product",
+        imageUrl: URL.createObjectURL(file),
+        source: "upload",
+        createdAt: new Date().toISOString(),
+      };
+      addedProducts.unshift(product);
+      return product;
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.products }),
   });
 }
 
 async function fetchPieces(kind: PieceKind): Promise<PieceOption[]> {
-  return pieceOptions.filter((p) => p.kind === kind);
+  return [...libraryUploads, ...pieceOptions].filter((p) => p.kind === kind);
 }
 
-/** Pre-made scenes, props or characters for piece-by-piece shoots. */
+/** Library pieces of one kind: the user's uploads first, then the Replix-made ones. */
 export function usePieceOptions(kind: PieceKind) {
   return useQuery({ queryKey: queryKeys.pieces(kind), queryFn: () => fetchPieces(kind) });
+}
+
+/** One Library piece by id, for "Use in Photo Studio" links. */
+export function usePiece(id: string | undefined) {
+  return useQuery({
+    queryKey: ["v2", "piece", id ?? "none"] as const,
+    enabled: !!id,
+    queryFn: async (): Promise<PieceOption | null> =>
+      [...libraryUploads, ...pieceOptions].find((p) => p.id === id) ?? null,
+  });
+}
+
+/**
+ * Save an upload to the Library. Front-end only: an object URL that lasts until the page
+ * reloads. The backend version should upload to storage and return the row.
+ */
+export function useAddLibraryUpload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file, kind }: { file: File; kind: PieceKind }): Promise<PieceOption> => {
+      const piece: PieceOption = {
+        id: `${kind}_upload_${Date.now()}`,
+        kind,
+        name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") || "Your upload",
+        imageUrl: URL.createObjectURL(file),
+        isPro: false,
+        owner: "yours",
+      };
+      libraryUploads.unshift(piece);
+      return piece;
+    },
+    onSuccess: (piece) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.pieces(piece.kind) });
+      void queryClient.invalidateQueries({ queryKey: ["v2", "assets"] });
+    },
+  });
 }
 
 /**
@@ -228,17 +270,16 @@ export function useExtractBrandKit() {
 export function useAddProduct() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: Omit<Product, "id" | "createdAt">): Promise<Product> => ({
-      ...input,
-      id: `product_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }),
-    onSuccess: (product) => {
-      queryClient.setQueryData<Product[]>(queryKeys.products, (prev = products) => [
-        product,
-        ...prev,
-      ]);
+    mutationFn: async (input: Omit<Product, "id" | "createdAt">): Promise<Product> => {
+      const product: Product = {
+        ...input,
+        id: `product_${Date.now()}`,
+        createdAt: new Date().toISOString(),
+      };
+      addedProducts.unshift(product);
+      return product;
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.products }),
   });
 }
 
@@ -252,8 +293,8 @@ export async function importProductFromUrl(
   await new Promise((resolve) => setTimeout(resolve, 1200));
   const sample = products.find((p) => p.id === "p_buds") ?? products[0];
   return {
-    name: "Cookie Dough Spread",
-    description: `Imported from ${new URL(url).hostname}. A rich, spoonable cookie dough spread with real chocolate chips.`,
+    name: sample.name,
+    description: `Imported from ${new URL(url).hostname}. ${sample.description ?? ""}`.trim(),
     imageUrl: sample.imageUrl,
     source: "upload",
   };
@@ -290,6 +331,16 @@ export function useAssets() {
           })),
       ];
       const uploads: AssetItem[] = [
+        ...libraryUploads
+          .filter((p) => p.kind !== "prop")
+          .map((p) => ({
+            id: `asset_${p.id}`,
+            kind: p.kind as "character" | "scene" | "style",
+            origin: "upload" as const,
+            title: p.name,
+            thumbnailUrl: p.imageUrl,
+            createdAt: new Date().toISOString(),
+          })),
         ...productList
           .filter((p) => p.source === "upload")
           .map((p) => ({

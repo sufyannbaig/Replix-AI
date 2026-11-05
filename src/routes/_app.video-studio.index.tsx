@@ -64,7 +64,7 @@ function VideoHubPage() {
                   className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                 />
               </span>
-              <span className="flex flex-col items-start gap-3 px-[18px] pb-[7px] pt-[23px]">
+              <span className="flex flex-1 flex-col items-start gap-4 p-5">
                 <span className="flex flex-col gap-2">
                   <span className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
                     {studio.title}
@@ -73,7 +73,7 @@ function VideoHubPage() {
                     {studio.description}
                   </span>
                 </span>
-                <span className="rounded-[50px] border-[0.7px] border-black/60 px-3 py-1.5 font-inter-tight text-[10px] font-medium tracking-[0.2px] text-[#616161] night:border-v2-border night:text-v2-ink-70">
+                <span className="mt-auto rounded-[50px] border-[0.7px] border-black/60 px-3 py-1.5 font-inter-tight text-[10px] font-medium tracking-[0.2px] text-[#616161] night:border-v2-border night:text-v2-ink-70">
                   {studio.tag}
                 </span>
               </span>

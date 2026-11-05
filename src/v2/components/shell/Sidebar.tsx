@@ -40,8 +40,8 @@ const GROUPS: NavGroup[] = [
     label: "Create",
     items: [
       { to: "/photo-studio", label: "Photo Studio", icon: figma("photoStudio", 18, 15.78) },
-      { to: "/ad-studio", label: "Ad Studio", icon: figma("adStudio", 14.62, 13.5) },
-      { to: "/video-studio", label: "Video Studio", icon: figma("videoStudio", 16.31, 16.88) },
+      { to: "/ad-studio", label: "Ad Studio", icon: figma("adStudio", 16.31, 16.88) },
+      { to: "/video-studio", label: "Video Studio", icon: figma("videoStudio", 14.62, 13.5) },
     ],
   },
   {

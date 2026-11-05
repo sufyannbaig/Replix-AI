@@ -77,6 +77,8 @@ export type PieceOption = {
   isPro: boolean;
   /** Cut-out props are shown on a solid colour in the summary panel. */
   background?: string;
+  /** Set on the user's own uploads; everything else is Replix made. */
+  owner?: "yours";
 };
 
 /** Result of the AI product analysis shown in Ad Studio. */
