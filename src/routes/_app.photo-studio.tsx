@@ -417,7 +417,8 @@ function TemplateCard({
       aria-pressed={selected}
       aria-label={`${template.name}${template.isPro ? " (Pro)" : ""}`}
       className={cn(
-        "group relative aspect-[244/285] overflow-hidden rounded-[12px] text-left outline-none",
+        /* Delivered template art is 4:3; keep the card the same shape so nothing is cropped. */
+        "group relative aspect-[4/3] overflow-hidden rounded-[12px] text-left outline-none",
         selected && "ring-[1.7px] ring-[#124498] ring-offset-0",
       )}
     >
