@@ -32,6 +32,8 @@ export type CommunityCreation = {
   id: string;
   kind: CreationKind;
   imageUrl: string;
+  /** UGC and Shorts cards play this clip on hover. */
+  videoUrl?: string;
   /** Natural aspect ratio (width / height) so the masonry grid can reserve space. */
   aspect: number;
   title: string;

@@ -13,6 +13,7 @@ import createPhoto from "@/assets/v2/catalog/loops/home-photo.webp";
 import createAd from "@/assets/v2/catalog/loops/home-ad.webp";
 import createVideo from "@/assets/v2/catalog/loops/home-video.webp";
 import playIcon from "@/assets/v2/icons/play.svg";
+import { HoverVideo } from "@/v2/components/HoverVideo";
 import { LoopingPreview } from "@/v2/components/LoopingPreview";
 import promoBack from "@/assets/v2/gallery/44dcb.png";
 import promoMiddle from "@/assets/v2/gallery/d726d.png";
@@ -318,13 +319,22 @@ function CommunitySection() {
     [data, filter],
   );
 
+  /* A tab only shows once the feed has work of that kind (no concept ads delivered yet). */
+  const filters = useMemo(
+    () =>
+      COMMUNITY_FILTERS.filter(
+        (o) => o.value === "all" || (data ?? []).some((item) => item.kind === o.value),
+      ),
+    [data],
+  );
+
   return (
     <section className="flex flex-col gap-[30px]">
       <div className="flex flex-col gap-[18px]">
         <SectionTitle>See what others made with Replix</SectionTitle>
         <FilterTabs
           label="Filter community creations"
-          options={COMMUNITY_FILTERS}
+          options={filters}
           value={filter}
           onChange={setFilter}
           className="self-start"
@@ -366,15 +376,19 @@ function CommunitySection() {
 function CommunityCard({ item }: { item: CommunityCreation }) {
   return (
     <figure
-      className="group relative overflow-hidden rounded-[12px]"
+      className="group relative overflow-hidden rounded-[12px] ring-1 ring-black/10 night:ring-white/10"
       style={{ aspectRatio: item.aspect }}
     >
-      <img
-        src={item.imageUrl}
-        alt={item.title}
-        loading="lazy"
-        className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-      />
+      {item.videoUrl ? (
+        <HoverVideo poster={item.imageUrl} src={item.videoUrl} />
+      ) : (
+        <img
+          src={item.imageUrl}
+          alt={item.title}
+          loading="lazy"
+          className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+        />
+      )}
       <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-3 font-inter-tight text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
         {item.title}
       </figcaption>

@@ -33,15 +33,6 @@ import acmeShirt from "@/assets/v2/catalog/product/acme-linen-shirt.webp";
 import mercuryLogo from "@/assets/v2/home/mercury-logo.svg";
 import brandLogoPrimary from "@/assets/v2/brand/logo-primary.png";
 import brandLogoLight from "@/assets/v2/brand/logo-light.png";
-import vanilla from "@/assets/v2/gallery/d1a08.png";
-import mocha from "@/assets/v2/gallery/d726d.png";
-import truffle from "@/assets/v2/gallery/908f4.png";
-import cleanser from "@/assets/v2/gallery/b6106.png";
-import sodaSip from "@/assets/v2/gallery/a52d4.png";
-import sodaHand from "@/assets/v2/gallery/35540.png";
-import serum from "@/assets/v2/gallery/0b20a.png";
-import sodaCan from "@/assets/v2/gallery/44dcb.png";
-import sodaCherry from "@/assets/v2/gallery/e9c3b.png";
 
 export const brandKits: BrandKit[] = [
   {
@@ -82,44 +73,6 @@ export function sampleExtractedKit(base: BrandKit, website: string): BrandKit {
     isComplete: true,
   };
 }
-
-function creation(
-  id: string,
-  kind: CreationKind,
-  imageUrl: string,
-  width: number,
-  height: number,
-  title: string,
-): CommunityCreation {
-  return { id, kind, imageUrl, aspect: width / height, title };
-}
-
-/**
- * Community feed in row order. Dealt round-robin into 5 columns it reproduces the Figma
- * masonry exactly; card sizes are the design's (width x height).
- */
-export const communityCreations: CommunityCreation[] = [
-  creation("c01", "photoshoot", vanilla, 183, 231, "Vanilla cream bottle"),
-  creation("c02", "product-short", mocha, 183, 298, "Chocolate mocha tub"),
-  creation("c03", "ad", truffle, 181, 298, "Truffle sauce bottle"),
-  creation("c04", "photoshoot", cleanser, 183, 183, "Botanical cleanser"),
-  creation("c05", "ugc", sodaSip, 183, 310, "Berry soda first sip"),
-  creation("c06", "ugc", sodaHand, 183, 298, "Berry soda in hand"),
-  creation("c07", "ad", cleanser, 183, 231, "Botanical cleanser, podium"),
-  creation("c08", "concept", serum, 181, 231, "Green serum spotlight"),
-  creation("c09", "product-short", sodaCan, 183, 346, "Berry soda can"),
-  creation("c10", "concept", sodaCherry, 183, 219, "Berry soda with cherry"),
-  creation("c11", "photoshoot", vanilla, 183, 231, "Vanilla cream still life"),
-  creation("c12", "ad", mocha, 183, 298, "Mocha tub, warm light"),
-  creation("c13", "photoshoot", truffle, 181, 298, "Truffle sauce, berries"),
-  creation("c14", "ad", cleanser, 183, 183, "Cleanser, square crop"),
-  creation("c15", "ugc", sodaSip, 183, 310, "Berry soda selfie"),
-  creation("c16", "ugc", sodaHand, 183, 298, "Berry soda grip"),
-  creation("c17", "photoshoot", cleanser, 183, 231, "Cleanser on plinth"),
-  creation("c18", "concept", serum, 181, 231, "Serum in the dark"),
-  creation("c19", "product-short", sodaCan, 183, 346, "Soda can, sunset"),
-  creation("c20", "concept", sodaCherry, 183, 219, "Cherry on top"),
-];
 
 /*
  * Template catalog from the client's Drive folder ("Replix templates"), compressed to webp
@@ -398,6 +351,61 @@ export const shortTemplates: ShortTemplate[] = SHORT_META.map(([slug, name, styl
   posterUrl: catalogImage("short", slug),
   videoUrl: `/v2/videos/shorts/${slug}.mp4`,
 }));
+
+type FeedKind = Exclude<CreationKind, "concept">;
+
+function feedCard(kind: FeedKind, slug: string): CommunityCreation {
+  const id = `c_${kind}_${slug}`;
+  if (kind === "ugc" || kind === "product-short") {
+    const t =
+      kind === "ugc"
+        ? ugcTemplates.find((x) => x.id === `ugc_${slug}`)
+        : shortTemplates.find((x) => x.id === `short_${slug}`);
+    return {
+      id,
+      kind,
+      imageUrl: t?.posterUrl ?? "",
+      videoUrl: t?.videoUrl,
+      aspect: 9 / 16,
+      title: t?.name ?? slug,
+    };
+  }
+  if (kind === "ad") {
+    const t = adThemes.find((x) => x.id === slug);
+    return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 1, title: t?.name ?? slug };
+  }
+  const t = photoTemplates.find((x) => x.id === `pt_${slug}`);
+  return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 4 / 3, title: t?.name ?? slug };
+}
+
+/* Community feed, in row order: the real templates, mixed so each row shows every format. */
+export const communityCreations: CommunityCreation[] = (
+  [
+    ["ugc", "honest-review"],
+    ["photoshoot", "golden-hour-model"],
+    ["ad", "bold-offer"],
+    ["product-short", "dramatic-light"],
+    ["photoshoot", "hand-hero"],
+    ["ad", "testimonial"],
+    ["ugc", "the-reveal"],
+    ["product-short", "floating"],
+    ["photoshoot", "linen-studio"],
+    ["ugc", "morning-routine"],
+    ["product-short", "splash"],
+    ["photoshoot", "weekend-flat-lay"],
+    ["ugc", "first-unboxing"],
+    ["ad", "before-after"],
+    ["product-short", "morning-light"],
+    ["photoshoot", "clean-white"],
+    ["ad", "lifestyle"],
+    ["photoshoot", "morning-kitchen"],
+    ["ugc", "try-on-check"],
+    ["ad", "problem-fix"],
+    ["ugc", "gym-quick-take"],
+    ["product-short", "360-spin"],
+    ["product-short", "studio-turn"],
+  ] as [FeedKind, string][]
+).map(([kind, slug]) => feedCard(kind, slug));
 
 /** Support inbox, same address as the v1 help page. */
 export const SUPPORT_EMAIL = "benjamin@replixai.co.uk";
