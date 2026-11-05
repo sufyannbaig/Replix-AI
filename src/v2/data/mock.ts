@@ -378,32 +378,22 @@ function feedCard(kind: FeedKind, slug: string): CommunityCreation {
   return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 4 / 3, title: t?.name ?? slug };
 }
 
-/* Community feed, in row order: the real templates, mixed so each row shows every format. */
+/* The 12 Home feed picks, three per format. Cards deal left to right into columns, so this
+   order keeps the columns even and the same product from stacking. */
 export const communityCreations: CommunityCreation[] = (
   [
     ["ugc", "honest-review"],
     ["photoshoot", "golden-hour-model"],
-    ["ad", "bold-offer"],
-    ["product-short", "dramatic-light"],
-    ["photoshoot", "hand-hero"],
-    ["ad", "testimonial"],
-    ["ugc", "the-reveal"],
-    ["product-short", "floating"],
-    ["photoshoot", "linen-studio"],
-    ["ugc", "morning-routine"],
-    ["product-short", "splash"],
-    ["photoshoot", "weekend-flat-lay"],
-    ["ugc", "first-unboxing"],
     ["ad", "before-after"],
+    ["product-short", "dramatic-light"],
     ["product-short", "morning-light"],
-    ["photoshoot", "clean-white"],
-    ["ad", "lifestyle"],
-    ["photoshoot", "morning-kitchen"],
-    ["ugc", "try-on-check"],
-    ["ad", "problem-fix"],
+    ["photoshoot", "linen-studio"],
     ["ugc", "gym-quick-take"],
-    ["product-short", "360-spin"],
-    ["product-short", "studio-turn"],
+    ["product-short", "splash"],
+    ["ugc", "the-reveal"],
+    ["ad", "bold-offer"],
+    ["photoshoot", "weekend-flat-lay"],
+    ["ad", "testimonial"],
   ] as [FeedKind, string][]
 ).map(([kind, slug]) => feedCard(kind, slug));
 
