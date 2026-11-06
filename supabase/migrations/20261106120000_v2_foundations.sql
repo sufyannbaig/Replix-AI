@@ -266,23 +266,32 @@ CREATE TRIGGER user_credits_ledger AFTER INSERT OR UPDATE OF credits ON public.u
 -- ---------- storage ----------
 -- uploads: the user's own files (products, Library pieces, brand logos, studio uploads), <uid>/...
 -- outputs: generated images and videos, <uid>/<job id>/..., written by the server only.
--- catalog: Replix template art, base plates and Library pieces; public read.
+-- catalog: Replix template art, base plates and Library pieces. Private for now (the
+--   workspace blocks public buckets); the server reads it with the service key, and the
+--   app still ships template art in its bundle. Make it public, or add a read policy,
+--   when art moves out of the bundle.
 --
 -- The buckets themselves are NOT created here: Lovable Cloud only allows bucket creation
 -- through its storage tool, and refuses SQL that writes to storage.buckets. Create them
--- there first, with these settings (docs/V2_BACKEND_PLAN.md section 10):
---   uploads  private  100 MB  image/png, image/jpeg, image/webp, video/mp4, video/quicktime
---   outputs  private  500 MB  image/png, image/jpeg, image/webp, video/mp4
---   catalog  public   500 MB  image/png, image/jpeg, image/webp, video/mp4
--- The policies below apply once the buckets exist.
+-- there first: uploads (private, 100 MB), outputs (private, 500 MB), catalog (private,
+-- 500 MB). That tool can't limit file types, so the upload policies below only accept
+-- image and video extensions (the app also checks the real type before uploading).
 
 CREATE POLICY "uploads: read own" ON storage.objects FOR SELECT TO authenticated
   USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
 CREATE POLICY "uploads: insert own" ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
+  WITH CHECK (
+    bucket_id = 'uploads'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND lower(storage.extension(name)) IN ('png', 'jpg', 'jpeg', 'webp', 'mp4', 'mov')
+  );
 CREATE POLICY "uploads: update own" ON storage.objects FOR UPDATE TO authenticated
   USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text)
-  WITH CHECK (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
+  WITH CHECK (
+    bucket_id = 'uploads'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND lower(storage.extension(name)) IN ('png', 'jpg', 'jpeg', 'webp', 'mp4', 'mov')
+  );
 CREATE POLICY "uploads: delete own" ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
 
