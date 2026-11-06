@@ -66,10 +66,10 @@ function BrandKitBanner() {
   return (
     <section className="flex flex-col gap-5 rounded-[18px] bg-v2-cream px-6 py-6 night:bg-v2-surface-2 sm:flex-row sm:items-center sm:justify-between sm:px-[38px] sm:py-7">
       <div className="flex max-w-[499px] flex-col gap-1">
-        <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.8px] text-v2-ink sm:text-2xl sm:tracking-[-0.96px]">
+        <h2 className="type-section-title text-v2-ink">
           Need consistent results? Create a brand kit
         </h2>
-        <p className="font-inter-tight text-sm leading-[1.41] text-v2-ink-60">
+        <p className="type-subtitle text-v2-ink-60">
           Logo, colours, fonts and tone applied to every generation
         </p>
       </div>
@@ -124,10 +124,8 @@ function CreateSection() {
               <LoopingPreview frames={[card.image]} videoSrc={card.videoSrc} />
             </div>
             <div className="mx-5 mt-5 flex flex-col gap-1">
-              <h3 className="font-archivo text-lg font-medium leading-archivo tracking-[-0.36px] text-v2-ink">
-                {card.title}
-              </h3>
-              <p className="font-inter-tight text-xs leading-[1.41] text-v2-muted group-hover:text-v2-ink-70">
+              <h3 className="type-card-title text-v2-ink">{card.title}</h3>
+              <p className="type-subtitle text-v2-muted group-hover:text-v2-ink-70">
                 {card.description}
               </p>
             </div>
@@ -238,19 +236,16 @@ function UpgradePromo() {
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-[9px]">
-              <h2 className="font-archivo text-[26px] font-medium leading-[1.12] tracking-[-1.04px] text-black sm:text-[30px] sm:tracking-[-1.2px] night:text-v2-ink">
+              <h2 className="type-section-title text-black night:text-v2-ink">
                 Unlock premium templates, Concept Ads and more credits
               </h2>
-              <p className="font-inter-tight text-sm leading-[1.41] text-v2-muted">
+              <p className="type-subtitle text-v2-muted">
                 Everything in Free, plus the tools brands use to scale.
               </p>
             </div>
             <ul className="flex flex-col gap-[9px]">
               {PRO_FEATURES.map((feature) => (
-                <li
-                  key={feature}
-                  className="flex items-center gap-2.5 font-inter-tight text-xs leading-[1.41] text-v2-muted"
-                >
+                <li key={feature} className="flex items-center gap-2.5 type-caption text-v2-muted">
                   <CheckCircleIcon className="text-v2-icon" />
                   {feature}
                 </li>

@@ -326,9 +326,7 @@ function AddProductDialog({
                     <p className="font-inter-tight text-base font-medium text-v2-ink">
                       {draft.name}
                     </p>
-                    <p className="line-clamp-4 font-inter-tight text-sm font-light tracking-[0.28px] text-[#616161] night:text-v2-ink-70">
-                      {draft.description}
-                    </p>
+                    <p className="line-clamp-4 type-subtitle text-v2-ink-70">{draft.description}</p>
                   </div>
                 </>
               ) : (

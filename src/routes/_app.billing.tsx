@@ -209,9 +209,7 @@ function BillingPage() {
               <span className="font-inter-tight text-xs uppercase tracking-[0.48px] text-v2-muted">
                 Current plan
               </span>
-              <h2 className="font-archivo text-[26px] font-medium capitalize leading-archivo tracking-[-0.52px] text-v2-ink">
-                {currentPlan}
-              </h2>
+              <h2 className="type-section-title capitalize text-v2-ink">{currentPlan}</h2>
               <p className="font-inter-tight text-sm text-v2-ink-70">
                 <span className="font-medium text-v2-ink tabular-nums">{credits}</span> credits
                 remaining
@@ -272,9 +270,7 @@ function BillingPage() {
 
         <section className="flex flex-col gap-4 rounded-[18px] bg-v2-surface p-6">
           <div className="flex flex-col gap-1">
-            <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
-              Billing history
-            </h2>
+            <h2 className="type-card-title text-v2-ink">Billing history</h2>
             <p className="font-inter-tight text-sm text-v2-muted">
               {shopDomain
                 ? "Your past Replix subscription charges, billed through Shopify."
@@ -448,9 +444,7 @@ function BillingPage() {
               {isPaid ? (
                 <div className="flex flex-col gap-3 rounded-[12px] bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="font-archivo text-base font-medium text-destructive">
-                      Cancel subscription
-                    </h3>
+                    <h3 className="type-label text-destructive">Cancel subscription</h3>
                     <p className="font-inter-tight text-sm text-v2-muted">
                       Stops future charges immediately and reverts to free.
                     </p>
@@ -467,7 +461,7 @@ function BillingPage() {
 
               <div className="flex flex-col gap-3 rounded-[12px] bg-v2-canvas p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-archivo text-base font-medium">Disconnect store</h3>
+                  <h3 className="type-label">Disconnect store</h3>
                   <p className="font-inter-tight text-sm text-v2-muted">
                     Unlink {shopDomain} from your Replix account.
                   </p>

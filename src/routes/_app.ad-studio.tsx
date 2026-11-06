@@ -93,12 +93,8 @@ function AdStudioPage() {
                     />
                   </span>
                   <span className="flex flex-col gap-1.5 px-[14px] pb-6 pt-[15px]">
-                    <span className="font-archivo text-base font-medium leading-archivo tracking-[-0.32px] text-black night:text-v2-ink">
-                      {t.name}
-                    </span>
-                    <span className="font-inter-tight text-sm leading-[1.3] text-v2-muted">
-                      {t.description}
-                    </span>
+                    <span className="type-label text-black night:text-v2-ink">{t.name}</span>
+                    <span className="type-subtitle text-v2-muted">{t.description}</span>
                   </span>
                 </button>
               );
@@ -195,9 +191,7 @@ function AddProductCard({ onClick }: { onClick: () => void }) {
         <span className="absolute left-0 top-0 h-[37.1px] w-[179px] -scale-y-100 bg-gradient-to-b from-transparent to-[var(--v2-surface)]" />
       </span>
       <span className="flex flex-col items-center gap-2">
-        <span className="font-archivo text-base font-medium leading-archivo text-[#212121] night:text-v2-ink">
-          Add Your Product
-        </span>
+        <span className="type-label text-[#212121] night:text-v2-ink">Add Your Product</span>
         <span className="font-inter-tight text-xs text-v2-muted">
           Pick from your catalogue or upload an image
         </span>
@@ -241,13 +235,9 @@ function ProductCard({
         </div>
       </div>
       <div className="flex min-w-0 flex-col pt-2.5">
-        <h2 className="font-archivo text-lg font-medium leading-archivo text-v2-ink">
-          {product.name}
-        </h2>
+        <h2 className="type-card-title text-v2-ink">{product.name}</h2>
         {product.description ? (
-          <p className="mt-4 font-inter-tight text-sm font-light leading-[1.3] tracking-[0.14px] text-[#616161] night:text-v2-ink-70">
-            {product.description}
-          </p>
+          <p className="mt-4 type-subtitle text-v2-ink-70">{product.description}</p>
         ) : null}
         {product.price ? (
           <p className="mt-4 font-inter-tight text-lg font-semibold text-[#343434] night:text-v2-ink">
@@ -288,9 +278,7 @@ function InsightsPanel({
       className="flex min-h-[305px] flex-col rounded-[12px] bg-v2-surface px-6 pb-6 pt-[18px]"
       aria-busy={loading}
     >
-      <h2 className="font-inter-tight text-lg font-medium leading-[1.73] tracking-[0.36px] text-[#222] night:text-v2-ink">
-        Product Insights
-      </h2>
+      <h2 className="type-card-title text-v2-ink">Product Insights</h2>
       {data ? (
         <>
           <p className="mt-2 font-inter-tight text-sm font-medium leading-[1.73] text-[#222]/70 night:text-v2-ink-70">

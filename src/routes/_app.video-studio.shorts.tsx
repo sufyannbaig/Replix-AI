@@ -351,7 +351,7 @@ function ShortsPage() {
             <DialogTitle className="font-archivo text-2xl font-medium leading-archivo tracking-[-0.96px]">
               {locked?.name} is a Pro template
             </DialogTitle>
-            <DialogDescription className="font-inter-tight text-sm leading-[1.41] text-v2-muted">
+            <DialogDescription className="type-subtitle text-v2-muted">
               Upgrade to use every premium motion template, Concept Ads and more credits each month.
             </DialogDescription>
             <div className="mt-2 flex gap-3">

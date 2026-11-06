@@ -77,7 +77,7 @@ export function BuildItYourself({
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
+          <h2 className="type-card-title text-v2-ink">
             Pose <span className="text-v2-muted">(optional)</span>
           </h2>
           <p className="font-inter-tight text-sm text-v2-muted">
@@ -112,7 +112,7 @@ export function BuildItYourself({
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
+          <h2 className="type-card-title text-v2-ink">
             Props <span className="text-v2-muted">(optional)</span>
           </h2>
           <p className="font-inter-tight text-sm text-v2-muted">

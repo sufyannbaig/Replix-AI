@@ -353,9 +353,7 @@ function Failed({
       <span className="flex size-12 items-center justify-center rounded-full bg-v2-cream text-[#b26b00]">
         <TriangleAlert className="size-5" />
       </span>
-      <h2 className="font-archivo text-xl font-medium leading-archivo text-v2-ink">
-        We couldn't finish this one
-      </h2>
+      <h2 className="type-card-title text-v2-ink">We couldn't finish this one</h2>
       <p className="font-inter-tight text-sm text-v2-muted">
         Something went wrong on our side. Your {job.request.cost} credits have been refunded.
       </p>

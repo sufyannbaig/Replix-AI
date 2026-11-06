@@ -419,7 +419,7 @@ function PhotoStudioPage() {
             <DialogTitle className="font-archivo text-2xl font-medium leading-archivo tracking-[-0.96px]">
               {upgradeFor?.name} is a Pro {mode === "piece" ? "option" : "template"}
             </DialogTitle>
-            <DialogDescription className="font-inter-tight text-sm leading-[1.41] text-v2-muted">
+            <DialogDescription className="type-subtitle text-v2-muted">
               Upgrade to use every premium photo and video template, Concept Ads and more credits
               each month.
             </DialogDescription>
@@ -468,7 +468,7 @@ function TemplateCard({
         )}
       />
       {template.isPro ? (
-        <span className="absolute right-[14px] top-[14px] rounded-[18px] bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] px-[14px] py-[7px] font-archivo text-base font-medium leading-archivo tracking-[-0.64px] text-[#12213d]">
+        <span className="absolute right-[14px] top-[14px] rounded-[18px] bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] px-[14px] py-[7px] type-label text-[#12213d]">
           Pro
         </span>
       ) : null}

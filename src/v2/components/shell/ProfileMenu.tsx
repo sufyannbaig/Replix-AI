@@ -158,7 +158,7 @@ export function ProfileMenu({ trigger }: { trigger: ReactNode }) {
           {plan !== "scale" ? (
             <div className="flex items-center justify-between rounded-[8px] bg-[linear-gradient(102.95deg,rgb(255,235,201)_0.24%,rgba(193,214,255,0.6)_99.77%)] p-4">
               <div className="flex w-[148px] flex-col gap-1.5 text-[#12213d]">
-                <p className="font-archivo text-base font-medium leading-archivo tracking-[-0.32px]">
+                <p className="type-label">
                   {multiplier && plan === "free"
                     ? `Get ${multiplier}× more credits`
                     : "Get more credits"}

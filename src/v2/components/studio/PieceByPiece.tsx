@@ -79,7 +79,7 @@ function Stepper({ step, onStep }: { step: number; onStep: (index: number) => vo
             aria-selected={i === step}
             onClick={() => onStep(i)}
             className={cn(
-              "relative flex flex-1 items-center justify-center font-archivo text-base font-medium leading-archivo tracking-[-0.32px]",
+              "relative flex flex-1 items-center justify-center type-label",
               i > 0 && "-ml-[27px] pl-[27px]",
               tone,
             )}
@@ -329,9 +329,7 @@ export function PieceByPiece({
       </div>
 
       <aside className="flex w-full shrink-0 flex-col gap-5 rounded-[14px] bg-v2-surface p-5 xl:sticky xl:top-6 xl:w-[226px]">
-        <h3 className="font-archivo text-base font-medium leading-archivo tracking-[-0.32px] text-v2-ink">
-          Your Shot
-        </h3>
+        <h3 className="type-label text-v2-ink">Your Shot</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-1 xl:gap-4">
           <SummarySlot
             label="Scene"

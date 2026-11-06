@@ -131,9 +131,7 @@ function HelpPage() {
                   onClick={() => setOpenId(open ? null : f.id)}
                   className="flex w-full items-start justify-between gap-6 text-left"
                 >
-                  <span className="pt-px font-archivo text-base font-medium leading-archivo tracking-[-0.48px] text-v2-ink">
-                    {f.question}
-                  </span>
+                  <span className="pt-px type-label text-v2-ink">{f.question}</span>
                   <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#ffcc50] text-[#12213d]">
                     <Icon
                       name="faqChevron"
@@ -146,7 +144,7 @@ function HelpPage() {
                 {open ? (
                   <p
                     id={panelId}
-                    className="mt-3 max-w-[617px] font-inter-tight text-sm leading-[1.22] tracking-[-0.28px] text-[#5c6b8d] night:text-v2-muted"
+                    className="mt-3 max-w-[617px] type-subtitle text-[#5c6b8d] night:text-v2-muted"
                   >
                     {f.answer}
                   </p>
@@ -158,10 +156,8 @@ function HelpPage() {
 
         <aside className="flex flex-col items-start rounded-[18px] bg-v2-surface p-5 lg:min-h-[227px] lg:w-[258px] lg:shrink-0">
           {/* Figma: "Still Stuck ?". */}
-          <h2 className="font-archivo text-2xl font-medium leading-archivo tracking-[-0.48px] text-v2-ink">
-            Still stuck?
-          </h2>
-          <p className="mt-4 font-inter-tight text-[13px] leading-[1.22] text-v2-ink-70">
+          <h2 className="type-card-title text-v2-ink">Still stuck?</h2>
+          <p className="mt-4 type-subtitle text-v2-ink-70">
             Our team usually replies within a day.
           </p>
           <a href={`mailto:${SUPPORT_EMAIL}`} className={pillClass("primary", "mt-8 lg:mt-auto")}>

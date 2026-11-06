@@ -105,12 +105,8 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
       <div className="flex min-w-0 flex-col gap-2">
-        <h1 className="font-archivo text-[28px] font-medium leading-archivo tracking-[-1.12px] text-v2-ink sm:text-[34px] sm:tracking-[-1.36px]">
-          {title}
-        </h1>
-        {subtitle ? (
-          <p className="font-inter-tight text-sm leading-[1.41] text-v2-ink-70">{subtitle}</p>
-        ) : null}
+        <h1 className="type-page-title text-v2-ink">{title}</h1>
+        {subtitle ? <p className="type-subtitle text-v2-ink-70">{subtitle}</p> : null}
       </div>
       <div className="flex items-center gap-[14px]">
         {actions}

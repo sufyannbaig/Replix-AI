@@ -67,7 +67,7 @@ function ReferPage() {
             <span className="self-start rounded-[15px] bg-[#d9e7ff] px-2.5 py-1.5 font-archivo text-[11px] text-[#12213d]">
               Refer &amp; Earn
             </span>
-            <h2 className="font-archivo text-[26px] font-medium leading-archivo tracking-[-0.52px] text-v2-ink">
+            <h2 className="type-section-title text-v2-ink">
               Give {reward} Credits, Get {reward} Credits
             </h2>
             <p className="font-inter-tight text-sm text-v2-ink-70">
@@ -102,9 +102,7 @@ function ReferPage() {
                   <step.icon className="size-7 text-v2-ink" strokeWidth={1.4} />
                 </span>
                 <span className="flex flex-col gap-4">
-                  <h3 className="font-archivo text-xl font-medium leading-archivo text-v2-ink">
-                    {step.title}
-                  </h3>
+                  <h3 className="type-card-title text-v2-ink">{step.title}</h3>
                   <p className="font-inter-tight text-sm leading-5 text-v2-muted">{step.body}</p>
                 </span>
               </article>

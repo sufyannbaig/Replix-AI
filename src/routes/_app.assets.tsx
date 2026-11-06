@@ -75,9 +75,7 @@ function AssetsPage() {
                 i === 0 ? "mt-[19px] pt-5" : "mt-2 pt-[18px]",
               )}
             >
-              <p className="px-[7px] pb-2 font-archivo text-base font-medium leading-archivo tracking-[-0.32px] text-v2-ink/80">
-                {group.title}
-              </p>
+              <p className="px-[7px] pb-2 type-label text-v2-ink/80">{group.title}</p>
               {group.items.map((item) => (
                 <FilterRow
                   key={item.value}

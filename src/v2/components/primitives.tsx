@@ -89,14 +89,5 @@ export function FilterTabs<T extends string>({
 }
 
 export function SectionTitle({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <h2
-      className={cn(
-        "font-archivo text-[22px] font-medium leading-archivo tracking-[-0.52px] text-v2-ink sm:text-[26px]",
-        className,
-      )}
-    >
-      {children}
-    </h2>
-  );
+  return <h2 className={cn("type-section-title text-v2-ink", className)}>{children}</h2>;
 }

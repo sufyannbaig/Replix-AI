@@ -177,3 +177,58 @@
     background-position: -50% 0;
   }
 }
+
+/*
+ * Replix 2.0 type scale. Use these for every heading and paragraph on signed-in screens
+ * instead of hand-picked sizes; colour stays a separate class (text-v2-ink, -ink-70...).
+ *   type-page-title     28 / 34px  page H1 and empty-state heroes
+ *   type-section-title  22 / 26px  section H2, plan names, promo banners
+ *   type-card-title     20px       panel and card titles
+ *   type-label          16px       small headings inside panels
+ *   type-subtitle       14px       the line under a title, and body text
+ *   type-caption        12px       hints, meta, fine print
+ */
+@utility type-page-title {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.04em;
+  @media (width >= 40rem) {
+    font-size: 34px;
+  }
+}
+@utility type-section-title {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.02em;
+  @media (width >= 40rem) {
+    font-size: 26px;
+  }
+}
+@utility type-card-title {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.02em;
+}
+@utility type-label {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.02em;
+}
+@utility type-subtitle {
+  font-family: var(--font-inter-tight);
+  font-size: 14px;
+  line-height: 1.41;
+}
+@utility type-caption {
+  font-family: var(--font-inter-tight);
+  font-size: 12px;
+  line-height: 1.41;
+}

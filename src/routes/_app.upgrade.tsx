@@ -80,12 +80,8 @@ function UpgradePage() {
                   </span>
                 ) : null}
                 <div className="flex flex-col gap-2">
-                  <h2 className="font-archivo text-[28px] font-normal leading-none text-black night:text-v2-ink">
-                    {plan.name}
-                  </h2>
-                  <p className="font-inter-tight text-sm leading-[17px] tracking-[0.42px] text-[#343434]/80 night:text-v2-ink-70">
-                    {plan.desc}
-                  </p>
+                  <h2 className="type-section-title text-black night:text-v2-ink">{plan.name}</h2>
+                  <p className="type-subtitle text-v2-ink-70">{plan.desc}</p>
                 </div>
                 <p className="font-archivo text-[30px] font-semibold leading-[39px] tracking-[0.66px] text-[#0d2348] night:text-v2-ink">
                   {formatPlanPrice(plan.price)}
@@ -143,7 +139,7 @@ function UpgradePage() {
         </p>
 
         <section className="mt-[34px] flex w-full flex-col gap-5 rounded-[16px] bg-v2-surface px-[30px] py-[30px]">
-          <h2 className="font-archivo text-[30px] font-medium leading-archivo tracking-[-0.6px] text-black night:text-v2-ink">
+          <h2 className="type-section-title text-black night:text-v2-ink">
             Need more credits? One-off credit packs
           </h2>
           <div className="flex flex-wrap gap-2.5">

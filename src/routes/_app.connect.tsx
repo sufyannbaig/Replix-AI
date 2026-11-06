@@ -99,10 +99,8 @@ function ConnectPage() {
                 <img src={shopifyBag} alt="" className="h-[46.4px] w-[40.6px]" />
               </span>
               <div className="flex flex-col gap-2">
-                <h2 className="font-archivo text-[28px] font-medium leading-archivo tracking-[-1.12px] text-v2-ink">
-                  Connect your Shopify store
-                </h2>
-                <p className="font-inter-tight text-sm leading-[1.41] text-v2-ink-70">
+                <h2 className="type-section-title text-v2-ink">Connect your Shopify store</h2>
+                <p className="type-subtitle text-v2-ink-70">
                   Import all your products in one go and keep them in sync.
                 </p>
               </div>

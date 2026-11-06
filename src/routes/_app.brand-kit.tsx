@@ -157,10 +157,10 @@ function EmptyKit({
       </div>
 
       <div className="mt-[22px] flex w-full flex-col items-center gap-[13px] text-center">
-        <h2 className="font-archivo text-[28px] font-medium leading-archivo tracking-[-1.12px] text-v2-ink sm:text-[32px] sm:tracking-[-1.28px]">
+        <h2 className="type-page-title text-v2-ink">
           {pending ? "Reading your website…" : "Set up your brand kit"}
         </h2>
-        <p className="max-w-[374px] font-inter-tight text-base leading-[1.41] text-v2-ink-70">
+        <p className="max-w-[374px] type-subtitle text-v2-ink-70">
           {pending
             ? "Pulling your logo, colours, fonts, tone of voice and brand images."
             : "Paste your website. We pull your logo, colours, fonts, tone of voice and brand images for you."}
@@ -219,9 +219,7 @@ function Card({
     <section
       className={cn("flex flex-col gap-[23px] rounded-[14px] bg-v2-surface p-[18px]", className)}
     >
-      <h2 className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
-        {title}
-      </h2>
+      <h2 className="type-card-title text-v2-ink">{title}</h2>
       {children}
     </section>
   );
@@ -254,9 +252,7 @@ function FilledKit({ kit }: { kit: BrandKit }) {
                   className="flex-1 rounded-[6px] border border-black/10"
                   style={{ background: hex }}
                 />
-                <span className="text-center font-inter-tight text-xs leading-[1.41] text-v2-ink-70">
-                  {hex}
-                </span>
+                <span className="text-center type-caption text-v2-ink-70">{hex}</span>
               </div>
             ))}
           </div>
@@ -268,16 +264,14 @@ function FilledKit({ kit }: { kit: BrandKit }) {
                 Aa
               </span>
               <span className="flex flex-col gap-1">
-                <span className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px] text-v2-ink">
-                  {kit.fonts?.heading}
-                </span>
+                <span className="type-card-title text-v2-ink">{kit.fonts?.heading}</span>
                 <span className="font-inter-tight text-base tracking-[-0.32px] text-v2-ink-60">
                   {kit.fonts?.body}
                 </span>
               </span>
             </div>
             {/* Figma repeats the setup copy here; describe how the fonts are used instead. */}
-            <p className="font-inter-tight text-xs leading-[1.41] text-v2-ink-70">
+            <p className="type-caption text-v2-ink-70">
               {kit.fonts?.heading} for headlines, {kit.fonts?.body} for body copy and captions.
             </p>
           </div>
@@ -297,11 +291,11 @@ function FilledKit({ kit }: { kit: BrandKit }) {
                 </span>
               ))}
             </div>
-            <p className="font-inter-tight text-base leading-[1.41] text-v2-ink-70">{kit.tone}</p>
+            <p className="type-subtitle text-v2-ink-70">{kit.tone}</p>
           </div>
         </Card>
         <Card title="About & Audience" className="gap-[22px]">
-          <p className="font-inter-tight text-base leading-[1.41] text-v2-ink-70">{kit.audience}</p>
+          <p className="type-subtitle text-v2-ink-70">{kit.audience}</p>
         </Card>
       </div>
 

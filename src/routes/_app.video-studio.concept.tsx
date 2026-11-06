@@ -135,9 +135,7 @@ function SlotUpload({
           <>
             <img src={plusCircle} alt="" className="size-6 opacity-70 night:invert" />
             <span className="flex flex-col gap-[5px]">
-              <span className="font-archivo text-base font-medium leading-archivo tracking-[-0.32px] text-black/50 night:text-v2-ink-60">
-                {label}
-              </span>
+              <span className="type-label text-black/50 night:text-v2-ink-60">{label}</span>
               <span className="font-inter-tight text-xs text-v2-muted">{hint}</span>
             </span>
           </>
