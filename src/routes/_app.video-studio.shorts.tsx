@@ -23,6 +23,7 @@ import {
 } from "@/v2/components/studio/UploadCard";
 import { useShortTemplates, videoGenerationCost } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
+import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, Product, ShortStyle, ShortTemplate } from "@/v2/data/types";
 import s1 from "@/assets/v2/catalog/short/studio-turn.webp";
 import s2 from "@/assets/v2/catalog/short/floating.webp";
@@ -145,7 +146,7 @@ const SceneArt = <StackArt images={[sceneBack, sceneMiddle, sceneFront]} />;
 const ReferenceArt = <StackArt images={[s7, s6, s5]} />;
 
 /* Product Shorts are 5–10 second clips. */
-const DURATIONS = [5, 8, 10] as const;
+const DURATIONS = VIDEO_LENGTHS.shorts;
 
 function ShortsPage() {
   const { mode = "templates" } = Route.useSearch();

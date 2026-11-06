@@ -12,6 +12,17 @@ export const VIDEO_CREDITS_PER_15S = 10;
 
 export const MAX_IMAGES_PER_JOB = 4;
 
+/**
+ * Video lengths each studio offers, in seconds. Kept short on purpose: the models make
+ * 5–10 s clips, and every extra second costs us money (docs/V2_GENERATION_COSTS.md).
+ * The phase 2 server rejects any other length.
+ */
+export const VIDEO_LENGTHS = {
+  shorts: [5, 8, 10],
+  ugc: [8, 15],
+  concept: [15, 30],
+} as const;
+
 export function photoGenerationCost(imageCount: number) {
   return imageCount * PHOTO_CREDITS_PER_IMAGE;
 }

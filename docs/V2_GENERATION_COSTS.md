@@ -28,18 +28,20 @@ For Sufyan and Benjamin. Prices checked 2026-11-06 from provider list prices (so
 
 ## 3. Cost per generation (what we pay)
 
-| Generation                            | Calls made                                                                  | Our cost (list price)                                                               |
-| ------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Photo Studio, 1 image (any mode)      | 1 Nano Banana call with the product + 1 to 8 reference images               | **≈ $0.07**                                                                         |
-| Photo Studio, 4 images                | 4 calls                                                                     | ≈ $0.28                                                                             |
-| Ad Studio, 1 ad                       | 1 copy call (Gemini text) + 1 Nano Banana call                              | **≈ $0.075 to $0.08**                                                               |
-| Ad Studio, 4 ads                      | 1 copy call + 4 image calls                                                 | ≈ $0.29                                                                             |
-| Ad Studio insights (once per product) | 1 Gemini vision call                                                        | ≈ $0.005                                                                            |
-| Brand Kit extract                     | Website read (free) + 1 Gemini call                                         | ≈ $0.01                                                                             |
-| Product import from a URL             | Website read only                                                           | $0                                                                                  |
-| Product Short, 8 s                    | 1 first frame (Nano Banana) + image-to-video                                | ≈ $0.63 (Kling 2.5 Turbo) to $1.99 (Seedance 2.0 Fast); Veo 3.1 Fast ≈ $0.87        |
-| AI UGC, 30 s with voice               | Script + frames + talking video with audio (+ voice / lip-sync if separate) | ≈ $4.60 (Veo 3.1 Fast audio) to $12.10 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $5.15 |
-| Concept ad, 30 s (several shots)      | Script and shot list + 3 to 5 frames + clips + stitching                    | ≈ $2.40 (Kling 2.5 Turbo) to $6.50 (Veo 3.1, no audio)                              |
+| Generation                            | Calls made                                                                 | Our cost (list price)                                                              |
+| ------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Photo Studio, 1 image (any mode)      | 1 Nano Banana call with the product + 1 to 8 reference images              | **≈ $0.07**                                                                        |
+| Photo Studio, 4 images                | 4 calls                                                                    | ≈ $0.28                                                                            |
+| Ad Studio, 1 ad                       | 1 copy call (Gemini text) + 1 Nano Banana call                             | **≈ $0.075 to $0.08**                                                              |
+| Ad Studio, 4 ads                      | 1 copy call + 4 image calls                                                | ≈ $0.29                                                                            |
+| Ad Studio insights (once per product) | 1 Gemini vision call                                                       | ≈ $0.005                                                                           |
+| Brand Kit extract                     | Website read (free) + 1 Gemini call                                        | ≈ $0.01                                                                            |
+| Product import from a URL             | Website read only                                                          | $0                                                                                 |
+| Product Short, 8 s                    | 1 first frame (Nano Banana) + image-to-video                               | ≈ $0.63 (Kling 2.5 Turbo) to $1.99 (Seedance 2.0 Fast); Veo 3.1 Fast ≈ $0.87       |
+| AI UGC, 8 s with voice                | Script + frame + talking video with audio (+ voice / lip-sync if separate) | ≈ $1.30 (Veo 3.1 Fast audio) to $3.30 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $1.44 |
+| AI UGC, 15 s with voice               | Same, about two clips                                                      | ≈ $2.35 (Veo 3.1 Fast audio) to $6.10 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $2.62 |
+| Concept ad, 15 s (several shots)      | Script and shot list + 2 to 3 frames + clips + stitching                   | ≈ $1.30 (Kling 2.5 Turbo) to $3.30 (Veo 3.1, no audio)                             |
+| Concept ad, 30 s (several shots)      | Script and shot list + 3 to 5 frames + clips + stitching                   | ≈ $2.40 (Kling 2.5 Turbo) to $6.50 (Veo 3.1, no audio)                             |
 
 Failed generations: the credits go back to the user, but the provider may still bill us for calls that already ran (Lovable notes that cancelled requests can still be billed). Partial results (for example 3 of 4 images) refund the missing share.
 
@@ -53,16 +55,22 @@ v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, 10 c
 | Pro     | $29 / 100       | $0.29             |
 | Scale   | $59 / 300       | $0.20             |
 
-| Generation             | Credits | User pays (Scale to Starter) | Our cost         | Result                                              |
-| ---------------------- | ------- | ---------------------------- | ---------------- | --------------------------------------------------- |
-| 1 photo                | 2       | $0.39 to $0.67               | ≈ $0.07          | Healthy margin                                      |
-| 1 ad                   | 2       | $0.39 to $0.67               | ≈ $0.08          | Healthy margin                                      |
-| Product Short, 8 s     | 10      | $1.97 to $3.33               | $0.63 to $1.99   | OK on Kling / Veo Fast; thin on Seedance at Scale   |
-| AI UGC, 30 s           | 20      | $3.93 to $6.66               | $4.60 to $12.10  | **Loss on most models.** Needs a higher video price |
-| Concept ad, 30 s       | 20      | $3.93 to $6.66               | $2.40 to $6.50   | Depends on the model                                |
-| Free plan (10 credits) | 10      | $0                           | 5 photos ≈ $0.35 | Fine for photos and ads                             |
+| Generation             | Credits | User pays (Scale to Starter) | Our cost         | Result                                            |
+| ---------------------- | ------- | ---------------------------- | ---------------- | ------------------------------------------------- |
+| 1 photo                | 2       | $0.39 to $0.67               | ≈ $0.07          | Healthy margin                                    |
+| 1 ad                   | 2       | $0.39 to $0.67               | ≈ $0.08          | Healthy margin                                    |
+| Product Short, 8 s     | 10      | $1.97 to $3.33               | $0.63 to $1.99   | OK on Kling / Veo Fast; thin on Seedance at Scale |
+| AI UGC, 8 s            | 10      | $1.97 to $3.33               | $1.30 to $3.30   | OK on Veo Fast / Kling 3.0; loss on Veo 3.1       |
+| AI UGC, 15 s           | 10      | $1.97 to $3.33               | $2.35 to $6.10   | **Loss on Scale on every model**                  |
+| Concept ad, 15 s       | 10      | $1.97 to $3.33               | $1.30 to $3.30   | Depends on the model                              |
+| Concept ad, 30 s       | 20      | $3.93 to $6.66               | $2.40 to $6.50   | Depends on the model                              |
+| Free plan (10 credits) | 10      | $0                           | 5 photos ≈ $0.35 | Fine for photos and ads                           |
 
-**Takeaway for D1 (credit sizes):** photos and ads are well covered. UGC is not: at 10 credits per 15 s, a 30 s UGC video can cost us more than the user pays, especially on Scale. After the video test, set the UGC price from the real cost per second (likely 20 to 30 credits per 15 s, or a separate UGC price), and keep Product Shorts on the cheaper model that passes the quality check.
+**Video lengths (changed 2026-11-06, Benjamin's call):** UGC is now 8 or 15 s (was 15 to 60 s), Concept ads 15 or 30 s (was 15 to 60 s), Product Shorts stay 5, 8 or 10 s. The table is `VIDEO_LENGTHS` in `src/v2/data/pricing.ts`. Shorter videos cost less and need fewer stitched clips, which also lowers the risk of a bad result.
+
+**Shorter alone doesn't fix UGC.** The video models bill per second, and so does our price: 10 credits per 15 s earns $0.22 a second on Starter, $0.19 on Pro and $0.13 on Scale. Talking video with a voice costs us $0.15 to $0.17 a second on the cheaper models, so on Scale every second of UGC loses money whatever the length. Product Shorts (no voice, $0.07 to $0.10 a second) are profitable at every length.
+
+**Takeaway for D1 (credit sizes):** photos, ads and Shorts are covered. UGC needs its own price: about 2 credits per second (30 credits for 15 s) earns at least $0.39 a second even on Scale. Confirm the number with the video test.
 
 ## 5. Checking the real numbers
 

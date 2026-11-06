@@ -24,6 +24,7 @@ import {
 } from "@/v2/components/studio/UploadCard";
 import { useUgcTemplates, videoGenerationCost } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
+import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, Product, UgcStyle, UgcTemplate } from "@/v2/data/types";
 import artSkincare from "@/assets/v2/catalog/ugc/try-on-check.webp";
 import artSneaker from "@/assets/v2/catalog/ugc/the-reveal.webp";
@@ -166,8 +167,8 @@ type Transition = (typeof TRANSITIONS)[number];
 const SceneArt = <StackArt images={[sceneBack, sceneMiddle, sceneFront]} />;
 const CastArt = <StackArt images={[castBack, castMiddle, castFront]} />;
 
-/* UGC ads run 15–60s; 30s is the common default for TikTok and Reels. */
-const DURATIONS = [15, 30, 45, 60] as const;
+/* UGC ads are 8 or 15 seconds; see VIDEO_LENGTHS in src/v2/data/pricing.ts. */
+const DURATIONS = VIDEO_LENGTHS.ugc;
 
 function UgcPage() {
   const { mode = "templates" } = Route.useSearch();
@@ -182,7 +183,7 @@ function UgcPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [aspect, setAspect] = useState<AspectRatio>("9:16");
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(15);
   const [script, setScript] = useState("");
   const [scene, setScene] = useState<UploadedImage | null>(null);
   const [character, setCharacter] = useState<UploadedImage | null>(null);

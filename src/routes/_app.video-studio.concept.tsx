@@ -11,6 +11,7 @@ import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import type { UploadedImage } from "@/v2/components/studio/UploadCard";
 import { videoGenerationCost } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
+import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, PieceKind, Product } from "@/v2/data/types";
 import plusCircle from "@/assets/v2/icons/plus-circle.svg";
 
@@ -24,7 +25,8 @@ const EMOTIONS = ["Humor", "Desire", "FOMO", "Pride", "Nostalgia", "Relief"] as 
 type Emotion = (typeof EMOTIONS)[number];
 
 /* Story ads need room for a hook, build-up and payoff. */
-const DURATIONS = [15, 30, 45, 60] as const;
+/* Concept ads are 15 or 30 seconds; see VIDEO_LENGTHS in src/v2/data/pricing.ts. */
+const DURATIONS = VIDEO_LENGTHS.concept;
 
 /**
  * A large writing field with an AI action in the corner (Concept, Climax, Script).
@@ -194,7 +196,7 @@ function ConceptPage() {
   const [scene, setScene] = useState<UploadedImage | null>(null);
   const [reference, setReference] = useState<UploadedImage | null>(null);
   const [aspect, setAspect] = useState<AspectRatio>("9:16");
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(15);
   const [note, setNote] = useState("");
 
   const cost = videoGenerationCost(seconds);
