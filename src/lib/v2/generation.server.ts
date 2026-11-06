@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { gatewayChat, parseJsonBlock } from "@/lib/ai-gateway.server";
 import type { GenerationJobRow, V2Database } from "@/v2/data/db-types";
-import { adThemes, catalogImage, pieceOptions } from "@/v2/data/mock";
+import { adThemes, catalogImage, catalogPathForUrl, pieceOptions } from "@/v2/data/mock";
 import type {
   AspectRatio,
   GenerationInputs,
@@ -83,6 +83,22 @@ async function fromUrl(url: string, site: Site) {
   return toDataUrl(bytes, type);
 }
 
+/**
+ * Replix template, theme and piece art. Read from the private `catalog` bucket (same paths
+ * as src/assets/v2/catalog/), so it never depends on fetching the app's own site; falls back
+ * to the bundled file over HTTP when the bucket doesn't have it yet.
+ */
+async function bundledArt(url: string, site: Site) {
+  const path = catalogPathForUrl(url);
+  if (path) {
+    const { data } = await admin.storage.from("catalog").download(path);
+    if (data && data.size <= MAX_IMAGE_BYTES) {
+      return toDataUrl(await data.arrayBuffer(), data.type || "image/webp");
+    }
+  }
+  return fromUrl(url, site);
+}
+
 type Ctx = { userId: string; plan: string; site: Site };
 
 function assertPlan(ctx: Ctx, isPro: boolean, name: string) {
@@ -129,7 +145,7 @@ async function loadPiece(ctx: Ctx, piece: PieceRef, role: PromptRef["role"]): Pr
   const bundled = pieceOptions.find((p) => p.id === piece.id);
   if (!bundled) throw new GenerationError(`"${piece.name}" isn't available any more.`);
   assertPlan(ctx, bundled.isPro, bundled.name);
-  return { role, name: bundled.name, dataUrl: await fromUrl(bundled.imageUrl, ctx.site) };
+  return { role, name: bundled.name, dataUrl: await bundledArt(bundled.imageUrl, ctx.site) };
 }
 
 async function loadUpload(ctx: Ctx, file: UploadRef, role: PromptRef["role"]): Promise<Loaded> {
@@ -217,7 +233,7 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
     refs.push({
       role: "template",
       name: tpl.name,
-      dataUrl: await fromUrl(catalogImage("photo", tpl.slug), ctx.site),
+      dataUrl: await bundledArt(catalogImage("photo", tpl.slug), ctx.site),
     });
   } else if (inputs.mode === "piece") {
     refs.push(await loadPiece(ctx, inputs.scene, "scene"));
@@ -259,7 +275,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
     refs.push({
       role: "layout",
       name: theme.name,
-      dataUrl: await fromUrl(theme.imageUrl, ctx.site),
+      dataUrl: await bundledArt(theme.imageUrl, ctx.site),
     });
 
   const raw = await gatewayChat({

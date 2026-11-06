@@ -89,6 +89,16 @@ export function catalogImage(folder: string, slug: string): string {
   return key ? catalogImages[key] : "";
 }
 
+/**
+ * The `catalog` storage bucket path ("photo/linen-studio.webp") of a bundled catalog image
+ * URL, or null. The generation server reads art from that bucket instead of fetching its own
+ * site, which Lovable's preview host blocks.
+ */
+export function catalogPathForUrl(url: string): string | null {
+  const key = Object.keys(catalogImages).find((k) => catalogImages[k] === url);
+  return key ? key.slice(key.indexOf("/catalog/") + "/catalog/".length) : null;
+}
+
 /* Names, categories and Pro flags in this catalog follow the Replix Library Playbook. */
 const PHOTO_TEMPLATE_META: [string, string, PhotoTemplateCategory[], boolean][] = [
   ["linen-studio", "Linen Studio", ["studio", "without-model"], false],
