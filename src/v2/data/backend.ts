@@ -3,8 +3,9 @@
  * yet, signed URLs for private files, and uploads to the `uploads` bucket.
  *
  * The hooks in api.ts use the database when there is a signed-in user and the phase 0
- * migration has been applied; otherwise (dev `?preview=1`, or before Lovable runs the
- * migration) they fall back to the bundled sample data so the app keeps working.
+ * migration has been applied; otherwise (signed out in dev `?preview=1`, or before Lovable
+ * runs the migration) they fall back to the bundled sample data so the screens still render.
+ * Generation never falls back for a signed-in user: it shows an error instead.
  */
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,16 +15,15 @@ export const db = supabase as unknown as SupabaseClient<V2Database>;
 
 export const UPLOADS_BUCKET = "uploads";
 
-function isDevPreview() {
-  return (
-    import.meta.env.DEV &&
-    typeof window !== "undefined" &&
-    window.sessionStorage.getItem("replix-dev-preview") === "1"
-  );
-}
-
 /* Tables found missing this page load; reset on reload (after the migration lands). */
 const missingTables = new Set<string>();
+
+/** The signed-in user's id, or null. */
+export async function signedInUserId() {
+  if (typeof window === "undefined") return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+}
 
 /** PostgREST "relation does not exist" / "not in the schema cache". */
 export function isMissingTable(error: PostgrestError | null) {
@@ -31,11 +31,14 @@ export function isMissingTable(error: PostgrestError | null) {
   return error.code === "42P01" || error.code === "PGRST205" || /schema cache/i.test(error.message);
 }
 
-/** The signed-in user's id when `table` can be used, otherwise null (use sample data). */
+/**
+ * The signed-in user's id when `table` can be used, otherwise null (use sample data).
+ * A signed-in user always gets real data, even in a tab where dev `?preview=1` was opened:
+ * sample data is only for reviewing the screens signed out.
+ */
 export async function backendUser(table: keyof V2Database["public"]["Tables"]) {
-  if (typeof window === "undefined" || isDevPreview() || missingTables.has(table)) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user.id ?? null;
+  if (missingTables.has(table)) return null;
+  return signedInUserId();
 }
 
 /**

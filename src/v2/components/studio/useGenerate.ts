@@ -44,7 +44,12 @@ export function useGenerate() {
           params: { jobId: job.id },
           replace: options.replace,
         }),
-      onError: () => toast.error("Couldn't start the generation. Please try again."),
+      onError: (error) =>
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : "Couldn't start the generation. Please try again.",
+        ),
     });
   };
 

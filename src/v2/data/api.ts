@@ -15,7 +15,15 @@ import {
   startGeneration,
 } from "@/lib/v2/generation.functions";
 import { notifyCreditsChanged } from "@/hooks/use-credits";
-import { backendUser, db, nameFromFile, resolveUrls, tryTable, uploadUserFile } from "./backend";
+import {
+  backendUser,
+  db,
+  nameFromFile,
+  resolveUrls,
+  signedInUserId,
+  tryTable,
+  uploadUserFile,
+} from "./backend";
 import type { BrandKitRow, LibraryItemRow, ProductRow } from "./db-types";
 import {
   adThemes,
@@ -749,8 +757,13 @@ export function useStartGeneration() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (request: GenerationRequest): Promise<GenerationJob> => {
-      const userId = request.kind === "video" ? null : await backendUser("generation_jobs");
-      if (userId && request.inputs && (request.studio === "photo" || request.studio === "ad")) {
+      const real = request.studio === "photo" || request.studio === "ad";
+      const userId = real ? await backendUser("generation_jobs") : null;
+      /* Never hand a signed-in user a sample result: say it didn't run (no credits used). */
+      if (real && (!userId || !request.inputs) && (await signedInUserId())) {
+        throw new Error("Generation isn't available right now. No credits were used.");
+      }
+      if (userId && request.inputs && real) {
         const inputs = await uploadStudioFiles(userId, request.inputs);
         const { jobId, cost } = await startGeneration({
           data: {
