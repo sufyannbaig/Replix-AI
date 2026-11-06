@@ -1,5 +1,5 @@
 -- Replix 2.0, phase 0 foundations (docs/V2_BACKEND_PLAN.md section 3).
--- Adds the v2 tables, storage buckets and RLS. Nothing here changes v1 tables, billing or auth;
+-- Adds the v2 tables, storage policies and RLS (buckets are made in the storage tool, see below). Nothing here changes v1 tables, billing or auth;
 -- the credit ledger only records changes to user_credits through a trigger.
 
 CREATE OR REPLACE FUNCTION public.v2_touch_updated_at()
@@ -267,14 +267,14 @@ CREATE TRIGGER user_credits_ledger AFTER INSERT OR UPDATE OF credits ON public.u
 -- uploads: the user's own files (products, Library pieces, brand logos, studio uploads), <uid>/...
 -- outputs: generated images and videos, <uid>/<job id>/..., written by the server only.
 -- catalog: Replix template art, base plates and Library pieces; public read.
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) VALUES
-  ('uploads', 'uploads', false, 104857600,
-    ARRAY['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/quicktime']),
-  ('outputs', 'outputs', false, 524288000,
-    ARRAY['image/png', 'image/jpeg', 'image/webp', 'video/mp4']),
-  ('catalog', 'catalog', true, 524288000,
-    ARRAY['image/png', 'image/jpeg', 'image/webp', 'video/mp4'])
-ON CONFLICT (id) DO NOTHING;
+--
+-- The buckets themselves are NOT created here: Lovable Cloud only allows bucket creation
+-- through its storage tool, and refuses SQL that writes to storage.buckets. Create them
+-- there first, with these settings (docs/V2_BACKEND_PLAN.md section 10):
+--   uploads  private  100 MB  image/png, image/jpeg, image/webp, video/mp4, video/quicktime
+--   outputs  private  500 MB  image/png, image/jpeg, image/webp, video/mp4
+--   catalog  public   500 MB  image/png, image/jpeg, image/webp, video/mp4
+-- The policies below apply once the buckets exist.
 
 CREATE POLICY "uploads: read own" ON storage.objects FOR SELECT TO authenticated
   USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
