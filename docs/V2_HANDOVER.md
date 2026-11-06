@@ -1,6 +1,6 @@
 # Replix AI 2.0 front end: handover
 
-Last updated: 2026-11-01 (session 2, second round: leftovers done, draft PR opened). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
+Last updated: 2026-11-06 (backend phase 0, see §12). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
 
 ## 0. Status at a glance
 
@@ -148,3 +148,7 @@ Differences from the playbook and open points:
 - Still placeholders because no replacement was supplied: Recent generations, the brand kit sample and the studio mode-card illustrations.
 
 **Backend TODO:** seed templates from the originals, serve video from storage or a CDN instead of `public/`, and add `baseUrl` for compositing.
+
+## 12. Backend phase 0 (2026-11-06)
+
+The backend plan is `docs/V2_BACKEND_PLAN.md`; what phase 0 built, and what to check once Lovable applies the migration, is in its section 10. In short: the v2 tables, buckets and RLS are in `supabase/migrations/20261106120000_v2_foundations.sql`; products, Library uploads and Brand Kit now read and write Supabase for signed-in users and fall back to the sample data in `?preview=1` or before the migration is applied; every studio sends a typed `inputs` object with its Generate request. Generation itself is still the front-end stand-in until phase 1.

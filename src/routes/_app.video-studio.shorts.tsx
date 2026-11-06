@@ -22,6 +22,7 @@ import {
   type UploadedImage,
 } from "@/v2/components/studio/UploadCard";
 import { useShortTemplates, videoGenerationCost } from "@/v2/data/api";
+import { uploadRef } from "@/v2/data/inputs";
 import type { AspectRatio, Product, ShortStyle, ShortTemplate } from "@/v2/data/types";
 import s1 from "@/assets/v2/catalog/short/studio-turn.webp";
 import s2 from "@/assets/v2/catalog/short/floating.webp";
@@ -302,6 +303,16 @@ function ShortsPage() {
               generate({
                 studio: "shorts",
                 kind: "video",
+                inputs:
+                  mode === "templates" && template
+                    ? { studio: "shorts", mode, templateId: template.id }
+                    : {
+                        studio: "shorts",
+                        mode: "custom",
+                        scene: uploadRef(scene),
+                        motionReference: uploadRef(reference),
+                        animation,
+                      },
                 product: product!,
                 style:
                   mode === "templates" && template

@@ -1,9 +1,14 @@
 /**
  * The one seam between the Replix 2.0 UI and its data. Screens only call these hooks;
- * when the backend lands, swap each fetcher for a Supabase query or server function and
- * keep the return types. Query keys are stable so mutations can invalidate them.
+ * each fetcher reads Supabase when there's a signed-in user and the v2 tables exist (see
+ * ./backend.ts), and falls back to the bundled sample data otherwise. Return types never
+ * change. Query keys are stable so mutations can invalidate them.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getShopifyProducts } from "@/lib/shopify.functions";
+import { extractBrandKit, readProductPage } from "@/lib/v2/v2.functions";
+import { backendUser, db, nameFromFile, resolveUrls, tryTable, uploadUserFile } from "./backend";
+import type { BrandKitRow, LibraryItemRow, ProductRow } from "./db-types";
 import {
   AD_CREDITS_PER_IMAGE,
   adThemes,
@@ -57,8 +62,45 @@ export const queryKeys = {
   recent: (kind: GenerationKind | "all") => ["v2", "recent", kind] as const,
 };
 
+/** Shown until the user extracts their first kit. */
+const BLANK_KIT: BrandKit = {
+  id: "new",
+  name: "My brand",
+  website: null,
+  logos: [],
+  colors: [],
+  fonts: null,
+  toneTags: [],
+  tone: null,
+  audience: null,
+  images: [],
+  isComplete: false,
+};
+
+async function kitsFromRows(rows: BrandKitRow[]): Promise<BrandKit[]> {
+  const urls = await resolveUrls(rows.flatMap((r) => [...r.logos, ...r.images]));
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    website: row.website,
+    logos: row.logos.map((l) => urls.get(l) ?? l),
+    colors: row.colors,
+    fonts: row.fonts,
+    toneTags: row.tone_tags,
+    tone: row.tone,
+    audience: row.audience,
+    images: row.images.map((i) => urls.get(i) ?? i),
+    isComplete: row.colors.length > 0 || !!row.fonts || !!row.tone,
+  }));
+}
+
 async function fetchBrandKits(): Promise<BrandKit[]> {
-  return brandKits;
+  if (!(await backendUser("brand_kits"))) return brandKits;
+  const rows = await tryTable("brand_kits", () =>
+    db.from("brand_kits").select("*").order("created_at"),
+  );
+  if (!rows) return brandKits;
+  return rows.length ? kitsFromRows(rows) : [BLANK_KIT];
 }
 
 async function fetchCommunity(): Promise<CommunityCreation[]> {
@@ -86,12 +128,91 @@ export function photoGenerationCost(imageCount: number) {
   return imageCount * PHOTO_CREDITS_PER_IMAGE;
 }
 
-/* Front-end stand-in for the user's rows; survives refetches until the page reloads. */
+/* Sample-data mode only: the user's additions, kept until the page reloads. */
 const addedProducts: Product[] = [];
 const libraryUploads: PieceOption[] = [];
 
+async function productsFromRows(rows: ProductRow[]): Promise<Product[]> {
+  const urls = await resolveUrls(rows.flatMap((r) => (r.image_path ? [r.image_path] : [])));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    imageUrl: (r.image_path ? urls.get(r.image_path) : r.image_url) ?? "",
+    source: r.source === "shopify" ? "shopify" : "upload",
+    description: r.description ?? undefined,
+    price: r.price ?? undefined,
+    createdAt: r.created_at,
+  }));
+}
+
+function formatMoney(amount: string, currency: string) {
+  const value = Number(amount);
+  if (!Number.isFinite(value)) return undefined;
+  try {
+    return new Intl.NumberFormat("en", { style: "currency", currency }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency}`;
+  }
+}
+
+/** Products from the connected Shopify store, read live (v1 integration). Empty if none. */
+async function fetchShopifyProducts(): Promise<Product[]> {
+  try {
+    const res = await getShopifyProducts({ data: { first: 50 } });
+    return res.products.flatMap(({ node }) => {
+      const image = node.images.edges[0]?.node.url;
+      if (!image) return [];
+      const price = node.priceRange.minVariantPrice;
+      return [
+        {
+          id: `shopify_${node.id.split("/").pop() ?? node.id}`,
+          name: node.title,
+          imageUrl: image,
+          source: "shopify" as const,
+          description: node.description || undefined,
+          price: formatMoney(price.amount, price.currencyCode),
+          createdAt: new Date(0).toISOString(),
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+}
+
 async function fetchProducts(): Promise<Product[]> {
-  return [...addedProducts, ...products];
+  if (!(await backendUser("products"))) return [...addedProducts, ...products];
+  const rows = await tryTable("products", () =>
+    db.from("products").select("*").order("created_at", { ascending: false }),
+  );
+  if (!rows) return [...addedProducts, ...products];
+  const [own, shopify] = await Promise.all([productsFromRows(rows), fetchShopifyProducts()]);
+  return [...own, ...shopify];
+}
+
+/** Save a product row, uploading its photo first when it's a local file. */
+async function insertProduct(
+  userId: string,
+  input: { name: string; description?: string; price?: string; image: Blob | string },
+): Promise<Product> {
+  const external = typeof input.image === "string" ? input.image : null;
+  const imagePath =
+    typeof input.image === "string" ? null : await uploadUserFile(userId, "products", input.image);
+  const { data, error } = await db
+    .from("products")
+    .insert({
+      user_id: userId,
+      source: external ? "url" : "upload",
+      name: input.name.slice(0, 200),
+      description: input.description?.slice(0, 5000) || null,
+      price: input.price?.slice(0, 40) || null,
+      image_path: imagePath,
+      image_url: external,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return (await productsFromRows([data]))[0];
 }
 
 export function useProducts() {
@@ -106,9 +227,12 @@ export function useUploadProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (file: File): Promise<Product> => {
+      const name = nameFromFile(file, "Uploaded product");
+      const userId = await backendUser("products");
+      if (userId) return insertProduct(userId, { name, image: file });
       const product: Product = {
         id: `upload_${Date.now()}`,
-        name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") || "Uploaded product",
+        name,
         imageUrl: URL.createObjectURL(file),
         source: "upload",
         createdAt: new Date().toISOString(),
@@ -120,8 +244,44 @@ export function useUploadProduct() {
   });
 }
 
+async function piecesFromRows(rows: LibraryItemRow[]): Promise<PieceOption[]> {
+  const urls = await resolveUrls(rows.map((r) => r.image_path));
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind as PieceKind,
+    name: r.name,
+    imageUrl: urls.get(r.image_path) ?? "",
+    isPro: r.is_pro,
+    background: r.background ?? undefined,
+    owner: r.user_id ? ("yours" as const) : undefined,
+  }));
+}
+
+/** The user's Library rows (optionally one kind), or null in sample-data mode. */
+async function fetchLibraryRows(kind?: PieceKind): Promise<LibraryItemRow[] | null> {
+  if (!(await backendUser("library_items"))) return null;
+  return tryTable("library_items", () => {
+    const query = db.from("library_items").select("*").order("created_at", { ascending: false });
+    return kind ? query.eq("kind", kind) : query;
+  });
+}
+
 async function fetchPieces(kind: PieceKind): Promise<PieceOption[]> {
-  return [...libraryUploads, ...pieceOptions].filter((p) => p.kind === kind);
+  const rows = await fetchLibraryRows(kind);
+  const own = rows ? await piecesFromRows(rows) : libraryUploads;
+  return [...own, ...pieceOptions].filter((p) => p.kind === kind);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function fetchPiece(id: string): Promise<PieceOption | null> {
+  if (UUID.test(id) && (await backendUser("library_items"))) {
+    const row = await tryTable("library_items", () =>
+      db.from("library_items").select("*").eq("id", id).maybeSingle(),
+    );
+    if (row) return (await piecesFromRows([row]))[0];
+  }
+  return [...libraryUploads, ...pieceOptions].find((p) => p.id === id) ?? null;
 }
 
 /** Library pieces of one kind: the user's uploads first, then the Replix-made ones. */
@@ -134,8 +294,7 @@ export function usePiece(id: string | undefined) {
   return useQuery({
     queryKey: ["v2", "piece", id ?? "none"] as const,
     enabled: !!id,
-    queryFn: async (): Promise<PieceOption | null> =>
-      [...libraryUploads, ...pieceOptions].find((p) => p.id === id) ?? null,
+    queryFn: () => fetchPiece(id ?? ""),
   });
 }
 
@@ -147,10 +306,22 @@ export function useAddLibraryUpload() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ file, kind }: { file: File; kind: PieceKind }): Promise<PieceOption> => {
+      const name = nameFromFile(file, "Your upload");
+      const userId = await backendUser("library_items");
+      if (userId) {
+        const path = await uploadUserFile(userId, `library/${kind}`, file);
+        const { data, error } = await db
+          .from("library_items")
+          .insert({ user_id: userId, kind, name, image_path: path })
+          .select()
+          .single();
+        if (error) throw new Error(error.message);
+        return (await piecesFromRows([data]))[0];
+      }
       const piece: PieceOption = {
         id: `${kind}_upload_${Date.now()}`,
         kind,
-        name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") || "Your upload",
+        name,
         imageUrl: URL.createObjectURL(file),
         isPro: false,
         owner: "yours",
@@ -209,6 +380,12 @@ export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
           thumbnailUrl: job.outputs[0].imageUrl,
           createdAt: job.createdAt,
         }));
+      /* Signed-in users see only their own; generation history moves to the DB in phase 1. */
+      if (await backendUser("products")) {
+        return fromJobs
+          .filter((g) => kind === "all" || g.kind === kind)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      }
       /* Same sample photos and ads that Assets lists as generations. */
       const day = (n: number) => new Date(Date.UTC(2026, 9, 31 - n)).toISOString();
       const stills: Generation[] = communityCreations
@@ -246,13 +423,26 @@ export function useShortTemplates() {
 }
 
 /**
- * Extract a brand kit from a website. Front-end stand-in: waits, then fills the active
- * kit with sample data. Backend: scrape logo, colours, fonts, tone and images.
+ * Extract a brand kit from a website: the server reads the site, Gemini picks colours,
+ * fonts and tone, and the kit is saved. Sample-data mode fills the kit with demo values.
  */
 export function useExtractBrandKit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ kitId, website }: { kitId: string; website: string }) => {
+      if (await backendUser("brand_kits")) {
+        const row = await extractBrandKit({
+          data: { website, kitId: kitId === BLANK_KIT.id ? undefined : kitId },
+        });
+        const [kit] = await kitsFromRows([row]);
+        /* The blank kit becomes the saved one, so replace by the id we were given. */
+        queryClient.setQueryData<BrandKit[]>(queryKeys.brandKits, (prev = []) =>
+          prev.some((k) => k.id === kitId)
+            ? prev.map((k) => (k.id === kitId ? kit : k))
+            : [kit, ...prev],
+        );
+        return kit;
+      }
       await new Promise((resolve) => setTimeout(resolve, 2200));
       const kits = queryClient.getQueryData<BrandKit[]>(queryKeys.brandKits) ?? brandKits;
       const base = kits.find((k) => k.id === kitId) ?? kits[0];
@@ -266,11 +456,26 @@ export function useExtractBrandKit() {
   });
 }
 
-/** Add a product from a product page URL or the manual form. Front-end stand-in. */
+/**
+ * Add a product from a product page URL or the manual form. A blob: image (manual form) is
+ * uploaded to storage; an imported https image is stored as its URL.
+ */
 export function useAddProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<Product, "id" | "createdAt">): Promise<Product> => {
+      const userId = await backendUser("products");
+      if (userId) {
+        const image = input.imageUrl.startsWith("blob:")
+          ? await fetch(input.imageUrl).then((r) => r.blob())
+          : input.imageUrl;
+        return insertProduct(userId, {
+          name: input.name,
+          description: input.description,
+          price: input.price,
+          image,
+        });
+      }
       const product: Product = {
         ...input,
         id: `product_${Date.now()}`,
@@ -284,12 +489,22 @@ export function useAddProduct() {
 }
 
 /**
- * Read a product page and return its name, description and main image.
- * Backend: reuse the v1 URL intake (product-intake / analysis). Here: a sample after 1.2s.
+ * Read a product page (any store) and return its name, description, main image and price.
+ * Sample-data mode returns a demo product after 1.2s.
  */
 export async function importProductFromUrl(
   url: string,
 ): Promise<Omit<Product, "id" | "createdAt">> {
+  if (await backendUser("products")) {
+    const page = await readProductPage({ data: { url } });
+    return {
+      name: page.name,
+      description: page.description,
+      imageUrl: page.imageUrl,
+      price: page.price,
+      source: "upload",
+    };
+  }
   await new Promise((resolve) => setTimeout(resolve, 1200));
   const sample = products.find((p) => p.id === "p_buds") ?? products[0];
   return {
@@ -300,15 +515,54 @@ export async function importProductFromUrl(
   };
 }
 
+/** A signed-in user's Assets: finished generations from this session plus their uploads. */
+async function ownAssets(rows: LibraryItemRow[], productList: Product[]): Promise<AssetItem[]> {
+  const pieces = await piecesFromRows(rows.filter((r) => r.kind !== "prop" && r.kind !== "pose"));
+  const created = new Map(rows.map((r) => [r.id, r.created_at]));
+  const generations: AssetItem[] = Object.values(readJobs())
+    .filter((job) => job.status === "done" && job.outputs.length)
+    .map((job) => ({
+      id: `asset_${job.id}`,
+      kind: job.request.kind === "video" ? "video" : job.request.kind,
+      origin: "generation" as const,
+      title: job.request.product.name,
+      thumbnailUrl: job.outputs[0].imageUrl,
+      createdAt: job.createdAt,
+    }));
+  const uploads: AssetItem[] = [
+    ...pieces.map((p) => ({
+      id: `asset_${p.id}`,
+      kind: p.kind as "character" | "scene" | "style",
+      origin: "upload" as const,
+      title: p.name,
+      thumbnailUrl: p.imageUrl,
+      createdAt: created.get(p.id) ?? new Date().toISOString(),
+    })),
+    ...productList
+      .filter((p) => p.source === "upload")
+      .map((p) => ({
+        id: `asset_${p.id}`,
+        kind: "product" as const,
+        origin: "upload" as const,
+        title: p.name,
+        thumbnailUrl: p.imageUrl,
+        createdAt: p.createdAt,
+      })),
+  ];
+  return [...generations, ...uploads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 /**
- * Everything in the user's library, newest first. Front-end: assembled from the other
- * fixtures. Backend: one endpoint over generations + uploads with kind/origin filters.
+ * Everything in the user's library, newest first: the database for signed-in users, the
+ * sample fixtures otherwise. Generations join from the DB in phase 1.
  */
 export function useAssets() {
   const { data: productList = products } = useProducts();
   return useQuery({
     queryKey: ["v2", "assets", productList.length] as const,
     queryFn: async (): Promise<AssetItem[]> => {
+      const libraryRows = await fetchLibraryRows();
+      if (libraryRows) return ownAssets(libraryRows, productList);
       const day = (n: number) => new Date(Date.UTC(2026, 9, 31 - n)).toISOString();
       const generations: AssetItem[] = [
         ...recentGenerations.map((g) => ({

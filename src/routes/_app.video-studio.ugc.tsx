@@ -23,6 +23,7 @@ import {
   type UploadedImage,
 } from "@/v2/components/studio/UploadCard";
 import { useUgcTemplates, videoGenerationCost } from "@/v2/data/api";
+import { uploadRef } from "@/v2/data/inputs";
 import type { AspectRatio, Product, UgcStyle, UgcTemplate } from "@/v2/data/types";
 import artSkincare from "@/assets/v2/catalog/ugc/try-on-check.webp";
 import artSneaker from "@/assets/v2/catalog/ugc/the-reveal.webp";
@@ -358,6 +359,17 @@ function UgcPage() {
               generate({
                 studio: "ugc",
                 kind: "video",
+                inputs:
+                  mode === "templates" && template
+                    ? { studio: "ugc", mode, templateId: template.id, script: script.trim() }
+                    : {
+                        studio: "ugc",
+                        mode: "custom",
+                        script: script.trim(),
+                        character: uploadRef(character),
+                        scene: uploadRef(scene),
+                        transition,
+                      },
                 product: product!,
                 style:
                   mode === "templates" && template

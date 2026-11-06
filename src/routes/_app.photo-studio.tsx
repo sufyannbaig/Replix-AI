@@ -22,6 +22,7 @@ import {
   type DiySelection,
 } from "@/v2/components/studio/BuildItYourself";
 import { photoGenerationCost, usePhotoTemplates, usePiece } from "@/v2/data/api";
+import { photoInputs } from "@/v2/data/inputs";
 import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
 import mocha from "@/assets/v2/catalog/photo/weekend-flat-lay.webp";
 import sodaHand from "@/assets/v2/catalog/photo/hand-hero.webp";
@@ -380,6 +381,11 @@ function PhotoStudioPage() {
               generate({
                 studio: "photo",
                 kind: "photo",
+                inputs: photoInputs(mode, {
+                  templateId: selected?.id ?? null,
+                  pieces,
+                  diy,
+                }),
                 product: product!,
                 style: style || undefined,
                 aspect,

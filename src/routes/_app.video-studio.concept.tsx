@@ -10,6 +10,7 @@ import { ComposerBar, missingHint } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import type { UploadedImage } from "@/v2/components/studio/UploadCard";
 import { videoGenerationCost } from "@/v2/data/api";
+import { uploadRef } from "@/v2/data/inputs";
 import type { AspectRatio, PieceKind, Product } from "@/v2/data/types";
 import plusCircle from "@/assets/v2/icons/plus-circle.svg";
 
@@ -335,6 +336,16 @@ function ConceptPage() {
               generate({
                 studio: "concept",
                 kind: "video",
+                inputs: {
+                  studio: "concept",
+                  concept: concept.trim(),
+                  climax: climax.trim(),
+                  emotion,
+                  script: script.trim(),
+                  character: uploadRef(character),
+                  scene: uploadRef(scene),
+                  reference: uploadRef(reference),
+                },
                 product: product!,
                 style: { label: `${emotion} concept`, imageUrl: scene?.url },
                 aspect,

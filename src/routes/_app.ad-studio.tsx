@@ -134,6 +134,7 @@ function AdStudioPage() {
               generate({
                 studio: "ad",
                 kind: "ad",
+                inputs: { studio: "ad", themeId: theme?.id ?? null },
                 product: product!,
                 style: theme
                   ? { label: `Theme: ${theme.name}`, imageUrl: theme.imageUrl }

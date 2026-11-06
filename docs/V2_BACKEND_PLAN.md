@@ -1,0 +1,155 @@
+# Replix AI 2.0: backend plan
+
+Status: draft for review (2026-11-06). Nothing here is built yet. The v2 front end on branch `v2` runs on mock data through one seam, `src/v2/data/api.ts`; this plan replaces those mocks with real data and AI generation without changing the screens.
+
+## 1. What already exists (v1, on `main` and `v2`)
+
+| Area     | What's there                                                                                                                                                                                                                                                  | Where                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Auth     | Supabase auth (Lovable Cloud), `profiles`, `handle_new_user()` trigger, referral codes                                                                                                                                                                        | migrations, `@lovable.dev/cloud-auth-js`                                                          |
+| Credits  | `user_credits (user_id, credits, plan, current_period_end)`. `consume_credits` / `refund_credits` RPCs with row lock, callable by the service role only. Users can read, not write, their row (the old "update own credits" policy was dropped). Realtime on. | migrations `20260614215028`, `20260603205932`                                                     |
+| Billing  | Shopify managed pricing (install, billing callback, `app_subscriptions/update` webhook) and Stripe (webhook upserts plan + credits). Cancel resets to Free with 0 credits.                                                                                    | `src/lib/shopify-billing.functions.ts`, `src/routes/api/public/stripe/webhook.ts`                 |
+| Shopify  | Install, OAuth callback, expiring tokens, product fetch, GDPR webhooks                                                                                                                                                                                        | `src/lib/shopify*.ts`, `src/routes/api/public/shopify/*`                                          |
+| AI       | Lovable AI Gateway: `google/gemini-3.1-flash-image` (Nano Banana) for image-to-image with a reference, `google/gemini-2.5-flash` for text and vision                                                                                                          | `src/lib/ai-gateway.server.ts`, `src/lib/api/generate-ad.functions.ts`, `src/lib/ai.functions.ts` |
+| Data     | `ads`, `collections`, `ad_collections`, `usage_events` (model, estimated cost)                                                                                                                                                                                | migrations                                                                                        |
+| Storage  | Private bucket `ad-images`, one folder per user (`<uid>/...`)                                                                                                                                                                                                 | migration `20260916210924`                                                                        |
+| Jobs     | `pgmq` + `pg_cron` already installed (used by the email queue)                                                                                                                                                                                                | `20260528221641_email_infra.sql`                                                                  |
+| Runtime  | TanStack Start server functions, built by Nitro for Cloudflare Workers (short request time limits, no ffmpeg)                                                                                                                                                 | `vite.config.ts`                                                                                  |
+| Tracking | Browser registration tracking in a shared tested helper (`src/lib/meta-registration.ts`). Must stay as is (AGENTS.md).                                                                                                                                        |                                                                                                   |
+
+**v1 credit unit:** 1 credit = 1 ad. Plans: Free 10, Starter 30, Pro 100, Scale 300 a month (`src/lib/pricing-plans.ts`).
+**v2 credit unit (front end today):** 2 credits per photo or ad, 10 credits per started 15 s of video, packs of 100 / 500 / 1,000. These two don't match yet (see decision D1).
+
+## 2. What the v2 front end asks for (every mock in `api.ts`)
+
+| Hook                                                                                                     | Real source                                                                                                                        | New or reuse            |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `useProducts`, `useUploadProduct`, `useAddProduct`, `importProductFromUrl`                               | Shopify products + uploaded products in one `products` table; URL import reuses `src/lib/product-intake.ts`                        | New table, reuse intake |
+| `useBrandKits`, `useExtractBrandKit`                                                                     | `brand_kits` table; extraction = fetch the site server-side, then Gemini reads logo, colours, fonts, tone                          | New                     |
+| `usePieceOptions`, `usePiece`, `useAddLibraryUpload`                                                     | `library_items` (scene, prop, character, style, pose). Replix-made rows have no owner; user uploads have `user_id`                 | New                     |
+| `usePhotoTemplates`, `useAdThemes`, `useUgcTemplates`, `useShortTemplates`                               | `templates` table seeded from the Drive originals, each with its generation recipe (prompt, reference images, motion) and `is_pro` | New, seeded             |
+| `useCommunityCreations`                                                                                  | Curated rows in `templates` (`featured = true`) for now                                                                            | New                     |
+| `useProductInsights`                                                                                     | Existing v1 product analysis in `ai.functions.ts`                                                                                  | Reuse                   |
+| `useStartGeneration`, `useGenerationJob`, `useSaveGenerationOutput`, `useRecentGenerations`, `useAssets` | `generation_jobs` + `generation_outputs`; Assets = outputs + uploads                                                               | New                     |
+| `photoGenerationCost`, `adGenerationCost`, `videoGenerationCost`                                         | One server-side price table; the client shows it, the server charges it                                                            | Move to server          |
+| `useHelpFaqs`                                                                                            | Stays static                                                                                                                       | None                    |
+| Credits card, Upgrade, Billing                                                                           | Existing `useCredits`, Shopify + Stripe billing                                                                                    | Reuse, extend for packs |
+
+**Contract gap to fix first:** `GenerationRequest` (types.ts) only carries product, a style label, aspect, count, seconds and note. The server needs the actual inputs: template id, theme id, piece ids (scene, props, character, pose), uploaded file paths, script, transition, animation, motion reference, brand kit id. Add a typed `inputs` field per studio before any generation work.
+
+## 3. Data model (new tables, all with RLS: users see and change only their own rows)
+
+```
+products          id, user_id, source ('shopify'|'upload'|'url'), shopify_product_id, name, description,
+                  price, image_path, created_at
+brand_kits        id, user_id, name, website, logos[], colors[], fonts jsonb, tone_tags[], tone, audience,
+                  images[], extracted_at
+library_items     id, user_id NULL (= Replix made), kind ('scene'|'prop'|'character'|'style'|'pose'),
+                  name, image_path, is_pro, background, created_at
+templates         id, studio ('photo'|'ad'|'ugc'|'shorts'|'concept'), slug, name, categories[], is_pro,
+                  poster_path, video_path, recipe jsonb, featured bool, sort
+generation_jobs   id, user_id, studio, kind, inputs jsonb, aspect, count, seconds, cost, status
+                  ('queued'|'running'|'done'|'failed'), progress, provider, provider_job_ids[], error,
+                  created_at, finished_at
+generation_outputs id, job_id, user_id, image_path, video_path, saved_to_assets, created_at
+credit_ledger     id, user_id, delta, reason ('grant'|'generation'|'refund'|'pack'|'plan_reset'),
+                  job_id, created_at        -- append-only; balance stays on user_credits
+```
+
+**Storage buckets:** `uploads` (private: products, characters, scenes, props, motion references), `outputs` (private, served with signed URLs), `catalog` (public: template posters, loops and Replix library images, behind a CDN). Video in `public/v2/videos` moves to `catalog`.
+
+## 4. Generation pipeline
+
+1. **Start** (`startGeneration` server function): check the user, validate `inputs`, check Pro gating against the plan, compute the cost from the server price table (never the client's number), reserve credits with `consume_credits` plus a ledger row, insert the job as `queued`, enqueue it on a `pgmq` queue `generations`. Return the job id. The result page already polls by id.
+2. **Run:** Cloudflare Workers can't hold a request for a 2-minute video. So:
+   - Images (Photo, Ad): fast enough to run in a worker call kicked off by `pg_cron` every few seconds reading the queue, or in the start call if it stays under the limit.
+   - Video: submit to the video provider with a **webhook** back to `/api/public/hooks/generation`, store the provider job id, finish on the webhook. A `pg_cron` sweeper fails jobs stuck past a timeout.
+3. **Finish:** save files to `outputs/<uid>/<job>/`, insert `generation_outputs`, mark `done`, log `usage_events` with the real provider cost.
+4. **Fail:** mark `failed`, `refund_credits` plus a ledger row. The front end already says "credits come back".
+5. **Live updates:** keep polling now; switch to Supabase Realtime on `generation_jobs` later.
+
+## 5. AI recipe per studio
+
+| Studio                                                      | Recipe                                                                                                                                                                                                 | Provider                                                                                                                                                                     | Risk                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Photo Studio (templates, piece by piece, build it yourself) | Nano Banana multi-image edit: product + template reference, or product + scene + props + character + pose, with a written prompt from the template recipe                                              | Lovable gateway (already used)                                                                                                                                               | Low. Product fidelity needs a quality check on reflective and text-heavy packaging |
+| Ad Studio                                                   | Product insights (existing) → copy (Gemini text) → image (Nano Banana with the theme recipe) → headline and CTA as an editable overlay (the v1 `ads.overlay` column) using Brand Kit fonts and colours | Lovable gateway                                                                                                                                                              | Low to medium. Overlay keeps text sharp and editable                               |
+| Product Shorts (5-10 s)                                     | Compose the first frame with Nano Banana (product in the template scene), then image-to-video with the template's motion prompt (spin, floating, pan, zoom)                                            | Image-to-video model through one API vendor (fal.ai or Replicate). Candidates to test: Kling, Veo, Seedance, Hailuo                                                          | Medium. Product drift in motion                                                    |
+| AI UGC ads (15-60 s)                                        | Script (Gemini) → voice (TTS, using the Drive voice set) → creator shots with the product, lip-synced → stitched to length with captions                                                               | Either a talking-video model with audio, or video model + ElevenLabs voice + lip-sync model; stitching needs ffmpeg outside Workers (vendor ffmpeg API or a small container) | High: cost, realism, length. Biggest spike                                         |
+| Concept ads                                                 | Script + hook + ending (Gemini) → shot list → several clips → stitched                                                                                                                                 | Same as UGC                                                                                                                                                                  | High. Ship last                                                                    |
+| "Write with AI", "Suggest with AI"                          | Gemini text with Brand Kit tone                                                                                                                                                                        | Lovable gateway                                                                                                                                                              | Low                                                                                |
+| Brand Kit extract                                           | Server fetch of the site → logo, colours, fonts, tone via Gemini                                                                                                                                       | Lovable gateway                                                                                                                                                              | Low                                                                                |
+
+Before choosing video models, run a **one-week spike**: 3 Shorts templates and 2 UGC templates through 2-3 candidates each, scoring product fidelity, realism, time to result and cost per second. The cost per second decides the video credit price (D1).
+
+## 6. Credits, plans and billing
+
+- Pick the v2 unit and plan sizes (D1). Today's front end: 2 credits per photo or ad, 10 per started 15 s of video. Plans still say 30 / 100 / 300 "generations".
+- Price table lives on the server, read by the front end for the Generate button labels.
+- Credit packs (100 / 500 / 1,000): Stripe one-time Checkout, and a Shopify one-time app charge for Shopify-billed stores. Pack credits shouldn't expire at renewal; plan credits reset monthly (D3).
+- Existing rule to keep: re-selecting Free must never top up credits again.
+- Free offer: front end says "10 free credits", the live site says "10 free ads" (D2).
+
+## 7. Safety and abuse
+
+- RLS on every new table; buckets private by user folder; signed URLs for outputs.
+- Server checks the plan for Pro templates (the front end lock is cosmetic).
+- Per-user rate limit on `startGeneration`, file type and size checks on uploads.
+- **People in uploads:** characters can be real faces, and UGC makes them talk. Terms must say users need consent for any person they upload; block public figures; add a report path. This is the main legal risk of v2 (D5: allowed, with consent terms).
+- Moderation pass on prompts and uploads (Gemini safety) before spending provider money.
+
+## 8. Phases
+
+| Phase                  | Scope                                                                                                                                               | Unblocks                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 0. Foundations         | Tables, buckets, RLS, ledger, `inputs` contract, template seeding from Drive, products (Shopify + upload + URL), Library uploads, Brand Kit storage | Every screen shows real data; uploads survive reloads |
+| 1. Photo + Ad          | Job queue, Photo Studio all three modes, Ad Studio with insights and overlay, Assets, server price table, new plan credits                          | First paid value on v2                                |
+| 2. Product Shorts      | Video spike result, image-to-video, webhook flow, sweeper                                                                                           | Video in the product                                  |
+| 3. AI UGC              | Script, voice, lip-sync, stitching, captions                                                                                                        | The headline v2 feature                               |
+| 4. Concept ads, polish | Multi-shot concept ads, Realtime updates, analytics, credit packs if not done in 1                                                                  | Full v2                                               |
+
+Each phase is built behind the v2 front end with the mock seam swapped hook by hook, so screens never change shape. **v2 launches once, after phase 4** (D7): the phases are build order, not releases. The video test runs alongside phase 0 so phases 2 and 3 aren't waiting on it.
+
+**Concept ads recipe:** use the ad-film method from Sufyan's Gen AI course skills (master shot, mind-travel shot list, frame-by-frame storyboard, ending variants, music direction) as the prompt chain: Gemini writes the concept, hook, shots and ending in that structure, then each shot is generated and stitched. The same skills shape the Photo Studio and Ad Studio prompt recipes.
+
+**UGC is the priority feature.** Two paths, same pipeline:
+
+- _Recreate a template:_ the template fixes creator, scene, shots and transitions; the user swaps in their product and script. Recipe stored per template.
+- _Custom:_ the user picks a character, a scene and a transition style and writes the script; the server builds the shot plan, then the same voice, lip-sync and stitching steps run.
+
+## 9. Decisions
+
+Made (2026-11-06):
+
+- **D3. Pack credits never expire.** Monthly plan credits are spent first and reset each month.
+- **D4. Video vendor: fal.ai to start** (recommended; the team had no preference). One account and key covers image-to-video, talking-video, lip-sync, text-to-speech and ffmpeg tools, with webhooks, so models can be swapped after the test without new contracts.
+- **D5. Anyone can upload a character, with consent terms.** Before launch: an upload checkbox ("I have this person's permission"), Terms of Service wording, a block on public figures, and a report link on results. Get the client's lawyer to read the terms.
+- **D6. Code written here, pushed to `v2`,** typechecked and reviewed per phase; Lovable pulls it.
+- **D7. Launch the complete product** (all studios working), not in parts.
+- **Video test account: the client's.** Benjamin creates the fal.ai account, adds the key as a project secret (`FAL_KEY`) and sets a small test budget.
+
+Open:
+
+- **D1. Credit unit and plan sizes.** Decided after the video test, from the real cost per second.
+- **D2. Free offer** (10 ads or 10 credits): the client decides.
+
+## 10. Phase 0 build (2026-11-06)
+
+Code is on `v2`. **The migration is not applied yet:** Lovable runs it when it pulls the branch (or apply it from the Lovable Cloud SQL editor). Until then, and in dev `?preview=1`, every hook falls back to the sample data, so nothing breaks.
+
+| Piece                         | Where                                                                               | Notes                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Migration                     | `supabase/migrations/20261106120000_v2_foundations.sql`                             | Tables `products`, `brand_kits`, `library_items`, `templates`, `generation_jobs`, `generation_outputs`, `credit_ledger`; buckets `uploads` (private), `outputs` (private, server-written), `catalog` (public); RLS on every table; storage policies on the `<uid>/` folder. v1 tables, billing and auth are untouched |
+| Credit ledger                 | same migration, trigger `user_credits_ledger`                                       | Records every change to `user_credits.credits` with the new balance. Phase 1 code sets `replix.credit_reason` / `replix.credit_job` in the transaction to label it; v1 paths log as `adjustment` (`grant` on signup)                                                                                                  |
+| Template seed                 | same migration                                                                      | 23 rows (6 photo, 6 UGC, 6 Shorts, 5 Ad themes), ids equal the front-end ids. Art stays bundled; `recipe` is empty until phases 1 to 3 fill it                                                                                                                                                                        |
+| `inputs` contract             | `GenerationInputs` in `src/v2/data/types.ts`, builders in `src/v2/data/inputs.ts`   | Every studio's Generate now sends its real picks (template / theme id, pieces, uploads, script, transition, animation, concept fields). Studio uploads are blob URLs in `UploadRef.url`; phase 1's start function uploads them and sets `path`                                                                        |
+| Client plumbing               | `src/v2/data/backend.ts`, `db-types.ts`                                             | Signed-in check, missing-table fallback, signed URLs (cached 6 h), uploads to `uploads/<uid>/...`. `db-types.ts` is a hand-written subset until Lovable regenerates `types.ts`                                                                                                                                        |
+| Products                      | `api.ts` `useProducts`, `useUploadProduct`, `useAddProduct`, `importProductFromUrl` | Own rows + the connected Shopify store read live through v1 `getShopifyProducts`. Manual adds upload the photo; URL imports store the page's image URL                                                                                                                                                                |
+| URL import, Brand Kit extract | `src/lib/v2/v2.functions.ts`, parser `src/lib/v2/page-meta.ts`                      | Server fetch with an SSRF guard (public http(s) only, each redirect re-checked, 2 MB / 12 s caps). Product: JSON-LD, then Open Graph. Brand Kit: logo, CSS colours, fonts and page text, then Gemini picks colours, fonts, tone and audience; the kit is saved with the user's own RLS-scoped client                  |
+| Library                       | `usePieceOptions`, `usePiece`, `useAddLibraryUpload`                                | User uploads persist in `library_items`; Replix pieces stay bundled                                                                                                                                                                                                                                                   |
+| Assets, Recent                | `useAssets`, `useRecentGenerations`                                                 | Signed-in users see their uploads and this session's generations only (no sample items). Generation history moves to `generation_jobs` in phase 1                                                                                                                                                                     |
+| Tests                         | `node --test src/lib/v2/page-meta.test.ts`                                          | URL guard, product and brand parsing                                                                                                                                                                                                                                                                                  |
+
+**Not in phase 0 (by design):** real generation (phase 1), the character consent checkbox (the column `consent_confirmed_at` exists; the UI comes with phase 3/4 safety work), copying imported product images into storage (phase 1 fetches them at generation time), moving template art to the `catalog` bucket.
+
+**Check after Lovable applies the migration:** sign in, add a product by upload, by URL and by the manual form, reload, and they stay; upload a Library character, reload; run Brand Kit extract on a real site; open Assets.

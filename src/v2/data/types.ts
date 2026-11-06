@@ -158,10 +158,72 @@ export type HelpFaq = {
 /** Which studio a generation came from (Video Studio has three). */
 export type StudioKey = "photo" | "ad" | "ugc" | "shorts" | "concept";
 
+/** A Library piece the user picked (Replix made or their own upload). */
+export type PieceRef = { id: string; kind: PieceKind | "pose"; name: string; imageUrl: string };
+
+/**
+ * A file the user added in a studio. `url` is a blob: URL until the generation starts; the
+ * server function uploads it to the `uploads` bucket and replaces `url` with `path`.
+ */
+export type UploadRef = { name: string; url?: string; path?: string; isVideo?: boolean };
+
+/**
+ * What the server needs to build each studio's prompt, on top of product, aspect and count.
+ * Template and theme ids match `templates.id` in the database.
+ */
+export type GenerationInputs =
+  | { studio: "photo"; mode: "templates"; templateId: string }
+  | {
+      studio: "photo";
+      mode: "piece";
+      scene: PieceRef;
+      props: PieceRef[];
+      character: PieceRef | null;
+      pose: PieceRef | null;
+    }
+  | {
+      studio: "photo";
+      mode: "diy";
+      scene: UploadRef;
+      props: UploadRef[];
+      character: UploadRef | null;
+      pose: UploadRef | null;
+    }
+  | { studio: "ad"; themeId: AdThemeId | null }
+  | { studio: "ugc"; mode: "templates"; templateId: string; script: string }
+  | {
+      studio: "ugc";
+      mode: "custom";
+      script: string;
+      character: UploadRef | null;
+      scene: UploadRef | null;
+      transition: string;
+    }
+  | { studio: "shorts"; mode: "templates"; templateId: string }
+  | {
+      studio: "shorts";
+      mode: "custom";
+      scene: UploadRef | null;
+      motionReference: UploadRef | null;
+      animation: string;
+    }
+  | {
+      studio: "concept";
+      concept: string;
+      climax: string;
+      emotion: string;
+      script: string;
+      character: UploadRef | null;
+      scene: UploadRef | null;
+      reference: UploadRef | null;
+    };
+
 /** Everything a studio sends when the user clicks Generate. */
 export type GenerationRequest = {
   studio: StudioKey;
   kind: GenerationKind;
+  /** Studio-specific choices; optional only so jobs saved before this field still load. */
+  inputs?: GenerationInputs;
   product: { id: string; name: string; imageUrl: string };
   /** Template, theme or scene the user picked, shown on the result screen. */
   style?: { label: string; imageUrl?: string };
