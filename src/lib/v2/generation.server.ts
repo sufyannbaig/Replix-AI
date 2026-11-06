@@ -59,11 +59,22 @@ async function fromStorage(bucket: string, path: string) {
   return toDataUrl(await data.arrayBuffer(), data.type || "image/png");
 }
 
+/**
+ * Where the app is served, for loading its own bundled art. `cookie` is the caller's
+ * cookie header: Lovable's preview host only serves files to a signed-in Lovable user,
+ * so the server's request for its own art must carry it. It's only sent to that origin.
+ */
+export type Site = { origin: string; cookie: string | null };
+
 /** Bundled app art (same origin) or a public https image (Shopify CDN, imported pages). */
-async function fromUrl(url: string, origin: string) {
-  const target = url.startsWith("/") ? new URL(url, origin) : isSafePublicUrl(url);
+async function fromUrl(url: string, site: Site) {
+  const target = url.startsWith("/") ? new URL(url, site.origin) : isSafePublicUrl(url);
   if (!target) throw new GenerationError("An image link isn't allowed.");
-  const res = await fetch(target, { signal: AbortSignal.timeout(15_000) });
+  const sameOrigin = target.origin === site.origin;
+  const res = await fetch(target, {
+    headers: sameOrigin && site.cookie ? { cookie: site.cookie } : undefined,
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!res.ok) throw new GenerationError("An image couldn't be downloaded.");
   const type = res.headers.get("content-type")?.split(";")[0] ?? "";
   if (!type.startsWith("image/")) throw new GenerationError("A reference isn't an image.");
@@ -72,7 +83,7 @@ async function fromUrl(url: string, origin: string) {
   return toDataUrl(bytes, type);
 }
 
-type Ctx = { userId: string; plan: string; origin: string };
+type Ctx = { userId: string; plan: string; site: Site };
 
 function assertPlan(ctx: Ctx, isPro: boolean, name: string) {
   if (isPro && ctx.plan === "free") {
@@ -91,7 +102,7 @@ async function loadProduct(ctx: Ctx, product: GenerationRequest["product"]) {
     if (!data) throw new GenerationError("That product no longer exists.");
     const dataUrl = data.image_path
       ? await fromStorage("uploads", data.image_path)
-      : await fromUrl(data.image_url ?? "", ctx.origin);
+      : await fromUrl(data.image_url ?? "", ctx.site);
     return { name: data.name, description: data.description, price: data.price, dataUrl };
   }
   if (product.id.startsWith("shopify_")) {
@@ -99,7 +110,7 @@ async function loadProduct(ctx: Ctx, product: GenerationRequest["product"]) {
       name: product.name,
       description: null,
       price: null,
-      dataUrl: await fromUrl(product.imageUrl, ctx.origin),
+      dataUrl: await fromUrl(product.imageUrl, ctx.site),
     };
   }
   throw new GenerationError("Pick one of your products first.");
@@ -118,7 +129,7 @@ async function loadPiece(ctx: Ctx, piece: PieceRef, role: PromptRef["role"]): Pr
   const bundled = pieceOptions.find((p) => p.id === piece.id);
   if (!bundled) throw new GenerationError(`"${piece.name}" isn't available any more.`);
   assertPlan(ctx, bundled.isPro, bundled.name);
-  return { role, name: bundled.name, dataUrl: await fromUrl(bundled.imageUrl, ctx.origin) };
+  return { role, name: bundled.name, dataUrl: await fromUrl(bundled.imageUrl, ctx.site) };
 }
 
 async function loadUpload(ctx: Ctx, file: UploadRef, role: PromptRef["role"]): Promise<Loaded> {
@@ -206,7 +217,7 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
     refs.push({
       role: "template",
       name: tpl.name,
-      dataUrl: await fromUrl(catalogImage("photo", tpl.slug), ctx.origin),
+      dataUrl: await fromUrl(catalogImage("photo", tpl.slug), ctx.site),
     });
   } else if (inputs.mode === "piece") {
     refs.push(await loadPiece(ctx, inputs.scene, "scene"));
@@ -248,7 +259,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
     refs.push({
       role: "layout",
       name: theme.name,
-      dataUrl: await fromUrl(theme.imageUrl, ctx.origin),
+      dataUrl: await fromUrl(theme.imageUrl, ctx.site),
     });
 
   const raw = await gatewayChat({
@@ -288,7 +299,7 @@ function extension(type: string) {
 /**
  * Run one claimed job to completion. Never throws: failures settle the job (with refund).
  */
-export async function runJob(jobRow: GenerationJobRow, origin: string) {
+export async function runJob(jobRow: GenerationJobRow, site: Site) {
   const request = jobRow.request as GenerationRequest;
   let ok = 0;
   let cost = 0;
@@ -301,7 +312,7 @@ export async function runJob(jobRow: GenerationJobRow, origin: string) {
       .select("plan")
       .eq("user_id", jobRow.user_id)
       .maybeSingle();
-    const ctx: Ctx = { userId: jobRow.user_id, plan: credits?.plan ?? "free", origin };
+    const ctx: Ctx = { userId: jobRow.user_id, plan: credits?.plan ?? "free", site };
 
     const plans: Plan[] =
       jobRow.studio === "photo"
@@ -377,7 +388,7 @@ export async function runJob(jobRow: GenerationJobRow, origin: string) {
 export async function loadProductForInsights(
   userId: string,
   product: GenerationRequest["product"],
-  origin: string,
+  site: Site,
 ) {
-  return loadProduct({ userId, plan: "free", origin }, product);
+  return loadProduct({ userId, plan: "free", site }, product);
 }

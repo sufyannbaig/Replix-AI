@@ -22,6 +22,12 @@ import type {
   ProductInsights,
 } from "@/v2/data/types";
 
+/** This request's origin and cookie, so the runner can load the app's own bundled art. */
+function requestSite() {
+  const request = getRequest();
+  return { origin: new URL(request.url).origin, cookie: request.headers.get("cookie") };
+}
+
 const STALE_QUEUED_MS = 10 * 60_000;
 const STALE_RUNNING_MS = 6 * 60_000;
 const MAX_JOBS_PER_MINUTE = 6;
@@ -141,7 +147,7 @@ export const runGeneration = createServerFn({ method: "POST" })
     if (!job || job.status !== "queued") return { started: false };
     const { data: claimed } = await admin.rpc("v2_claim_generation_job", { _job_id: job.id });
     if (!claimed) return { started: false };
-    await runJob(job, new URL(getRequest().url).origin);
+    await runJob(job, requestSite());
     return { started: true };
   });
 
@@ -289,11 +295,7 @@ export const getProductInsights = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ProductInsights> => {
     const { loadProductForInsights, TEXT_MODEL } = await import("./generation.server");
     const { gatewayChat, parseJsonBlock } = await import("@/lib/ai-gateway.server");
-    const product = await loadProductForInsights(
-      context.userId,
-      data.product,
-      new URL(getRequest().url).origin,
-    );
+    const product = await loadProductForInsights(context.userId, data.product, requestSite());
     const raw = await gatewayChat({
       model: TEXT_MODEL,
       response_format: { type: "json_object" },
