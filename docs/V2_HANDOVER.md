@@ -1,6 +1,6 @@
 # Replix AI 2.0 front end: handover
 
-Last updated: 2026-11-06 (backend phase 0, see §12). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
+Last updated: 2026-11-06 (backend phases 0 and 1, see §12). Branch: `v2`, **pushed to GitHub** and up to date. `main` = the live v1 site, untouched. **No pull request yet**: Sufyan will open it himself (draft, `v2` → `main`; don't merge without client approval).
 
 ## 0. Status at a glance
 
@@ -152,3 +152,5 @@ Differences from the playbook and open points:
 ## 12. Backend phase 0 (2026-11-06)
 
 The backend plan is `docs/V2_BACKEND_PLAN.md`; what phase 0 built, and what to check once Lovable applies the migration, is in its section 10. In short: the v2 tables, buckets and RLS are in `supabase/migrations/20261106120000_v2_foundations.sql`; products, Library uploads and Brand Kit now read and write Supabase for signed-in users and fall back to the sample data in `?preview=1` or before the migration is applied; every studio sends a typed `inputs` object with its Generate request. Generation itself is still the front-end stand-in until phase 1.
+
+**Phase 1 (same day):** Photo Studio and Ad Studio generate for real on the server (Lovable built-in Nano Banana and Gemini, no new keys); credits are reserved, settled and refunded in SQL. Second migration `20261106160000_v2_generation_jobs.sql`. Details in the plan's section 11; costs per generation in `docs/V2_GENERATION_COSTS.md`.

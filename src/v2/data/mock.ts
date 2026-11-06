@@ -84,7 +84,7 @@ const catalogImages = import.meta.glob<string>("@/assets/v2/catalog/*/*.webp", {
   import: "default",
 });
 
-function catalogImage(folder: string, slug: string): string {
+export function catalogImage(folder: string, slug: string): string {
   const key = Object.keys(catalogImages).find((k) => k.endsWith(`/catalog/${folder}/${slug}.webp`));
   return key ? catalogImages[key] : "";
 }
@@ -109,8 +109,9 @@ export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
   }),
 );
 
-/** Credits charged per generated photo; the backend will own this value. */
-export const PHOTO_CREDITS_PER_IMAGE = 2;
+/* Prices live in ./pricing.ts (the server uses the same table). */
+export { AD_CREDITS_PER_IMAGE, PHOTO_CREDITS_PER_IMAGE, VIDEO_CREDITS_PER_15S } from "./pricing";
+import { PHOTO_CREDITS_PER_IMAGE, VIDEO_CREDITS_PER_15S } from "./pricing";
 
 export const products: Product[] = [
   {
@@ -279,9 +280,6 @@ export const adThemes: AdTheme[] = [
   },
 ];
 
-/** Credits charged per static ad; the backend will own this value. */
-export const AD_CREDITS_PER_IMAGE = 2;
-
 /* Videos live in public/ so they stream on demand instead of going through the bundler. */
 const UGC_META: [string, string, UgcStyle, boolean][] = [
   ["honest-review", "Honest review", "review", false],
@@ -300,9 +298,6 @@ export const ugcTemplates: UgcTemplate[] = UGC_META.map(([slug, name, style, isP
   posterUrl: catalogImage("ugc", slug),
   videoUrl: `/v2/videos/ugc/${slug}.mp4`,
 }));
-
-/** Video pricing placeholder: credits per started 15 seconds. The backend owns this. */
-export const VIDEO_CREDITS_PER_15S = 10;
 
 const SHORT_META: [string, string, ShortStyle[], boolean][] = [
   ["studio-turn", "Studio Turn", ["studio"], false],

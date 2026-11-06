@@ -55,15 +55,108 @@ export type LibraryItemRow = {
   created_at: string;
 };
 
+export type TemplateRow = {
+  id: string;
+  studio: "photo" | "ad" | "ugc" | "shorts" | "concept";
+  slug: string;
+  name: string;
+  categories: string[];
+  is_pro: boolean;
+  poster_path: string | null;
+  video_path: string | null;
+  recipe: Record<string, unknown>;
+  featured: boolean;
+  active: boolean;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GenerationJobRow = {
+  id: string;
+  user_id: string;
+  studio: "photo" | "ad" | "ugc" | "shorts" | "concept";
+  kind: "photo" | "ad" | "video";
+  request: unknown;
+  aspect: string;
+  count: number;
+  seconds: number | null;
+  cost: number;
+  status: "queued" | "running" | "done" | "failed";
+  progress: number;
+  provider: string | null;
+  provider_job_ids: string[];
+  error: string | null;
+  refunded: boolean;
+  provider_cost_usd: number | null;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
+export type GenerationOutputRow = {
+  id: string;
+  job_id: string;
+  user_id: string;
+  position: number;
+  image_path: string | null;
+  video_path: string | null;
+  saved_to_assets: boolean;
+  copy: { headline: string; subline: string; cta: string } | null;
+  created_at: string;
+};
+
 export type V2Database = {
   public: {
     Tables: {
       products: Table<ProductRow, "user_id" | "source" | "name">;
       brand_kits: Table<BrandKitRow, "user_id">;
       library_items: Table<LibraryItemRow, "user_id" | "kind" | "name" | "image_path">;
+      templates: Table<TemplateRow, "id" | "studio" | "slug" | "name">;
+      generation_jobs: Table<
+        GenerationJobRow,
+        "user_id" | "studio" | "kind" | "request" | "aspect" | "cost"
+      >;
+      generation_outputs: Table<GenerationOutputRow, "job_id" | "user_id">;
+      user_credits: Table<
+        { user_id: string; credits: number; plan: string; updated_at: string },
+        "user_id"
+      >;
+      usage_events: Table<
+        {
+          id: string;
+          user_id: string;
+          event_type: string;
+          model: string | null;
+          variant_count: number;
+          estimated_cost_usd: number;
+          created_at: string;
+        },
+        "user_id" | "event_type"
+      >;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      v2_create_generation_job: {
+        Args: {
+          _user_id: string;
+          _studio: string;
+          _kind: string;
+          _request: unknown;
+          _aspect: string;
+          _count: number;
+          _seconds: number | null;
+          _cost: number;
+        };
+        Returns: string;
+      };
+      v2_claim_generation_job: { Args: { _job_id: string }; Returns: boolean };
+      v2_settle_generation_job: {
+        Args: { _job_id: string; _ok: number; _error: string | null; _provider_cost_usd: number };
+        Returns: number;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

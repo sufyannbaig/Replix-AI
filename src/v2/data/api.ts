@@ -7,17 +7,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getShopifyProducts } from "@/lib/shopify.functions";
 import { extractBrandKit, readProductPage } from "@/lib/v2/v2.functions";
+import {
+  getGenerationJob,
+  getProductInsights,
+  listGenerations,
+  runGeneration,
+  startGeneration,
+} from "@/lib/v2/generation.functions";
+import { notifyCreditsChanged } from "@/hooks/use-credits";
 import { backendUser, db, nameFromFile, resolveUrls, tryTable, uploadUserFile } from "./backend";
 import type { BrandKitRow, LibraryItemRow, ProductRow } from "./db-types";
 import {
-  AD_CREDITS_PER_IMAGE,
   adThemes,
   brandKits,
   communityCreations,
   helpFaqs,
   MOCK_GENERATION_SECONDS,
   mockGenerationImages,
-  PHOTO_CREDITS_PER_IMAGE,
   photoTemplates,
   pieceOptions,
   products,
@@ -26,7 +32,6 @@ import {
   sampleInsights,
   shortTemplates,
   ugcTemplates,
-  VIDEO_CREDITS_PER_15S,
 } from "./mock";
 import type {
   AdTheme,
@@ -34,6 +39,7 @@ import type {
   BrandKit,
   CommunityCreation,
   Generation,
+  GenerationInputs,
   GenerationJob,
   GenerationKind,
   GenerationRequest,
@@ -45,6 +51,7 @@ import type {
   ProductInsights,
   ShortTemplate,
   UgcTemplate,
+  UploadRef,
 } from "./types";
 
 export const queryKeys = {
@@ -123,10 +130,8 @@ export function usePhotoTemplates() {
   return useQuery({ queryKey: queryKeys.photoTemplates, queryFn: fetchPhotoTemplates });
 }
 
-/** Credit cost shown on Generate before the user commits. */
-export function photoGenerationCost(imageCount: number) {
-  return imageCount * PHOTO_CREDITS_PER_IMAGE;
-}
+/* Credit costs shown on Generate; the server prices jobs from the same table. */
+export { adGenerationCost, photoGenerationCost, videoGenerationCost } from "./pricing";
 
 /* Sample-data mode only: the user's additions, kept until the page reloads. */
 const addedProducts: Product[] = [];
@@ -337,16 +342,21 @@ export function useAddLibraryUpload() {
 }
 
 /**
- * AI product analysis for Ad Studio (same analysis as v1). The delay stands in for the
- * real call so the loading state can be designed; replace with the existing analysis
- * server function.
+ * AI product analysis for Ad Studio: Gemini reads the product photo for pain points and
+ * ad angles. Cached for the session per product. Sample-data mode returns demo insights.
  */
-export function useProductInsights(productId: string | null) {
+export function useProductInsights(product: Product | null) {
   return useQuery({
-    queryKey: queryKeys.insights(productId ?? "none"),
-    enabled: !!productId,
+    queryKey: queryKeys.insights(product?.id ?? "none"),
+    enabled: !!product,
     staleTime: Infinity,
+    retry: 1,
     queryFn: async (): Promise<ProductInsights> => {
+      if (product && (await backendUser("generation_jobs"))) {
+        return getProductInsights({
+          data: { product: { id: product.id, name: product.name, imageUrl: product.imageUrl } },
+        });
+      }
       await new Promise((resolve) => setTimeout(resolve, 1400));
       return sampleInsights;
     },
@@ -358,10 +368,6 @@ export function useAdThemes() {
     queryKey: queryKeys.adThemes,
     queryFn: async (): Promise<AdTheme[]> => adThemes,
   });
-}
-
-export function adGenerationCost(adCount: number) {
-  return adCount * AD_CREDITS_PER_IMAGE;
 }
 
 /** The user's latest generations, newest first. Sections hide when this is empty. */
@@ -380,9 +386,10 @@ export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
           thumbnailUrl: job.outputs[0].imageUrl,
           createdAt: job.createdAt,
         }));
-      /* Signed-in users see only their own; generation history moves to the DB in phase 1. */
-      if (await backendUser("products")) {
-        return fromJobs
+      /* Signed-in users: their saved jobs (photos, ads) plus this session's video stand-ins. */
+      if (await backendUser("generation_jobs")) {
+        const { recent } = await listGenerations({ data: { kind, limit: 20 } });
+        return [...recent, ...fromJobs]
           .filter((g) => kind === "all" || g.kind === kind)
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       }
@@ -409,10 +416,6 @@ export function useUgcTemplates() {
     queryKey: queryKeys.ugcTemplates,
     queryFn: async (): Promise<UgcTemplate[]> => ugcTemplates,
   });
-}
-
-export function videoGenerationCost(seconds: number) {
-  return Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
 }
 
 export function useShortTemplates() {
@@ -515,20 +518,29 @@ export async function importProductFromUrl(
   };
 }
 
-/** A signed-in user's Assets: finished generations from this session plus their uploads. */
+/**
+ * A signed-in user's Assets: results they saved with "Save to Assets", this session's
+ * video stand-ins (until phase 2), and their uploads.
+ */
 async function ownAssets(rows: LibraryItemRow[], productList: Product[]): Promise<AssetItem[]> {
   const pieces = await piecesFromRows(rows.filter((r) => r.kind !== "prop" && r.kind !== "pose"));
   const created = new Map(rows.map((r) => [r.id, r.created_at]));
-  const generations: AssetItem[] = Object.values(readJobs())
-    .filter((job) => job.status === "done" && job.outputs.length)
-    .map((job) => ({
-      id: `asset_${job.id}`,
-      kind: job.request.kind === "video" ? "video" : job.request.kind,
-      origin: "generation" as const,
-      title: job.request.product.name,
-      thumbnailUrl: job.outputs[0].imageUrl,
-      createdAt: job.createdAt,
-    }));
+  const saved = await listGenerations({ data: { savedOnly: true, limit: 100 } })
+    .then((r) => r.assets)
+    .catch(() => [] as AssetItem[]);
+  const generations: AssetItem[] = [
+    ...saved,
+    ...Object.values(readJobs())
+      .filter((job) => job.status === "done" && job.outputs.some((o) => o.savedToAssets))
+      .map((job) => ({
+        id: `asset_${job.id}`,
+        kind: job.request.kind,
+        origin: "generation" as const,
+        title: job.request.product.name,
+        thumbnailUrl: job.outputs[0].imageUrl,
+        createdAt: job.createdAt,
+      })),
+  ];
   const uploads: AssetItem[] = [
     ...pieces.map((p) => ({
       id: `asset_${p.id}`,
@@ -690,11 +702,74 @@ function advanceJob(job: GenerationJob): GenerationJob {
   return { ...job, status: "done", progress: 1, outputs };
 }
 
-/** Start a generation; resolves with the new job so the caller can open its result page. */
+/** Upload every studio file still held as a blob: URL and record its storage path. */
+async function uploadStudioFiles(userId: string, inputs: GenerationInputs) {
+  const copy = structuredClone(inputs) as GenerationInputs;
+  const files: UploadRef[] = [];
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) return value.forEach(visit);
+    const ref = value as UploadRef;
+    if (typeof ref.url === "string" && ref.url.startsWith("blob:") && !ref.path) files.push(ref);
+    else Object.values(value).forEach(visit);
+  };
+  visit(copy);
+  await Promise.all(
+    files.map(async (ref) => {
+      const blob = await fetch(ref.url!).then((r) => r.blob());
+      ref.path = await uploadUserFile(userId, "studio", blob);
+    }),
+  );
+  return copy;
+}
+
+const kickedAt = new Map<string, number>();
+
+/** Ask the server to run a queued job. Safe to repeat: the server claims each job once. */
+function kickJob(jobId: string, onSettled: () => void) {
+  kickedAt.set(jobId, Date.now());
+  void runGeneration({ data: { jobId } })
+    .catch(() => {
+      /* The poll shows the job's real state; a stalled job is recovered server-side. */
+    })
+    .finally(onSettled);
+}
+
+/**
+ * Start a generation; resolves with the new job so the caller can open its result page.
+ * Photo and Ad Studio run on the server for signed-in users (credits are charged there);
+ * video studios stay on the front-end stand-in until phase 2.
+ */
 export function useStartGeneration() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (request: GenerationRequest): Promise<GenerationJob> => {
+      const userId = request.kind === "video" ? null : await backendUser("generation_jobs");
+      if (userId && request.inputs && (request.studio === "photo" || request.studio === "ad")) {
+        const inputs = await uploadStudioFiles(userId, request.inputs);
+        const { jobId, cost } = await startGeneration({
+          data: {
+            ...request,
+            studio: request.studio,
+            kind: request.kind as "photo" | "ad",
+            inputs,
+          } as never,
+        });
+        notifyCreditsChanged();
+        kickJob(jobId, () => {
+          notifyCreditsChanged();
+          void queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) });
+          void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
+        });
+        return {
+          id: jobId,
+          request: { ...request, inputs, cost },
+          status: "queued",
+          progress: 0,
+          createdAt: new Date().toISOString(),
+          outputs: [],
+        };
+      }
       const job: GenerationJob = {
         id: `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
         request,
@@ -716,6 +791,22 @@ export function useGenerationJob(jobId: string) {
   return useQuery({
     queryKey: queryKeys.job(jobId),
     queryFn: async (): Promise<GenerationJob | null> => {
+      if (UUID.test(jobId) && (await backendUser("generation_jobs"))) {
+        const job = await getGenerationJob({ data: { jobId } });
+        /* Still queued well after start (the first run call was lost): ask again. */
+        if (
+          job?.status === "queued" &&
+          Date.now() - Date.parse(job.createdAt) > 20_000 &&
+          Date.now() - (kickedAt.get(jobId) ?? 0) > 30_000
+        ) {
+          kickJob(jobId, () => queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) }));
+        }
+        if (job && (job.status === "done" || job.status === "failed")) {
+          void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
+          notifyCreditsChanged();
+        }
+        return job;
+      }
       const stored = readJobs()[jobId];
       if (!stored) return null;
       const next = advanceJob(stored);
@@ -728,7 +819,8 @@ export function useGenerationJob(jobId: string) {
     },
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === "queued" || status === "running" ? 500 : false;
+      if (status !== "queued" && status !== "running") return false;
+      return UUID.test(jobId) ? 1500 : 500;
     },
   });
 }
@@ -738,6 +830,22 @@ export function useSaveGenerationOutput(jobId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ outputId, saved }: { outputId: string; saved: boolean }) => {
+      if (UUID.test(jobId) && (await backendUser("generation_outputs"))) {
+        const { error } = await db
+          .from("generation_outputs")
+          .update({ saved_to_assets: saved })
+          .eq("id", outputId);
+        if (error) throw new Error(error.message);
+        void queryClient.invalidateQueries({ queryKey: ["v2", "assets"] });
+        const current = queryClient.getQueryData<GenerationJob | null>(queryKeys.job(jobId));
+        if (!current) throw new Error("This generation is no longer available.");
+        return {
+          ...current,
+          outputs: current.outputs.map((o) =>
+            o.id === outputId ? { ...o, savedToAssets: saved } : o,
+          ),
+        };
+      }
       const job = readJobs()[jobId];
       if (!job) throw new Error("This generation is no longer available.");
       const next: GenerationJob = {

@@ -27,7 +27,7 @@ function AdStudioPage() {
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
   const [count, setCount] = useState(1);
   const [note, setNote] = useState("");
-  const insights = useProductInsights(product?.id ?? null);
+  const insights = useProductInsights(product);
   const { data: themes = [] } = useAdThemes();
 
   return (
