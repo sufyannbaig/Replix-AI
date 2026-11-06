@@ -104,7 +104,7 @@ export const startGeneration = createServerFn({ method: "POST" })
       throw new Error("You're generating very fast. Wait a minute and try again.");
     }
 
-    const cost = generationCost(data.kind, data.count, data.seconds);
+    const cost = generationCost(data.kind, data.count, data.seconds, data.studio);
     const request = { ...storableRequest(data), cost };
     const { data: jobId, error } = await admin.rpc("v2_create_generation_job", {
       _user_id: context.userId,

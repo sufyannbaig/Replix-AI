@@ -131,7 +131,12 @@ export function usePhotoTemplates() {
 }
 
 /* Credit costs shown on Generate; the server prices jobs from the same table. */
-export { adGenerationCost, photoGenerationCost, videoGenerationCost } from "./pricing";
+export {
+  adGenerationCost,
+  photoGenerationCost,
+  ugcGenerationCost,
+  videoGenerationCost,
+} from "./pricing";
 
 /* Sample-data mode only: the user's additions, kept until the page reloads. */
 const addedProducts: Product[] = [];

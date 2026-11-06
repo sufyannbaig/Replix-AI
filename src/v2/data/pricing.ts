@@ -9,6 +9,13 @@ export const PHOTO_CREDITS_PER_IMAGE = 2;
 export const AD_CREDITS_PER_IMAGE = 2;
 /** Charged per started 15 seconds of video. */
 export const VIDEO_CREDITS_PER_15S = 10;
+/**
+ * AI UGC is talking video with a voice, the most expensive model call (about $0.16 a
+ * second). It is priced at about 2 credits a second so it earns money on every plan,
+ * Scale included. Lengths not listed fall back to 2 credits a second.
+ */
+export const UGC_CREDITS_BY_SECONDS: Record<number, number> = { 8: 15, 15: 30 };
+export const UGC_CREDITS_PER_SECOND = 2;
 
 export const MAX_IMAGES_PER_JOB = 4;
 
@@ -35,7 +42,18 @@ export function videoGenerationCost(seconds: number) {
   return Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
 }
 
-export function generationCost(kind: GenerationKind, count: number, seconds?: number) {
-  if (kind === "video") return videoGenerationCost(seconds ?? 15);
+export function ugcGenerationCost(seconds: number) {
+  return UGC_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds * UGC_CREDITS_PER_SECOND);
+}
+
+export function generationCost(
+  kind: GenerationKind,
+  count: number,
+  seconds?: number,
+  studio?: string,
+) {
+  if (kind === "video") {
+    return studio === "ugc" ? ugcGenerationCost(seconds ?? 15) : videoGenerationCost(seconds ?? 15);
+  }
   return kind === "ad" ? adGenerationCost(count) : photoGenerationCost(count);
 }

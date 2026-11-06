@@ -22,7 +22,7 @@ import {
   UploadTip,
   type UploadedImage,
 } from "@/v2/components/studio/UploadCard";
-import { useUgcTemplates, videoGenerationCost } from "@/v2/data/api";
+import { ugcGenerationCost, useUgcTemplates } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
 import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, Product, UgcStyle, UgcTemplate } from "@/v2/data/types";
@@ -193,7 +193,7 @@ function UgcPage() {
     () => templates.filter((t) => style === "all" || t.style === style),
     [templates, style],
   );
-  const cost = videoGenerationCost(seconds);
+  const cost = ugcGenerationCost(seconds);
 
   const choose = (t: UgcTemplate) => {
     if (t.isPro && plan === "free") setLocked(t);
