@@ -6,7 +6,7 @@ Written 2026-11-07, to hand the work to another Claude session. Read this first,
 
 Replix AI 2.0 is a TanStack Start app on Supabase (Lovable Cloud), hosted by Lovable on Cloudflare Workers. Phase 0 (data) and phase 1 (Photo Studio and Ad Studio generating for real) are built and tested on the Lovable preview. Ad Studio was just rebuilt so ads look designed: the AI makes a text-free photo and our own code sets the headline, subline and button over it. Video studios (phases 2–4) are still front-end stand-ins.
 
-- Repo: https://github.com/sufyannbaig/Replix-AI, branch **`v2`**. Lovable has everything up to `082582f` (brand steps 1-5). Local path: `C:\Users\Isra University\OneDrive\Documents\GitHub\Replix-AI`.
+- Repo: https://github.com/sufyannbaig/Replix-AI, branch **`v2`**. Lovable has everything up to `54a99a4` and the step 6 notes after it (brand steps 1-6). Local path: `C:\Users\Isra University\OneDrive\Documents\GitHub\Replix-AI`.
 - Lovable project: https://lovable.dev/projects/0a083220-8ffb-4ce6-b754-315b07d1704f (in Benjamin's workspace).
 - Preview: https://preview--replixai.lovable.app (needs a Lovable sign-in, then the app's own sign-in).
 - Supabase project ref: `mfjfnbhpkdwysjdybzaq`.
@@ -73,12 +73,9 @@ Practical notes from driving it with the in-app browser:
 **Brand kits**: multi-brand kits and ads that use the brand's fonts and logo. Plan, decisions and per-step notes in `docs/V2_BRAND_PLAN.md`.
 
 - **Steps 1-5 are written, tested and imported into Lovable** (`08ab361` page and editor, `c5f7a2e` products and composer, `8f7bd4a` fonts in ads, `082582f` logo in ads; migration `20261107140000_v2_brand_fonts.sql` applied). 134 tests pass. Every visual piece was checked locally in sample mode, and the ad rendering with real Google fonts and test logos in the browser.
-- **Not yet seen live** (the preview had signed out, and only Sufyan signs in). Step 6 on the preview, signed in:
-  1. Brand Kit: create a brand by hand, upload a PNG logo and a light version, an SVG logo, pick Google fonts, upload a TTF (tick the licence), save. On Free, "Add brand" should show the upgrade prompt.
-  2. Products: change an uploaded product's brand from the chip.
-  3. Ad Studio: the brand chip should show the product's brand; generate 1:1 and 9:16 for each theme with "Show logo" on, and one with it off.
-  4. Check the composed ads use the brand fonts and logo; check Recent and Assets compose too.
-  5. Two brands need Pro: either a test plan change or skip until launch. Also untested: promoting a new default when the default is deleted.
+- **Step 6 live test done** (2026-11-08, preview, test account): brand made by hand with an SVG logo, light version, Playfair headings and an uploaded Caveat font; 11 ads across all themes at 1:1 and 9:16 composed with the brand fonts and logo (and without it when off); Recent and Assets show the composed ads; the Free upgrade prompt works. Results in section 6 of the brand plan.
+- **Fixed from it** (`54a99a4`): tall hook and quote ads put the logo on the product; it now sits at the top. Re-run one 9:16 Problem → Fix and Testimonials ad live to confirm.
+- **Still untested live:** two brands and switching (needs Pro, or a test plan change), an opaque JPG logo, promoting a new default when the default is deleted. The test brand "Soniq Audio" and 11 test ads are still on the test account.
 - **Step 7** (Shopify store to brand) is left: it touches the connect flow, so do it with Sufyan around.
 - Photo Studio has no brand pill on purpose (the photo pipeline doesn't read the brand). Open questions are in section 7 of the brand plan.
 
