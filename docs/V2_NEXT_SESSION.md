@@ -66,6 +66,8 @@ Practical notes from driving it with the in-app browser:
 5. Plan step 8: "Edit text" on the result screen, re-rendering from `{n}-photo.png` for free.
 6. Open questions in the plan's section 7: a "Made with Replix" mark on Free ads; layout choice in the studio.
 
+**Brand kits (next)**: multi-brand kits and ads that use the brand's fonts and logo. Plan and agreed decisions in `docs/V2_BRAND_PLAN.md`.
+
 **Phase 2+ (video)**: `docs/V2_BACKEND_PLAN.md` sections 4, 8 and 9.
 
 - Benjamin has to create the fal.ai account and add `FAL_KEY` as a project secret (D4). Then run the video test, which decides D1 (credit unit and plan sizes).
