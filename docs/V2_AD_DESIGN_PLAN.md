@@ -106,5 +106,5 @@ Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
 ## 7. Open questions
 
 - Is a third font family (a script or handwriting face) worth it for the "Note" testimonial layout?
-- Should Free-plan ads carry a small "Made with Replix" mark in a corner? That's now possible because we set the type ourselves.
+- ~~Should Free-plan ads carry a small "Made with Replix" mark?~~ **Decided 2026-11-08: no mark on any plan.**
 - Do we offer layout choice in the studio, or keep it automatic per theme and let people switch on the result screen (phase 3)?

@@ -847,8 +847,8 @@ export async function importProductFromUrl(
 }
 
 /**
- * A signed-in user's Assets: results they saved with "Save to Assets", this session's
- * video stand-ins (until phase 2), and their uploads.
+ * A signed-in user's Assets: every finished generation (Assets is the history; there's no
+ * separate history page), this session's video stand-ins (until phase 2), and their uploads.
  */
 async function ownAssets(
   rows: LibraryItemRow[],
@@ -857,7 +857,7 @@ async function ownAssets(
 ): Promise<AssetItem[]> {
   const pieces = await piecesFromRows(rows.filter((r) => r.kind !== "prop" && r.kind !== "pose"));
   const created = new Map(rows.map((r) => [r.id, r.created_at]));
-  const listed = await listGenerations({ data: { savedOnly: true, limit: 100 } })
+  const listed = await listGenerations({ data: { limit: 100 } })
     .then((r) => r.assets)
     .catch(() => [] as AssetItem[]);
   composeListed(queryClient, listed);
@@ -865,7 +865,7 @@ async function ownAssets(
   const generations: AssetItem[] = [
     ...saved,
     ...Object.values(readJobs())
-      .filter((job) => job.status === "done" && job.outputs.some((o) => o.savedToAssets))
+      .filter((job) => job.status === "done")
       .map((job) => ({
         id: `asset_${job.id}`,
         kind: job.request.kind,

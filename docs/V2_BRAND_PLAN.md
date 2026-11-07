@@ -124,5 +124,5 @@ No extra AI cost: fonts and logos are drawn by our code, not the image model.
 ## 7. Still open
 
 - **Settings extras:** profile photo upload, a change-password form in the app, and delete account. The last needs a decision on cancelling the subscription first. Separate from this plan; say if you want them.
-- Should the Free plan's single brand allow uploaded fonts, or only Google Fonts?
-- Does "Made with Replix" on Free ads (ad plan, section 7) sit opposite the brand logo, or replace it?
+- **Decided 2026-11-08:** Free uses Google Fonts only. The font picker shows "See plans" instead of the upload, and the ad server ignores uploaded fonts on Free (`canUploadFonts` / `brandFontsForPlan` in `pricing.ts`). Starter, Pro and Scale may upload.
+- **Decided 2026-11-08:** no "Made with Replix" mark on any ad, on any plan. The old v1 watermark in `AdPreview.tsx` was removed too.

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Check, Download, Play, RefreshCw, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { useGenerationJob, useSaveGenerationOutput } from "@/v2/data/api";
+import { useGenerationJob } from "@/v2/data/api";
 import type {
   AspectRatio,
   GenerationJob,
@@ -103,7 +103,6 @@ function Result({ job }: { job: GenerationJob }) {
   const noun = NOUN[request.kind];
   const plural = request.count > 1;
   const { generate, pending } = useGenerate();
-  const save = useSaveGenerationOutput(job.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = job.outputs.find((o) => o.id === selectedId) ?? job.outputs[0];
 
@@ -173,11 +172,6 @@ function Result({ job }: { job: GenerationJob }) {
                       )}
                     >
                       <img src={o.imageUrl} alt="" className="size-full object-cover" />
-                      {o.savedToAssets ? (
-                        <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-v2-pill text-white">
-                          <Check className="size-2.5" strokeWidth={3} />
-                        </span>
-                      ) : null}
                     </button>
                   ))
                 : Array.from({ length: request.count }, (_, i) => (
@@ -208,34 +202,18 @@ function Result({ job }: { job: GenerationJob }) {
                   Download all {request.count}
                 </button>
               ) : null}
-              {selected.savedToAssets ? (
-                <div className="flex items-center justify-between gap-3 rounded-[60px] bg-v2-nav-active px-5 py-2.5 font-archivo text-base text-v2-ink">
-                  <span className="flex items-center gap-2">
-                    <Check className="size-4" /> Saved to Assets
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => save.mutate({ outputId: selected.id, saved: false })}
-                    className="font-inter-tight text-xs text-v2-ink-60 hover:text-v2-ink"
-                  >
-                    Undo
-                  </button>
-                </div>
-              ) : (
-                <PillButton
-                  variant="outline"
-                  className="w-full"
-                  disabled={save.isPending}
-                  onClick={() =>
-                    save.mutate(
-                      { outputId: selected.id, saved: true },
-                      { onSuccess: () => toast.success("Saved to Assets") },
-                    )
-                  }
+              {/* Every finished generation is listed in Assets (there's no separate history page). */}
+              <div className="flex items-center justify-between gap-3 rounded-[60px] bg-v2-nav-active px-5 py-2.5 font-archivo text-base text-v2-ink">
+                <span className="flex items-center gap-2">
+                  <Check className="size-4" /> In your Assets
+                </span>
+                <Link
+                  to="/assets"
+                  className="font-inter-tight text-xs text-v2-ink-60 hover:text-v2-ink"
                 >
-                  Save to Assets
-                </PillButton>
-              )}
+                  Open
+                </Link>
+              </div>
               <PillButton
                 variant="outline"
                 className="w-full"
