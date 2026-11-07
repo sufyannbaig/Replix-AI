@@ -1,12 +1,30 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Loader2, MoreHorizontal, Pencil, Plus, RefreshCw, Star, Trash2 } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
-import { PillButton, SectionTitle } from "@/v2/components/primitives";
-import { useBrandKits, useExtractBrandKit } from "@/v2/data/api";
-import type { BrandKit } from "@/v2/data/types";
+import { PillButton, SectionTitle, pillClass } from "@/v2/components/primitives";
+import { BrandEditor } from "@/v2/components/brand/BrandEditor";
+import { FontSample } from "@/v2/components/brand/FontPicker";
+import {
+  BrandLimitError,
+  useBrandKitLimit,
+  useBrandKits,
+  useDeleteBrandKit,
+  useExtractBrandKit,
+  useSetDefaultBrandKit,
+} from "@/v2/data/api";
+import { BRAND_KIT_LIMITS } from "@/v2/data/pricing";
+import { brandLogo, type BrandKit } from "@/v2/data/types";
 import logoMark from "@/assets/v2/logo-mark.png";
 import assetCap from "@/assets/v2/brand/asset-cap.png";
 import assetBottle from "@/assets/v2/brand/asset-bottle.png";
@@ -14,9 +32,13 @@ import linkA from "@/assets/v2/brand/link-a.svg";
 import linkB from "@/assets/v2/brand/link-b.svg";
 import linkC from "@/assets/v2/brand/link-c.svg";
 
+type BrandKitSearch = { new?: "1"; kit?: string };
+
 export const Route = createFileRoute("/_app/brand-kit")({
-  validateSearch: (search: Record<string, unknown>): { new?: "1" } =>
-    search.new === "1" || search.new === 1 ? { new: "1" } : {},
+  validateSearch: (search: Record<string, unknown>): BrandKitSearch => ({
+    ...(search.new === "1" || search.new === 1 ? { new: "1" as const } : {}),
+    ...(typeof search.kit === "string" && search.kit.length <= 64 ? { kit: search.kit } : {}),
+  }),
   head: () => ({ meta: [{ title: "Brand Kit · Replix AI" }] }),
   component: BrandKitPage,
 });
@@ -35,45 +57,326 @@ function normaliseWebsite(input: string) {
   }
 }
 
+const PLAN_NAMES: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  scale: "Scale",
+};
+
 function BrandKitPage() {
   const { data: kits = [] } = useBrandKits();
-  const kit = kits[0];
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const limit = useBrandKitLimit();
   const extract = useExtractBrandKit();
+  const setDefault = useSetDefaultBrandKit();
+  const remove = useDeleteBrandKit();
+  const [editing, setEditing] = useState<{ kit?: BrandKit } | null>(null);
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<BrandKit | null>(null);
 
-  const run = (website: string) => {
-    if (!kit) return;
+  const saved = kits.filter((k) => k.id !== "new");
+  const blocked = search.new === "1" && limit.ready && saved.length > 0 && !limit.canAdd;
+  const adding = (search.new === "1" && !blocked) || saved.length === 0;
+  const kit = adding ? undefined : (saved.find((k) => k.id === search.kit) ?? saved[0]);
+  const select = (id: string) => navigate({ search: { kit: id }, replace: true });
+
+  const planMessage = `Your ${PLAN_NAMES[limit.plan] ?? "current"} plan includes ${limit.limit} brand${limit.limit === 1 ? "" : "s"}.`;
+
+  // "Create a New Brand Kit" in the sidebar links to ?new=1; at the limit, explain instead.
+  useEffect(() => {
+    if (!blocked) return;
+    setLimitMessage(planMessage);
+    navigate({ search: {}, replace: true });
+  }, [blocked, planMessage, navigate]);
+
+  const addBrand = () => {
+    if (!limit.canAdd) {
+      setLimitMessage(planMessage);
+      return;
+    }
+    navigate({ search: { new: "1" } });
+  };
+
+  const run = (website: string, target?: BrandKit) => {
     extract.mutate(
-      { kitId: kit.id, website },
+      { kitId: target?.id ?? "new", website },
       {
-        onSuccess: () => toast.success("Brand kit ready. It now shapes every generation."),
-        onError: () => toast.error("We couldn't read that website. Try again or upload manually."),
+        onSuccess: (done) => {
+          toast.success("Brand kit ready. It now shapes this brand's ads.");
+          select(done.id);
+        },
+        onError: (error) => {
+          if (error instanceof BrandLimitError) setLimitMessage(error.message);
+          else toast.error("We couldn't read that website. Try again or set it up manually.");
+        },
       },
     );
   };
 
-  if (kit?.isComplete) {
-    return (
-      <AppShell title="Brand Kit" subtitle={SUBTITLE}>
-        <div className="mt-[30px] flex justify-end">
-          <PillButton
-            variant="outline"
-            className="opacity-60 hover:opacity-100"
-            disabled={extract.isPending || !kit.website}
-            onClick={() => kit.website && run(kit.website)}
-          >
-            {extract.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Re-sync From Website
-          </PillButton>
-        </div>
-        <FilledKit kit={kit} />
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell title="Brand Kit" subtitle={SUBTITLE}>
-      <EmptyKit pending={extract.isPending} onExtract={run} />
+      {saved.length ? (
+        <BrandRow
+          kits={saved}
+          selectedId={kit?.id}
+          adding={adding}
+          limit={limit}
+          onSelect={select}
+          onAdd={addBrand}
+        />
+      ) : null}
+
+      {kit?.isComplete ? (
+        <>
+          <div className="mt-[30px] flex flex-wrap items-center justify-end gap-2">
+            {kit.isDefault ? (
+              <span className="mr-auto flex items-center gap-1.5 font-inter-tight text-sm text-v2-ink-70">
+                <Star className="size-4 fill-[#ffcc50] text-[#ffcc50]" />
+                Default brand: used for products without a brand of their own
+              </span>
+            ) : null}
+            {kit.website ? (
+              <PillButton
+                variant="outline"
+                className="opacity-60 hover:opacity-100"
+                disabled={extract.isPending}
+                onClick={() => kit.website && run(kit.website, kit)}
+              >
+                {extract.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                Re-sync From Website
+              </PillButton>
+            ) : null}
+            <PillButton variant="outline" onClick={() => setEditing({ kit })}>
+              <Pencil className="size-4" />
+              Edit Brand
+            </PillButton>
+            <KitMenu
+              kit={kit}
+              onMakeDefault={() =>
+                setDefault.mutate(kit.id, {
+                  onSuccess: () => toast.success(`${kit.name} is now your default brand`),
+                  onError: (e) => toast.error(e.message),
+                })
+              }
+              onDelete={() => setConfirmDelete(kit)}
+            />
+          </div>
+          <FilledKit kit={kit} />
+        </>
+      ) : (
+        <EmptyKit
+          pending={extract.isPending}
+          onExtract={(site) => run(site, kit)}
+          onManual={() => setEditing({ kit })}
+          title={kit ? `Set up ${kit.name}` : saved.length ? "Add a brand" : undefined}
+        />
+      )}
+
+      <BrandEditor
+        open={!!editing}
+        onOpenChange={(open) => !open && setEditing(null)}
+        kit={editing?.kit}
+        onSaved={(done) => select(done.id)}
+        onLimit={(message) => {
+          setEditing(null);
+          setLimitMessage(message);
+        }}
+      />
+
+      <Dialog open={!!limitMessage} onOpenChange={(open) => !open && setLimitMessage(null)}>
+        <DialogContent className="w-[calc(100vw-32px)] max-w-[440px] rounded-[18px] border-none bg-v2-surface p-6 text-v2-ink">
+          <DialogTitle className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px]">
+            Add more brands
+          </DialogTitle>
+          <DialogDescription className="font-inter-tight text-sm leading-relaxed text-v2-ink-70">
+            {limitMessage} Pro includes {BRAND_KIT_LIMITS.pro} brands and Scale includes{" "}
+            {BRAND_KIT_LIMITS.scale}, each with its own logo, colours and fonts.
+          </DialogDescription>
+          <div className="mt-2 flex justify-end gap-2">
+            <PillButton variant="outline" onClick={() => setLimitMessage(null)}>
+              Not now
+            </PillButton>
+            <Link to="/upgrade" className={pillClass("primary")}>
+              See plans
+            </Link>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <DialogContent className="w-[calc(100vw-32px)] max-w-[440px] rounded-[18px] border-none bg-v2-surface p-6 text-v2-ink">
+          <DialogTitle className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px]">
+            Delete {confirmDelete?.name}?
+          </DialogTitle>
+          <DialogDescription className="font-inter-tight text-sm leading-relaxed text-v2-ink-70">
+            Its logo, colours, fonts and tone are removed.{" "}
+            {saved.length > 1
+              ? "Its products switch to your default brand."
+              : "Its products will have no brand until you add one."}{" "}
+            Ads you already made don&apos;t change.
+          </DialogDescription>
+          <div className="mt-2 flex justify-end gap-2">
+            <PillButton variant="outline" onClick={() => setConfirmDelete(null)}>
+              Keep it
+            </PillButton>
+            <PillButton
+              variant="outline"
+              className="border-[#c93030] bg-[#c93030] text-white hover:bg-[#b02828] night:border-[#c93030]"
+              disabled={remove.isPending}
+              onClick={() => {
+                const target = confirmDelete;
+                if (!target) return;
+                remove.mutate(target.id, {
+                  onSuccess: () => {
+                    toast.success(`${target.name} deleted`);
+                    setConfirmDelete(null);
+                    navigate({ search: {}, replace: true });
+                  },
+                  onError: (e) => toast.error(e.message),
+                });
+              }}
+            >
+              {remove.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              Delete brand
+            </PillButton>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
+  );
+}
+
+/* ---------- Brand switcher ---------- */
+
+function BrandRow({
+  kits,
+  selectedId,
+  adding,
+  limit,
+  onSelect,
+  onAdd,
+}: {
+  kits: BrandKit[];
+  selectedId?: string;
+  adding: boolean;
+  limit: { limit: number; used: number; canAdd: boolean };
+  onSelect: (id: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="mt-6 flex flex-col gap-2 lg:mt-[30px]">
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">
+        {kits.map((k) => {
+          const active = k.id === selectedId;
+          const logo = brandLogo(k);
+          return (
+            <button
+              key={k.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onSelect(k.id)}
+              className={cn(
+                "flex w-[212px] shrink-0 items-center gap-3 rounded-[14px] bg-v2-surface p-3 text-left transition-colors",
+                active ? "v2-highlight-stroke" : "border border-transparent hover:border-v2-line",
+              )}
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-black/[0.08] bg-white">
+                {logo ? (
+                  <img src={logo} alt="" className="max-h-9 max-w-9 object-contain" />
+                ) : (
+                  <span className="font-archivo text-lg font-semibold text-[#5b6170]">
+                    {k.name.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <span className="flex min-w-0 flex-col gap-1.5">
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate font-archivo text-base font-medium text-v2-ink">
+                    {k.name}
+                  </span>
+                  {k.isDefault ? (
+                    <Star
+                      aria-label="Default brand"
+                      className="size-3.5 shrink-0 fill-[#ffcc50] text-[#ffcc50]"
+                    />
+                  ) : null}
+                </span>
+                <span className="flex gap-1">
+                  {k.colors.length ? (
+                    k.colors
+                      .slice(0, 5)
+                      .map((c) => (
+                        <span
+                          key={c}
+                          className="size-3.5 rounded-full border border-black/10"
+                          style={{ background: c }}
+                        />
+                      ))
+                  ) : (
+                    <span className="font-inter-tight text-xs text-v2-ink-60">Not set up yet</span>
+                  )}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          aria-pressed={adding}
+          onClick={onAdd}
+          className={cn(
+            "flex w-[150px] shrink-0 items-center justify-center gap-2 rounded-[14px] border border-dashed p-3 font-archivo text-base text-v2-ink-70 transition-colors hover:border-v2-blue hover:text-v2-blue",
+            adding
+              ? "border-v2-blue text-v2-blue"
+              : "border-[rgba(2,2,2,0.27)] night:border-v2-border",
+          )}
+        >
+          <Plus className="size-4" />
+          Add brand
+        </button>
+      </div>
+      <p className="font-inter-tight text-xs text-v2-ink-60">
+        {limit.used} of {limit.limit} brand{limit.limit === 1 ? "" : "s"} on your plan
+      </p>
+    </div>
+  );
+}
+
+function KitMenu({
+  kit,
+  onMakeDefault,
+  onDelete,
+}: {
+  kit: BrandKit;
+  onMakeDefault: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`More actions for ${kit.name}`}
+        className="flex size-[45px] items-center justify-center rounded-full border border-[#a2a2a2] bg-v2-surface text-v2-ink hover:bg-v2-surface-2 night:border-v2-border"
+      >
+        <MoreHorizontal className="size-5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[200px] rounded-[12px] bg-v2-surface">
+        <DropdownMenuItem disabled={kit.isDefault} onSelect={onMakeDefault}>
+          <Star className="size-4" />
+          {kit.isDefault ? "Default brand" : "Make default"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onDelete} className="text-[#c93030] focus:text-[#c93030]">
+          <Trash2 className="size-4" />
+          Delete brand
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -86,9 +389,13 @@ function Callout({ className, children }: { className: string; children: ReactNo
 function EmptyKit({
   pending,
   onExtract,
+  onManual,
+  title = "Set up your brand kit",
 }: {
   pending: boolean;
   onExtract: (website: string) => void;
+  onManual: () => void;
+  title?: string;
 }) {
   const [value, setValue] = useState("");
   const submit = () => {
@@ -157,9 +464,7 @@ function EmptyKit({
       </div>
 
       <div className="mt-[22px] flex w-full flex-col items-center gap-[13px] text-center">
-        <h2 className="type-page-title text-v2-ink">
-          {pending ? "Reading your website…" : "Set up your brand kit"}
-        </h2>
+        <h2 className="type-page-title text-v2-ink">{pending ? "Reading your website…" : title}</h2>
         <p className="max-w-[374px] type-subtitle text-v2-ink-70">
           {pending
             ? "Pulling your logo, colours, fonts, tone of voice and brand images."
@@ -193,12 +498,8 @@ function EmptyKit({
         Or
         <span className="h-px flex-1 bg-black/20 night:bg-v2-line" />
       </div>
-      <PillButton
-        variant="outline"
-        className="mt-[14px] opacity-60 hover:opacity-100"
-        onClick={() => toast("Manual upload opens the brand editor once the backend is connected.")}
-      >
-        Upload Manually
+      <PillButton variant="outline" className="mt-[14px]" disabled={pending} onClick={onManual}>
+        Set Up Manually
       </PillButton>
     </section>
   );
@@ -225,27 +526,35 @@ function Card({
   );
 }
 
+function EmptyNote({ children }: { children: ReactNode }) {
+  return <p className="font-inter-tight text-sm text-v2-ink-60">{children}</p>;
+}
+
 function FilledKit({ kit }: { kit: BrandKit }) {
   return (
     <div className="mt-[29px] flex flex-col gap-10">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <Card title="Logo">
-          <div className="flex gap-[30px]">
-            {kit.logos.slice(0, 2).map((logo, i) => (
-              <img
-                key={logo}
-                src={logo}
-                alt={i === 0 ? `${kit.name} logo` : `${kit.name} logo, alternate`}
-                className={cn(
-                  "h-[115px] w-[134px] rounded-[6px] object-cover",
-                  i > 0 && "border border-black/[0.13]",
-                )}
-              />
-            ))}
-          </div>
+          {kit.logos.length ? (
+            <div className="flex gap-[30px]">
+              {kit.logos.slice(0, 2).map((logo, i) => (
+                <img
+                  key={logo}
+                  src={logo}
+                  alt={i === 0 ? `${kit.name} logo` : `${kit.name} logo, light version`}
+                  className={cn(
+                    "h-[115px] w-[134px] rounded-[6px] border border-black/[0.13] object-contain p-3",
+                    i > 0 ? "bg-[#12213d]" : "bg-white",
+                  )}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyNote>No logo yet. Add one with Edit Brand.</EmptyNote>
+          )}
         </Card>
         <Card title="Colours">
-          <div className="flex h-[114px] justify-between">
+          <div className={cn("flex h-[114px] justify-between", !kit.colors.length && "hidden")}>
             {kit.colors.map((hex) => (
               <div key={hex} className="flex w-[58px] flex-col gap-[13px]">
                 <span
@@ -256,25 +565,37 @@ function FilledKit({ kit }: { kit: BrandKit }) {
               </div>
             ))}
           </div>
+          {kit.colors.length ? null : (
+            <EmptyNote>No colours yet. Ads use a colour from the product photo.</EmptyNote>
+          )}
         </Card>
         <Card title="Fonts">
-          <div className="flex h-[114px] flex-col justify-between">
-            <div className="flex items-start gap-[25px]">
-              <span className="font-archivo text-[57px] font-semibold leading-[0.75] tracking-[-1.14px] text-v2-ink">
-                Aa
-              </span>
-              <span className="flex flex-col gap-1">
-                <span className="type-card-title text-v2-ink">{kit.fonts?.heading}</span>
-                <span className="font-inter-tight text-base tracking-[-0.32px] text-v2-ink-60">
-                  {kit.fonts?.body}
+          {kit.fonts ? (
+            <div className="flex h-[114px] flex-col justify-between">
+              <div className="flex items-start gap-[25px]">
+                <FontSample
+                  family={kit.fonts.heading}
+                  url={kit.fontFiles?.heading}
+                  weight={700}
+                  className="font-archivo text-[57px] font-semibold leading-[0.75] tracking-[-1.14px] text-v2-ink"
+                >
+                  Aa
+                </FontSample>
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="truncate type-card-title text-v2-ink">{kit.fonts.heading}</span>
+                  <span className="truncate font-inter-tight text-base tracking-[-0.32px] text-v2-ink-60">
+                    {kit.fonts.body}
+                  </span>
                 </span>
-              </span>
+              </div>
+              {/* Figma repeats the setup copy here; describe how the fonts are used instead. */}
+              <p className="type-caption text-v2-ink-70">
+                {kit.fonts.heading} for headlines, {kit.fonts.body} for body copy and buttons.
+              </p>
             </div>
-            {/* Figma repeats the setup copy here; describe how the fonts are used instead. */}
-            <p className="type-caption text-v2-ink-70">
-              {kit.fonts?.heading} for headlines, {kit.fonts?.body} for body copy and captions.
-            </p>
-          </div>
+          ) : (
+            <EmptyNote>No fonts yet. Ads use each layout&apos;s own fonts.</EmptyNote>
+          )}
         </Card>
       </div>
 
@@ -291,15 +612,17 @@ function FilledKit({ kit }: { kit: BrandKit }) {
                 </span>
               ))}
             </div>
-            <p className="type-subtitle text-v2-ink-70">{kit.tone}</p>
+            <p className="type-subtitle text-v2-ink-70">
+              {kit.tone ?? (kit.toneTags.length ? null : "No tone of voice yet.")}
+            </p>
           </div>
         </Card>
         <Card title="About & Audience" className="gap-[22px]">
-          <p className="type-subtitle text-v2-ink-70">{kit.audience}</p>
+          <p className="type-subtitle text-v2-ink-70">{kit.audience ?? "No audience yet."}</p>
         </Card>
       </div>
 
-      <section className="flex flex-col gap-[30px]">
+      <section className={cn("flex flex-col gap-[30px]", !kit.images.length && "hidden")}>
         {/* Figma calls these "Product Images"; per the wireframe they are the brand's images. */}
         <SectionTitle>Brand Images</SectionTitle>
         <div className="grid grid-cols-2 gap-5 rounded-[18px] bg-v2-surface px-3 py-4 sm:grid-cols-3 sm:px-[27px] sm:py-7 lg:grid-cols-5">

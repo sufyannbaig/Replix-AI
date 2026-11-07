@@ -13,7 +13,10 @@ export type BrandKit = {
   logos: string[];
   /** Hex colours, primary first. */
   colors: string[];
+  /** Font family names. A family with a file in `fontFiles` is an upload; else a Google font. */
   fonts: { heading: string; body: string } | null;
+  /** Signed links to uploaded font files, by role. */
+  fontFiles?: { heading?: string; body?: string };
   toneTags: string[];
   tone: string | null;
   audience: string | null;
@@ -21,6 +24,8 @@ export type BrandKit = {
   isComplete: boolean;
   /** The account's default brand: used for products with no brand of their own. */
   isDefault: boolean;
+  /** What's stored (storage paths or https links), for the editor to save back unchanged. */
+  stored?: { logos: string[]; fontFiles?: { heading?: string; body?: string } };
 };
 
 /** Convenience for places that only need the first logo. */

@@ -24,8 +24,10 @@ import {
   resolveUrls,
   signedInUserId,
   tryTable,
+  uploadBrandFont,
   uploadUserFile,
 } from "./backend";
+import { FONT_UPLOAD_TYPES, fetchGoogleFonts, fontNameFromFile } from "./fonts";
 import type { BrandKitRow, LibraryItemRow, ProductRow } from "./db-types";
 import {
   adThemes,
@@ -97,14 +99,21 @@ const BLANK_KIT: BrandKit = {
 };
 
 async function kitsFromRows(rows: BrandKitRow[]): Promise<BrandKit[]> {
-  const urls = await resolveUrls(rows.flatMap((r) => [...r.logos, ...r.images]));
+  const fontPaths = (r: BrandKitRow) =>
+    [r.fonts?.files?.heading, r.fonts?.files?.body].filter((p): p is string => !!p);
+  const urls = await resolveUrls(rows.flatMap((r) => [...r.logos, ...r.images, ...fontPaths(r)]));
+  const fileUrl = (path?: string) => (path ? (urls.get(path) ?? path) : undefined);
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     website: row.website,
     logos: row.logos.map((l) => urls.get(l) ?? l),
     colors: row.colors,
-    fonts: row.fonts,
+    fonts: row.fonts ? { heading: row.fonts.heading, body: row.fonts.body } : null,
+    fontFiles: row.fonts?.files
+      ? { heading: fileUrl(row.fonts.files.heading), body: fileUrl(row.fonts.files.body) }
+      : undefined,
+    stored: { logos: row.logos, fontFiles: row.fonts?.files },
     toneTags: row.tone_tags,
     tone: row.tone,
     audience: row.audience,
@@ -161,27 +170,116 @@ function brandError(error: { message: string }) {
   return m ? new BrandLimitError(m[1]) : new Error(error.message);
 }
 
-/** How many brands the plan allows and how many the user has. */
-export function useBrandKitLimit() {
-  const { plan } = useCredits();
-  const { data: kits = [] } = useBrandKits();
-  const used = kits.filter((k) => k.id !== BLANK_KIT.id).length;
-  const limit = brandKitLimit(plan);
-  return { plan, limit, used, canAdd: used < limit };
+/* Sample-data mode keeps uploads as blob links; refs map to them for previews. */
+const sampleFiles = new Map<string, string>();
+const sampleUrl = (ref: string) => sampleFiles.get(ref) ?? ref;
+const sampleUrls = (refs: string[]) => refs.map(sampleUrl);
+
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const MAX_BRAND_FILE = 2 * 1024 * 1024;
+
+/** Draw an SVG logo to a PNG (longest side 1024 px), so only raster images are stored. */
+async function svgToPng(file: File): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const w = img.naturalWidth || 512;
+    const h = img.naturalHeight || 512;
+    const scale = 1024 / Math.max(w, h);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const png = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+    if (!png) throw new Error("We couldn't read that SVG. Try a PNG instead.");
+    return png;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
-/** What a brand editor saves. Logos and fonts as files arrive with the editor (step 2). */
+/**
+ * Upload a logo (PNG, JPG, WebP or SVG, up to 2 MB) or a font (TTF, OTF or WOFF, up to 2 MB)
+ * for a brand kit. Returns the stored ref to save on the kit, and a link for previews.
+ */
+export function useUploadBrandFile() {
+  return useMutation({
+    mutationFn: async ({
+      file,
+      kind,
+    }: {
+      file: File;
+      kind: "logo" | "font";
+    }): Promise<{ ref: string; url: string; name: string }> => {
+      if (file.size > MAX_BRAND_FILE) throw new Error("That file is over 2 MB.");
+      const userId = await backendUser("brand_kits");
+      if (kind === "logo") {
+        if (!LOGO_TYPES.includes(file.type)) throw new Error("Use a PNG, JPG, WebP or SVG logo.");
+        const blob = file.type === "image/svg+xml" ? await svgToPng(file) : file;
+        const url = URL.createObjectURL(blob);
+        if (!userId) {
+          sampleFiles.set(url, url);
+          return { ref: url, url, name: file.name };
+        }
+        const ref = await uploadUserFile(userId, "brand/logos", blob);
+        return { ref, url, name: file.name };
+      }
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      const type = FONT_UPLOAD_TYPES[ext];
+      if (!type) throw new Error("Use a TTF, OTF or WOFF font file.");
+      const url = URL.createObjectURL(file);
+      const name = fontNameFromFile(file.name);
+      if (!userId) {
+        sampleFiles.set(url, url);
+        return { ref: url, url, name };
+      }
+      const ref = await uploadBrandFont(userId, file, ext, type);
+      return { ref, url, name };
+    },
+  });
+}
+
+/** Every Google font (via Fontsource), popular ones first. Cached for the session. */
+export function useGoogleFonts() {
+  return useQuery({
+    queryKey: ["v2", "google-fonts"] as const,
+    queryFn: fetchGoogleFonts,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
+/** How many brands the plan allows and how many the user has. */
+export function useBrandKitLimit() {
+  const { plan, loading } = useCredits();
+  const { data: kits = [], isPending } = useBrandKits();
+  const used = kits.filter((k) => k.id !== BLANK_KIT.id).length;
+  const limit = brandKitLimit(plan);
+  // `ready` is false until the plan and brands load, so nobody is told off by a placeholder plan.
+  return { plan, limit, used, canAdd: used < limit, ready: !loading && !isPending };
+}
+
+/**
+ * What the brand editor saves. `logos` are stored refs (storage paths or https links, from
+ * useUploadBrandFile or `kit.stored`); `fonts.files` are storage paths of uploaded fonts.
+ */
 export type BrandKitInput = {
   name: string;
   website?: string | null;
+  logos?: string[];
   colors?: string[];
-  fonts?: { heading: string; body: string } | null;
+  fonts?: { heading: string; body: string; files?: { heading?: string; body?: string } } | null;
   toneTags?: string[];
   tone?: string | null;
   audience?: string | null;
 };
 
 /** Create a brand kit (no id, or the blank kit's id) or update one of the user's kits. */
+/** Kits saved in sample-data mode (not in a database). */
+const sampleKits = new WeakSet<BrandKit>();
+
 export function useSaveBrandKit() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -189,6 +287,7 @@ export function useSaveBrandKit() {
       const row = {
         name: input.name.trim().slice(0, 120) || "My brand",
         ...(input.website !== undefined ? { website: input.website?.slice(0, 300) || null } : {}),
+        ...(input.logos ? { logos: input.logos.slice(0, 2) } : {}),
         ...(input.colors ? { colors: input.colors.slice(0, 5) } : {}),
         ...(input.fonts !== undefined ? { fonts: input.fonts } : {}),
         ...(input.toneTags ? { tone_tags: input.toneTags.slice(0, 6) } : {}),
@@ -201,16 +300,34 @@ export function useSaveBrandKit() {
       if (!userId) {
         const kits = queryClient.getQueryData<BrandKit[]>(queryKeys.brandKits) ?? brandKits;
         const base = kits.find((k) => k.id === id) ?? { ...BLANK_KIT, id: `bk_${Date.now()}` };
-        return {
+        const sample: BrandKit = {
           ...base,
           name: row.name,
           website: input.website ?? base.website,
+          logos: input.logos ? sampleUrls(input.logos) : base.logos,
           colors: input.colors ?? base.colors,
-          fonts: input.fonts !== undefined ? input.fonts : base.fonts,
+          fonts:
+            input.fonts !== undefined
+              ? input.fonts && { heading: input.fonts.heading, body: input.fonts.body }
+              : base.fonts,
+          fontFiles:
+            input.fonts !== undefined
+              ? input.fonts?.files && {
+                  heading: input.fonts.files.heading && sampleUrl(input.fonts.files.heading),
+                  body: input.fonts.files.body && sampleUrl(input.fonts.files.body),
+                }
+              : base.fontFiles,
+          stored: {
+            logos: input.logos ?? base.stored?.logos ?? base.logos,
+            fontFiles: input.fonts !== undefined ? input.fonts?.files : base.stored?.fontFiles,
+          },
+          isComplete: true,
           toneTags: input.toneTags ?? base.toneTags,
           tone: input.tone !== undefined ? input.tone : base.tone,
           audience: input.audience !== undefined ? input.audience : base.audience,
         };
+        sampleKits.add(sample);
+        return sample;
       }
       const existing = id && id !== BLANK_KIT.id ? id : null;
       const { data, error } = existing
@@ -234,7 +351,9 @@ export function useSaveBrandKit() {
         const rest = prev.filter((k) => k.id !== kit.id && k.id !== id && k.id !== BLANK_KIT.id);
         return kit.isDefault ? [kit, ...rest] : [...rest, kit];
       });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.brandKits });
+      // Sample data has nothing to refetch; a refetch would undo the edit.
+      if (!sampleKits.has(kit))
+        void queryClient.invalidateQueries({ queryKey: queryKeys.brandKits });
     },
   });
 }
@@ -248,13 +367,15 @@ export function useDeleteBrandKit() {
       if (userId && id !== BLANK_KIT.id) {
         const { error } = await db.from("brand_kits").delete().eq("id", id).eq("user_id", userId);
         if (error) throw new Error(error.message);
+        return { id, live: true };
       }
-      return id;
+      return { id, live: false };
     },
-    onSuccess: (id) => {
+    onSuccess: ({ id, live }) => {
       queryClient.setQueryData<BrandKit[]>(queryKeys.brandKits, (prev = []) =>
         prev.filter((k) => k.id !== id),
       );
+      if (!live) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.brandKits });
       void queryClient.invalidateQueries({ queryKey: queryKeys.products });
     },

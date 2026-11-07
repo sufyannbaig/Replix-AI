@@ -118,6 +118,16 @@ export async function uploadUserFile(userId: string, folder: string, file: Blob)
   return path;
 }
 
+/** Upload a brand font file to `<uid>/brand/fonts/<random>.<ext>`; returns the path. */
+export async function uploadBrandFont(userId: string, file: File, ext: string, type: string) {
+  const path = `${userId}/brand/fonts/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from(UPLOADS_BUCKET)
+    .upload(path, file, { contentType: type, upsert: false });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
 /** Turn "my-product_photo.jpg" into "my product photo". */
 export function nameFromFile(file: File, fallback: string) {
   return (

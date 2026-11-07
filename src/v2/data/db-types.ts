@@ -34,7 +34,8 @@ export type BrandKitRow = {
   website: string | null;
   logos: string[];
   colors: string[];
-  fonts: { heading: string; body: string } | null;
+  /** `files` holds storage paths of uploaded font files, by role. */
+  fonts: { heading: string; body: string; files?: { heading?: string; body?: string } } | null;
   tone_tags: string[];
   tone: string | null;
   audience: string | null;
