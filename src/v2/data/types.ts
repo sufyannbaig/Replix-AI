@@ -19,11 +19,26 @@ export type BrandKit = {
   audience: string | null;
   images: string[];
   isComplete: boolean;
+  /** The account's default brand: used for products with no brand of their own. */
+  isDefault: boolean;
 };
 
 /** Convenience for places that only need the first logo. */
 export function brandLogo(kit: BrandKit) {
   return kit.logos[0] ?? null;
+}
+
+/** The brand a product uses: its own kit, else the default kit (listed first), else none. */
+export function brandForProduct(
+  kits: BrandKit[],
+  product: { brandKitId?: string | null } | null,
+): BrandKit | null {
+  return (
+    kits.find((k) => k.id === product?.brandKitId) ??
+    kits.find((k) => k.isDefault) ??
+    kits[0] ??
+    null
+  );
 }
 
 export type CreationKind = "ugc" | "product-short" | "photoshoot" | "ad" | "concept";
@@ -64,6 +79,8 @@ export type Product = {
   price?: string;
   /** ISO timestamp; used to order "Recent uploads". */
   createdAt: string;
+  /** The product's brand; missing or null means the account's default brand. */
+  brandKitId?: string | null;
 };
 
 export type PieceKind = "scene" | "prop" | "character" | "style";
@@ -239,6 +256,8 @@ export type GenerationRequest = {
   seconds?: number;
   note?: string;
   cost: number;
+  /** The brand this generation uses; missing means the product's brand, then the default. */
+  brandKitId?: string;
 };
 
 export type GenerationStatus = "queued" | "running" | "done" | "failed";

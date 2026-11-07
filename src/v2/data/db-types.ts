@@ -22,6 +22,7 @@ export type ProductRow = {
   price: string | null;
   image_path: string | null;
   image_url: string | null;
+  brand_kit_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -39,6 +40,7 @@ export type BrandKitRow = {
   audience: string | null;
   images: string[];
   extracted_at: string | null;
+  is_default: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -168,6 +170,7 @@ export type V2Database = {
         Returns: string;
       };
       v2_claim_generation_job: { Args: { _job_id: string }; Returns: boolean };
+      v2_set_default_brand_kit: { Args: { _kit_id: string }; Returns: null };
       v2_settle_generation_job: {
         Args: { _job_id: string; _ok: number; _error: string | null; _provider_cost_usd: number };
         Returns: number;

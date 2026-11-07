@@ -15,7 +15,8 @@ import {
   saveComposedAd,
   startGeneration,
 } from "@/lib/v2/generation.functions";
-import { notifyCreditsChanged } from "@/hooks/use-credits";
+import { notifyCreditsChanged, useCredits } from "@/hooks/use-credits";
+import { brandKitLimit } from "./pricing";
 import {
   backendUser,
   db,
@@ -92,6 +93,7 @@ const BLANK_KIT: BrandKit = {
   audience: null,
   images: [],
   isComplete: false,
+  isDefault: true,
 };
 
 async function kitsFromRows(rows: BrandKitRow[]): Promise<BrandKit[]> {
@@ -108,13 +110,14 @@ async function kitsFromRows(rows: BrandKitRow[]): Promise<BrandKit[]> {
     audience: row.audience,
     images: row.images.map((i) => urls.get(i) ?? i),
     isComplete: row.colors.length > 0 || !!row.fonts || !!row.tone,
+    isDefault: row.is_default,
   }));
 }
 
 async function fetchBrandKits(): Promise<BrandKit[]> {
   if (!(await backendUser("brand_kits"))) return brandKits;
   const rows = await tryTable("brand_kits", () =>
-    db.from("brand_kits").select("*").order("created_at"),
+    db.from("brand_kits").select("*").order("is_default", { ascending: false }).order("created_at"),
   );
   if (!rows) return brandKits;
   return rows.length ? kitsFromRows(rows) : [BLANK_KIT];
@@ -128,8 +131,178 @@ async function fetchPhotoTemplates(): Promise<PhotoTemplate[]> {
   return photoTemplates;
 }
 
+/** The user's brand kits, default first. A blank kit stands in until they make one. */
 export function useBrandKits() {
   return useQuery({ queryKey: queryKeys.brandKits, queryFn: fetchBrandKits });
+}
+
+/** Raised when a new brand would go over the plan's limit; the screen offers an upgrade. */
+export class BrandLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BrandLimitError";
+  }
+}
+
+/** Turn the database's limit error into a BrandLimitError; pass anything else through. */
+function brandError(error: { message: string }) {
+  const m = /BRAND_LIMIT:\s*(.*)/.exec(error.message);
+  return m ? new BrandLimitError(m[1]) : new Error(error.message);
+}
+
+/** How many brands the plan allows and how many the user has. */
+export function useBrandKitLimit() {
+  const { plan } = useCredits();
+  const { data: kits = [] } = useBrandKits();
+  const used = kits.filter((k) => k.id !== BLANK_KIT.id).length;
+  const limit = brandKitLimit(plan);
+  return { plan, limit, used, canAdd: used < limit };
+}
+
+/** What a brand editor saves. Logos and fonts as files arrive with the editor (step 2). */
+export type BrandKitInput = {
+  name: string;
+  website?: string | null;
+  colors?: string[];
+  fonts?: { heading: string; body: string } | null;
+  toneTags?: string[];
+  tone?: string | null;
+  audience?: string | null;
+};
+
+/** Create a brand kit (no id, or the blank kit's id) or update one of the user's kits. */
+export function useSaveBrandKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: BrandKitInput & { id?: string }): Promise<BrandKit> => {
+      const row = {
+        name: input.name.trim().slice(0, 120) || "My brand",
+        ...(input.website !== undefined ? { website: input.website?.slice(0, 300) || null } : {}),
+        ...(input.colors ? { colors: input.colors.slice(0, 5) } : {}),
+        ...(input.fonts !== undefined ? { fonts: input.fonts } : {}),
+        ...(input.toneTags ? { tone_tags: input.toneTags.slice(0, 6) } : {}),
+        ...(input.tone !== undefined ? { tone: input.tone?.slice(0, 3000) || null } : {}),
+        ...(input.audience !== undefined
+          ? { audience: input.audience?.slice(0, 3000) || null }
+          : {}),
+      };
+      const userId = await backendUser("brand_kits");
+      if (!userId) {
+        const kits = queryClient.getQueryData<BrandKit[]>(queryKeys.brandKits) ?? brandKits;
+        const base = kits.find((k) => k.id === id) ?? { ...BLANK_KIT, id: `bk_${Date.now()}` };
+        return {
+          ...base,
+          name: row.name,
+          website: input.website ?? base.website,
+          colors: input.colors ?? base.colors,
+          fonts: input.fonts !== undefined ? input.fonts : base.fonts,
+          toneTags: input.toneTags ?? base.toneTags,
+          tone: input.tone !== undefined ? input.tone : base.tone,
+          audience: input.audience !== undefined ? input.audience : base.audience,
+        };
+      }
+      const existing = id && id !== BLANK_KIT.id ? id : null;
+      const { data, error } = existing
+        ? await db
+            .from("brand_kits")
+            .update(row)
+            .eq("id", existing)
+            .eq("user_id", userId)
+            .select()
+            .single()
+        : await db
+            .from("brand_kits")
+            .insert({ ...row, user_id: userId })
+            .select()
+            .single();
+      if (error) throw brandError(error);
+      return (await kitsFromRows([data]))[0];
+    },
+    onSuccess: (kit, { id }) => {
+      queryClient.setQueryData<BrandKit[]>(queryKeys.brandKits, (prev = []) => {
+        const rest = prev.filter((k) => k.id !== kit.id && k.id !== id && k.id !== BLANK_KIT.id);
+        return kit.isDefault ? [kit, ...rest] : [...rest, kit];
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.brandKits });
+    },
+  });
+}
+
+/** Delete a brand. Its products fall back to the default; the database picks a new default. */
+export function useDeleteBrandKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await backendUser("brand_kits");
+      if (userId && id !== BLANK_KIT.id) {
+        const { error } = await db.from("brand_kits").delete().eq("id", id).eq("user_id", userId);
+        if (error) throw new Error(error.message);
+      }
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.setQueryData<BrandKit[]>(queryKeys.brandKits, (prev = []) =>
+        prev.filter((k) => k.id !== id),
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.brandKits });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.products });
+    },
+  });
+}
+
+/** Make one brand the account's default. */
+export function useSetDefaultBrandKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (await backendUser("brand_kits")) {
+        const { error } = await db.rpc("v2_set_default_brand_kit", { _kit_id: id });
+        if (error) throw new Error(error.message);
+      }
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.setQueryData<BrandKit[]>(queryKeys.brandKits, (prev = []) => {
+        const kits = prev.map((k) => ({ ...k, isDefault: k.id === id }));
+        return [...kits.filter((k) => k.isDefault), ...kits.filter((k) => !k.isDefault)];
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.brandKits });
+    },
+  });
+}
+
+/**
+ * Give a saved product its brand (null = the default brand). Shopify products are read live
+ * and have no row yet; they use the default until store-to-brand mapping (plan step 7).
+ */
+export function useSetProductBrand() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      productId,
+      brandKitId,
+    }: {
+      productId: string;
+      brandKitId: string | null;
+    }) => {
+      const userId = await backendUser("products");
+      if (userId && UUID.test(productId)) {
+        const { error } = await db
+          .from("products")
+          .update({ brand_kit_id: brandKitId })
+          .eq("id", productId)
+          .eq("user_id", userId);
+        if (error) throw new Error(error.message);
+      }
+      return { productId, brandKitId };
+    },
+    onSuccess: ({ productId, brandKitId }) => {
+      queryClient.setQueryData<Product[]>(queryKeys.products, (prev) =>
+        prev?.map((p) => (p.id === productId ? { ...p, brandKitId } : p)),
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.products });
+    },
+  });
 }
 
 export function useCommunityCreations() {
@@ -162,6 +335,7 @@ async function productsFromRows(rows: ProductRow[]): Promise<Product[]> {
     description: r.description ?? undefined,
     price: r.price ?? undefined,
     createdAt: r.created_at,
+    brandKitId: r.brand_kit_id,
   }));
 }
 
@@ -454,6 +628,8 @@ export function useExtractBrandKit() {
       if (await backendUser("brand_kits")) {
         const row = await extractBrandKit({
           data: { website, kitId: kitId === BLANK_KIT.id ? undefined : kitId },
+        }).catch((error: Error) => {
+          throw brandError(error);
         });
         const [kit] = await kitsFromRows([row]);
         /* The blank kit becomes the saved one, so replace by the id we were given. */

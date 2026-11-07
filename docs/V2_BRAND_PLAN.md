@@ -1,6 +1,6 @@
 # Brand kits: several brands, and ads that use them
 
-Status: plan, 2026-11-07. Decisions agreed with Sufyan the same day (section 2). Nothing built yet.
+Status: step 1 (data) built 2026-11-07; steps 2–7 to do. Decisions agreed with Sufyan the same day (section 2).
 
 ## 1. Where it stands
 
@@ -94,6 +94,7 @@ The job stores which brand and logo setting it used (`request.brandKitId`, `requ
 Each step: type check, tests, commit to `v2`, import into Lovable, check on the preview.
 
 1. **Migration and data layer:** `brand_kit_id`, `is_default`, the limit trigger; then `useBrandKits` / `useSaveBrandKit` / `useDeleteBrandKit` / `useSetProductBrand` in `api.ts`, and `loadBrand(userId, brandKitId)`. Lovable has to run the migration (it asks for approval).
+   - **Done:** `supabase/migrations/20261107120000_v2_brand_kits.sql` adds `brand_kits.is_default` (one per user; existing accounts' oldest kit becomes it), `products.brand_kit_id` (owner-checked by a trigger, set to null when the brand is deleted), the limit trigger (also makes a first kit the default and serialises inserts per user), a trigger that promotes the oldest kit when the default is deleted, and `v2_set_default_brand_kit`. In `api.ts`: `useSaveBrandKit`, `useDeleteBrandKit`, `useSetDefaultBrandKit`, `useSetProductBrand`, `useBrandKitLimit` and `BrandLimitError`; kits list default first. `brandForProduct` and `brandKitLimit` are pure, with tests (`brand-kits.test.ts`). The server's `loadBrand` now takes the studio's `brandKitId`, else the product's brand, else the default, so ads already follow a product's brand before any screen changes.
 2. **Brand Kit page:** cards, editor, logo and font uploads, Google Fonts search, limits and the upgrade prompt.
 3. **Products and studios:** the brand chip on products, the brand pill and logo switch in the composer, and the request fields.
 4. **Fonts in ads:** FontRefs, the font loader, `measure()` in the layout engine, fallbacks, tests.

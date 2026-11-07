@@ -170,14 +170,29 @@ async function loadTemplate(ctx: Ctx, id: string, studio: "photo" | "ad") {
   return data;
 }
 
-async function loadBrand(userId: string): Promise<BrandHints> {
-  const { data } = await admin
-    .from("brand_kits")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at")
-    .limit(1)
-    .maybeSingle();
+/**
+ * The brand a job uses: the one picked in the studio, else the product's own brand, else the
+ * account's default (the oldest kit if none is marked). Always one of the user's own kits.
+ */
+async function loadBrand(
+  userId: string,
+  pick: { brandKitId?: string; productId?: string } = {},
+): Promise<BrandHints> {
+  const own = () => admin.from("brand_kits").select("*").eq("user_id", userId);
+  let kitId = pick.brandKitId && UUID.test(pick.brandKitId) ? pick.brandKitId : undefined;
+  if (!kitId && pick.productId && UUID.test(pick.productId)) {
+    const { data: product } = await admin
+      .from("products")
+      .select("brand_kit_id")
+      .eq("id", pick.productId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    kitId = product?.brand_kit_id ?? undefined;
+  }
+  let data = kitId ? (await own().eq("id", kitId).maybeSingle()).data : null;
+  data ??= (
+    await own().order("is_default", { ascending: false }).order("created_at").limit(1).maybeSingle()
+  ).data;
   return data
     ? {
         name: data.name,
@@ -272,7 +287,10 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   const theme = inputs.themeId ? adThemes.find((t) => t.id === inputs.themeId) : undefined;
   if (inputs.themeId) await loadTemplate(ctx, inputs.themeId, "ad");
   const themeName = theme?.name ?? "Product ad";
-  const brand = await loadBrand(ctx.userId);
+  const brand = await loadBrand(ctx.userId, {
+    brandKitId: job.brandKitId,
+    productId: job.product.id,
+  });
   /* No theme reference image any more: those carried words the model copied. */
   const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
   const layout: AdLayoutId = (inputs.themeId && THEME_LAYOUT[inputs.themeId]) || "hook";

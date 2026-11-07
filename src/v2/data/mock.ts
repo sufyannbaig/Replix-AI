@@ -47,6 +47,7 @@ export const brandKits: BrandKit[] = [
     audience: null,
     images: [],
     isComplete: false,
+    isDefault: true,
   },
 ];
 

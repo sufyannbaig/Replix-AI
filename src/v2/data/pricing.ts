@@ -20,6 +20,16 @@ export const UGC_CREDITS_PER_SECOND = 2;
 export const MAX_IMAGES_PER_JOB = 4;
 
 /**
+ * Brand kits each plan may hold. The database enforces the same numbers
+ * (v2_brand_kit_limit in supabase/migrations/20261107120000_v2_brand_kits.sql).
+ */
+export const BRAND_KIT_LIMITS: Record<string, number> = { free: 1, starter: 1, pro: 3, scale: 10 };
+
+export function brandKitLimit(plan: string | null | undefined) {
+  return BRAND_KIT_LIMITS[plan ?? "free"] ?? 1;
+}
+
+/**
  * Video lengths each studio offers, in seconds. Kept short on purpose: the models make
  * 5–10 s clips, and every extra second costs us money (docs/V2_GENERATION_COSTS.md).
  * The phase 2 server rejects any other length.
