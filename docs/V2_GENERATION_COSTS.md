@@ -91,6 +91,8 @@ Then compare the total with the drop in Lovable's **Run credits** for the same p
 
 **Suggested first test:** 10 photos (mix of modes) and 10 ads on one account. Expected list cost ≈ $1.50.
 
+**First test batch, 2026-11-07 (Lovable preview):** 3 photo jobs (3 images, $0.21) and 8 ad jobs (12 images, $0.88) finished. That is $0.07 per photo and about $0.073 per ad image including the copy call; 2 early photo jobs failed and were refunded at $0. These are the `EST_USD` estimates, not Lovable's bill. The project is in Benjamin's workspace, so only he can see the real spend under **Settings → Cloud & AI balance**. Compare that with $1.09 for the same day before changing `EST_USD`.
+
 ## Sources
 
 - Lovable AI billing: [docs.lovable.dev/features/ai](https://docs.lovable.dev/features/ai)
