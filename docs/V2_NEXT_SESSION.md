@@ -59,9 +59,9 @@ Practical notes from driving it with the in-app browser:
 
 **Ad Studio**
 
-1. Run the same 10-ad batch on a **second product** (for example the serum) and look for issues. Not done yet.
-2. **Code done, not yet tried live:** ads never opened on the result page are now composed in Recent and Assets (`composeListed` in `api.ts`). Check it on the preview: start an ad batch, close the tab before it finishes, then open Home or Assets.
-3. **Code done, not yet re-tested:** `LAYOUT_PHOTO_BRIEF.quote` now asks for the product at least 40% of the frame height, vertically centred. Check it in the second-product batch.
+1. **Done:** the 10-ad batch on a second product (Acme Glow Serum), results in `V2_AD_DESIGN_PLAN.md` step 6. All 10 good; the Poster bottle came out small.
+2. **Done and verified live:** ads never opened on the result page are composed in Recent and Assets (`composeListed` in `api.ts`, 861ec0c, imported into Lovable).
+3. **Done:** the bigger-product quote brief worked. **New:** the Poster brief now asks for the product to fill about 70% of the frame (commit after 861ec0c). Import `src/lib/v2/ad-layouts.ts` into Lovable and run two Bold offer ads (1:1, 9:16) to check it.
 4. Plan step 7: the B layouts, Brand Kit fonts, and photo-picked accent when there is no brand colour.
 5. Plan step 8: "Edit text" on the result screen, re-rendering from `{n}-photo.png` for free.
 6. Open questions in the plan's section 7: a "Made with Replix" mark on Free ads; layout choice in the studio.

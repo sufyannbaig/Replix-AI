@@ -55,7 +55,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   quote:
     "A person in a warm, real setting holding the product close to camera on the right side of the frame, label to camera. The product is big: at least 40% of the frame height, vertically centred, never small or in the background. The left half is soft, out of focus and calm.",
   poster:
-    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame, centred and large, with a little space around it.",
+    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 70% of the frame height, with only a little space around it. Never a small product in a big empty set.",
   editorial:
     "Candid lifestyle moment with the product held close to camera, label facing it and at least a quarter of the frame height, kept in the upper 55% of the frame. The bottom 30% (45% on a vertical frame) is calm and slightly darker, with nothing important in it.",
 };
