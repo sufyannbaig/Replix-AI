@@ -190,7 +190,8 @@ function hook(ctx: Ctx): AdNode {
     maxLines: 3,
     max: tall ? 150 : 112,
     min: 56,
-    glyph: 0.5,
+    /* Archivo 800 lowercase runs ~0.5-0.54 em per character; 0.56 keeps long words on one line. */
+    glyph: 0.56,
   });
   return el(
     "div",
@@ -366,7 +367,11 @@ function poster(ctx: Ctx): AdNode {
 
 /** Lifestyle: the photo does the work; a small elegant line sits low over a soft gradient. */
 function editorial(ctx: Ctx): AdNode {
-  const textW = ctx.width * (ctx.height > ctx.width ? 0.86 : 0.7);
+  /* On wide frames the CTA sits beside the text, so the text only gets the room it leaves. */
+  const inner = ctx.width - ctx.pad * 2;
+  const ctaW = Math.ceil(ctx.copy.cta.length * 30 * 0.6);
+  const textW =
+    ctx.height > ctx.width ? ctx.width * 0.86 : Math.min(ctx.width * 0.7, inner - ctaW - 32);
   const size = fitHeadline(ctx.copy.headline, textW, {
     maxLines: 2,
     max: ctx.height > ctx.width ? 110 : 92,
@@ -569,7 +574,12 @@ function quote(ctx: Ctx): AdNode {
 function split(ctx: Ctx): AdNode {
   const [before, after] = ctx.labels?.length === 2 ? ctx.labels : ["Before", "After"];
   const textW = ctx.width - ctx.pad * 2;
-  const size = fitHeadline(ctx.copy.headline, textW, { maxLines: 2, max: 96, min: 52, glyph: 0.5 });
+  const size = fitHeadline(ctx.copy.headline, textW, {
+    maxLines: 2,
+    max: 96,
+    min: 52,
+    glyph: 0.56,
+  });
   const label = (text: string, side: "left" | "right") =>
     el(
       "div",

@@ -100,6 +100,40 @@ describe("buildAdLayout", () => {
     strictEqual(hook.length, 3);
   });
 
+  test("editorial leaves room for a long CTA beside the text", () => {
+    for (const aspect of ["1:1", "16:9"] as const) {
+      const cta = "Try Acme Charge today";
+      const { width, tree } = buildAdLayout({
+        layout: "editorial",
+        aspect,
+        photo: "x",
+        copy: { ...copy, cta },
+      });
+      const row = (tree.props.children as AdNode[])[2];
+      const [text] = row.props.children as AdNode[];
+      const pad = Math.round(Math.min(width, AD_SIZES[aspect].height) * 0.065);
+      ok(
+        (text.props.style?.width as number) + cta.length * 30 * 0.6 + 32 <= width - pad * 2,
+        aspect,
+      );
+    }
+  });
+
+  test("hook keeps a long hyphenated word on one line on a story frame", () => {
+    // Was 4 lines live: "Hitting the / mid- / afternoon / wall?" at 138px.
+    const { tree } = buildAdLayout({
+      layout: "hook",
+      aspect: "9:16",
+      photo: "x",
+      copy: { headline: "Hitting the mid-afternoon wall?", subline: "", cta: "Shop now" },
+    });
+    const textW = 1080 * 0.84;
+    // Archivo 800 measures about 0.54 em per character for this word.
+    const headline = (tree.props.children as AdNode[])[2];
+    const fontSize = (headline.props.children as AdNode[])[0].props.style?.fontSize as number;
+    ok("mid-afternoon".length * 0.54 * fontSize <= textW, `fontSize ${fontSize}`);
+  });
+
   test("every theme maps to a layout", () => {
     for (const id of ["problem-fix", "before-after", "testimonial", "bold-offer", "lifestyle"]) {
       ok(LAYOUTS.includes(THEME_LAYOUT[id]));
