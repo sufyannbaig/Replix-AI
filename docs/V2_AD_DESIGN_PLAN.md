@@ -1,6 +1,6 @@
 # Ad Studio: designed ads plan
 
-Status: steps 1–5 built 2026-11-07 (17b83c3). Waiting on the Lovable import and the test batch (step 6).
+Status: steps 1–6 done 2026-11-07 (17b83c3, f7e994b) and live on the Lovable preview. Next: phase 2 (step 7).
 
 ## 1. Why
 
@@ -85,7 +85,10 @@ Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
 4. **Prompts: done.** The layout comes from the theme (`THEME_LAYOUT`; no theme uses Hook), not from the model. The copy call is told the layout's composition and returns, per ad, the copy plus `scene` (photo direction) and `accent` (a colour from the product). `adPhotoPrompt` replaces `adImagePrompt`: no text at all, the layout's `LAYOUT_PHOTO_BRIEF`, the scene, scene-matched light and shadows, the hero-size rule. The theme reference images are no longer sent.
 5. **Wire in: done.** `runJob` stores the ad photo as `{n}-photo.png` and writes `copy` = `{headline, subline, cta, layout, colors, labels?, photo, composed: false}` (colours: Brand Kit first, then the accent). `getGenerationJob` sends uncomposed ads with a `design` field. `useGenerationJob` (api.ts) composes each one in the browser with `src/v2/data/compose-ad.ts`, shows it at once from a blob link, and saves it with `saveComposedAd`. That server function checks that the output is the caller's own uncomposed ad and that the file is a JPEG under 8 MB, writes `{n}.jpg` (the name comes from the row) and sets `image_path` and `composed: true`. If composing fails, the photo stays and the next visit to the result page tries again. Fonts come from jsdelivr (`@fontsource` 5.1.0, static latin woff, about 160 KB) rather than the `catalog` bucket, so nothing binary had to be uploaded. Measured in a local browser: 0.3–0.7 s per ad, 100–300 KB JPEG. The Editorial link lost its "→" because the latin font files have no arrow glyph.
    - **Not yet:** Assets and Recent show the clean photo for an ad whose result page was never opened after it finished. That's rare (the result page opens when you press Generate). Composing there too is a follow-up.
-6. **Test batch:** 2 products × 5 themes × 2 aspect ratios, checked against a list: no stray text, the label is correct, the type sits on the grid, contrast holds and the photo is composed for the text zone. Then import into Lovable and run the same batch on the preview.
+6. **Test batch: done on the Lovable preview, 2026-11-07.** Lovable imported the 10 files byte-for-byte and installed satori. One product (Acme Charge) × 5 themes × 2 sizes (1:1, 9:16), 10 ads, 20 test credits. Every ad composed in the browser and saved as `{n}.jpg` (1080×1080 or 1080×1920) with `composed: true`; the clean `{n}-photo.png` is kept and the layout matched the theme each time. No photo had stray text; the copy model picked a blue accent from the can every time (#0A4CB0 to #145DB7).
+   - The first run after the import still used the old code, because the preview hadn't finished rebuilding. Wait for the preview to rebuild before testing after an import.
+   - **Fixed after the batch (f7e994b):** Editorial ran a long CTA ("Try Acme Charge") off the right edge, so the text now gets only the room the CTA leaves. Hook on 9:16 wrapped "Hitting the mid-afternoon wall?" to four lines, because the size estimate was too narrow for Archivo 800; Hook and Split now use 0.56 em per character, checked against the real font metrics. Both have tests.
+   - **Still seen:** in one Testimonial 9:16 the model made the can small in the photo, despite the hero-size rule. The quote panel covers the top, so it still reads, but the label is small. A second product hasn't been tested yet.
 7. **Phase 2:** the B layouts, brand kit fonts, and the photo accent colour.
 8. **Phase 3, Edit text:** on the result screen, change the headline, subline, CTA or layout and re-render from `{n}-photo.png` for free. This is the editable overlay the backend plan listed as later.
 
