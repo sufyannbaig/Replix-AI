@@ -1,6 +1,6 @@
 // Run with: node --test src/lib/v2/brand-kits.test.ts
 import { describe, test } from "node:test";
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import {
   BRAND_KIT_LIMITS,
@@ -8,7 +8,12 @@ import {
   brandKitLimit,
   canUploadFonts,
 } from "../../v2/data/pricing.ts";
-import { brandForProduct, type BrandKit } from "../../v2/data/types.ts";
+import {
+  applyStoreBrands,
+  brandForProduct,
+  type BrandKit,
+  type Product,
+} from "../../v2/data/types.ts";
 
 const kit = (id: string, isDefault = false): BrandKit => ({
   id,
@@ -98,5 +103,45 @@ describe("uploaded fonts by plan", () => {
   test("on a paid plan the fonts pass through unchanged", () => {
     deepStrictEqual(brandFontsForPlan(fonts, "pro"), fonts);
     strictEqual(brandFontsForPlan(null, "free"), undefined);
+  });
+});
+
+describe("store brands (step 7)", () => {
+  const item = (id: string, source: "shopify" | "upload", shopDomain?: string): Product => ({
+    id,
+    name: id,
+    imageUrl: "",
+    source,
+    createdAt: "",
+    ...(shopDomain !== undefined ? { shopDomain } : {}),
+  });
+  const list = [
+    item("shopify_1", "shopify", "acme.myshopify.com"),
+    item("shopify_2", "shopify", "other.myshopify.com"),
+    item("u1", "upload"),
+  ];
+
+  test("a store's products take its brand; others are untouched", () => {
+    const out = applyStoreBrands(list, { "acme.myshopify.com": "kit-b" });
+    strictEqual(out[0].brandKitId, "kit-b");
+    strictEqual(out[1].brandKitId, undefined);
+    strictEqual(out[2].brandKitId, undefined);
+  });
+
+  test("a store set to the default brand gets null, so brandForProduct picks the default", () => {
+    const [p] = applyStoreBrands(list, { "acme.myshopify.com": null });
+    strictEqual(p.brandKitId, null);
+    strictEqual(brandForProduct([kit("a", true), kit("b")], p)?.id, "a");
+  });
+
+  test("the migration keeps stores to their owner's brands and clears deleted brands", () => {
+    const sql = readFileSync(
+      new URL("../../../supabase/migrations/20261108120000_v2_store_brands.sql", import.meta.url),
+      "utf8",
+    );
+    ok(/REFERENCES public\.brand_kits\(id\) ON DELETE SET NULL/.test(sql));
+    ok(/ENABLE ROW LEVEL SECURITY/.test(sql));
+    ok(/v2_check_store_brand/.test(sql));
+    ok(/PRIMARY KEY \(user_id, shop_domain\)/.test(sql));
   });
 });

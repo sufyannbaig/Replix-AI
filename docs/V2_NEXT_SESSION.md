@@ -77,7 +77,7 @@ Practical notes from driving it with the in-app browser:
 - **Fixed from it** (`54a99a4`): tall hook and quote ads put the logo on the product; it now sits at the top. Confirmed live on a 9:16 Testimonials ad. Imported into Lovable with the Free-fonts and Assets change.
 - **Decided 2026-11-08:** Free brands use Google Fonts only (uploads on paid plans); no Replix mark on ads. **Assets is the history:** it lists every finished generation (last 100 jobs), and the result page says "In your Assets" instead of a Save button.
 - **Still untested live:** two brands and switching (needs Pro, or a test plan change), an opaque JPG logo, promoting a new default when the default is deleted. The test brand "Soniq Audio" and 13 test ads are still on the test account.
-- **Step 7** (Shopify store to brand) is left: it touches the connect flow, so do it with Sufyan around.
+- **Step 7** (Shopify store to brand) is written and tested (migration `20261108120000_v2_store_brands.sql`, notes in section 6 of the brand plan). Not tested live: it needs an account with 2+ brands (Pro) and a connected Shopify store.
 - Photo Studio has no brand pill on purpose (the photo pipeline doesn't read the brand). Open questions are in section 7 of the brand plan.
 
 **Phase 2+ (video)**: `docs/V2_BACKEND_PLAN.md` sections 4, 8 and 9.

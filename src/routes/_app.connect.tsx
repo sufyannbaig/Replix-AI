@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { normalizeShopDomain } from "@/components/ShopifyStoreConnect";
 import { getShopifyProducts } from "@/lib/shopify.functions";
 import { linkShopifyInstall, unlinkShopifyInstall } from "@/lib/shopify-billing.functions";
+import { StoreBrandPicker } from "@/v2/components/brand/BrandMenus";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { PillButton } from "@/v2/components/primitives";
 import shopifyBag from "@/assets/v2/icons/shopify-bag.svg";
@@ -158,6 +159,7 @@ function ConnectPage() {
               </PillButton>
             </div>
           ) : null}
+          {connectedShop ? <StoreBrandPicker shop={connectedShop} /> : null}
         </div>
       </section>
     </AppShell>

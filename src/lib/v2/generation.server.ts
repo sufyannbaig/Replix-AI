@@ -175,6 +175,27 @@ async function loadTemplate(ctx: Ctx, id: string, studio: "photo" | "ad") {
  * The brand a job uses: the one picked in the studio, else the product's own brand, else the
  * account's default (the oldest kit if none is marked). Always one of the user's own kits.
  */
+/** The brand chosen for the user's connected Shopify store, if any. */
+async function storeBrandId(userId: string): Promise<string | undefined> {
+  const { data: install } = await supabaseAdmin
+    .from("shopify_installations")
+    .select("shop_domain")
+    .eq("user_id", userId)
+    .is("uninstalled_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const shop = install?.shop_domain?.toLowerCase();
+  if (!shop) return undefined;
+  const { data } = await admin
+    .from("store_brands")
+    .select("brand_kit_id")
+    .eq("user_id", userId)
+    .eq("shop_domain", shop)
+    .maybeSingle();
+  return data?.brand_kit_id ?? undefined;
+}
+
 async function loadBrand(
   userId: string,
   pick: { brandKitId?: string; productId?: string } = {},
@@ -190,6 +211,8 @@ async function loadBrand(
       .maybeSingle();
     kitId = product?.brand_kit_id ?? undefined;
   }
+  /* Shopify products have no row: they use the connected store's brand (plan step 7). */
+  if (!kitId && pick.productId?.startsWith("shopify_")) kitId = await storeBrandId(userId);
   let data = kitId ? (await own().eq("id", kitId).maybeSingle()).data : null;
   if (!data) {
     const byDefault = await own()

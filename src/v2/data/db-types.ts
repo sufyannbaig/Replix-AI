@@ -98,6 +98,15 @@ export type GenerationJobRow = {
   finished_at: string | null;
 };
 
+/** A connected Shopify store's brand (null = the default brand, chosen on purpose). */
+export type StoreBrandRow = {
+  user_id: string;
+  shop_domain: string;
+  brand_kit_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type GenerationOutputRow = {
   id: string;
   job_id: string;
@@ -135,6 +144,7 @@ export type V2Database = {
     Tables: {
       products: Table<ProductRow, "user_id" | "source" | "name">;
       brand_kits: Table<BrandKitRow, "user_id">;
+      store_brands: Table<StoreBrandRow, "user_id" | "shop_domain">;
       library_items: Table<LibraryItemRow, "user_id" | "kind" | "name" | "image_path">;
       templates: Table<TemplateRow, "id" | "studio" | "slug" | "name">;
       generation_jobs: Table<

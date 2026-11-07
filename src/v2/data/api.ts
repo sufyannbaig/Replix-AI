@@ -66,12 +66,14 @@ import type {
   UgcTemplate,
   UploadRef,
 } from "./types";
+import { applyStoreBrands } from "./types";
 
 export const queryKeys = {
   brandKits: ["v2", "brand-kits"] as const,
   community: ["v2", "community"] as const,
   photoTemplates: ["v2", "photo-templates"] as const,
   products: ["v2", "products"] as const,
+  storeBrand: (shop: string) => ["v2", "store-brand", shop] as const,
   pieces: (kind: PieceKind) => ["v2", "pieces", kind] as const,
   insights: (productId: string) => ["v2", "insights", productId] as const,
   adThemes: ["v2", "ad-themes"] as const,
@@ -404,8 +406,8 @@ export function useSetDefaultBrandKit() {
 }
 
 /**
- * Give a saved product its brand (null = the default brand). Shopify products are read live
- * and have no row yet; they use the default until store-to-brand mapping (plan step 7).
+ * Give a saved product its brand (null = the default brand). Shopify products have no row:
+ * they take their store's brand (useSetStoreBrand).
  */
 export function useSetProductBrand() {
   const queryClient = useQueryClient();
@@ -487,6 +489,7 @@ function formatMoney(amount: string, currency: string) {
 async function fetchShopifyProducts(): Promise<Product[]> {
   try {
     const res = await getShopifyProducts({ data: { first: 50 } });
+    const shopDomain = res.shop?.toLowerCase();
     return res.products.flatMap(({ node }) => {
       const image = node.images.edges[0]?.node.url;
       if (!image) return [];
@@ -500,6 +503,7 @@ async function fetchShopifyProducts(): Promise<Product[]> {
           description: node.description || undefined,
           price: formatMoney(price.amount, price.currencyCode),
           createdAt: new Date(0).toISOString(),
+          ...(shopDomain ? { shopDomain } : {}),
         },
       ];
     });
@@ -508,14 +512,97 @@ async function fetchShopifyProducts(): Promise<Product[]> {
   }
 }
 
+/** Sample data, with any store brand picked this page load. */
+function sampleProducts(): Product[] {
+  return applyStoreBrands(
+    [...addedProducts, ...products].map((p) => withShop(p, "")),
+    sampleStoreBrands,
+  );
+}
+
 async function fetchProducts(): Promise<Product[]> {
-  if (!(await backendUser("products"))) return [...addedProducts, ...products];
+  if (!(await backendUser("products"))) return sampleProducts();
   const rows = await tryTable("products", () =>
     db.from("products").select("*").order("created_at", { ascending: false }),
   );
-  if (!rows) return [...addedProducts, ...products];
-  const [own, shopify] = await Promise.all([productsFromRows(rows), fetchShopifyProducts()]);
-  return [...own, ...shopify];
+  if (!rows) return sampleProducts();
+  const [own, shopify, stores] = await Promise.all([
+    productsFromRows(rows),
+    fetchShopifyProducts(),
+    fetchStoreBrands(),
+  ]);
+  return [...own, ...applyStoreBrands(shopify, stores)];
+}
+
+/* Sample-data mode: store brands chosen this page load (key "" = the sample store). */
+const sampleStoreBrands: Record<string, string | null> = {};
+
+/** Each connected store's brand, by shop domain. Empty before the step 7 migration. */
+async function fetchStoreBrands(): Promise<Record<string, string | null>> {
+  if (!(await backendUser("store_brands"))) return { ...sampleStoreBrands };
+  const rows = await tryTable("store_brands", () =>
+    db.from("store_brands").select("shop_domain, brand_kit_id"),
+  ).catch(() => null);
+  return Object.fromEntries((rows ?? []).map((r) => [r.shop_domain, r.brand_kit_id]));
+}
+
+/**
+ * A connected store's brand: `set` is false until the user has chosen one (then the connect
+ * page asks), and `brandKitId` null means the default brand.
+ */
+export function useStoreBrand(shop: string | null | undefined) {
+  const key = shop?.toLowerCase() ?? "";
+  return useQuery({
+    queryKey: queryKeys.storeBrand(key),
+    enabled: shop !== null && shop !== undefined,
+    queryFn: async () => {
+      const stores = await fetchStoreBrands();
+      return { set: key in stores, brandKitId: stores[key] ?? null };
+    },
+  });
+}
+
+/** Set a store's brand; every product from that store takes it. */
+export function useSetStoreBrand() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ shop, brandKitId }: { shop: string; brandKitId: string | null }) => {
+      const key = shop.toLowerCase();
+      const userId = await backendUser("store_brands");
+      if (userId && key) {
+        const { error } = await db
+          .from("store_brands")
+          .upsert(
+            { user_id: userId, shop_domain: key, brand_kit_id: brandKitId },
+            { onConflict: "user_id,shop_domain" },
+          );
+        if (error) throw new Error(error.message);
+        return { key, brandKitId, live: true };
+      }
+      sampleStoreBrands[key] = brandKitId;
+      return { key, brandKitId, live: false };
+    },
+    onSuccess: ({ key, brandKitId, live }) => {
+      queryClient.setQueryData<Product[]>(queryKeys.products, (prev) =>
+        prev
+          ? applyStoreBrands(
+              prev.map((p) => withShop(p, key)),
+              { [key]: brandKitId },
+            )
+          : prev,
+      );
+      queryClient.setQueryData(queryKeys.storeBrand(key), { set: true, brandKitId });
+      // Sample data has nothing to refetch; a refetch would undo the change.
+      if (live) void queryClient.invalidateQueries({ queryKey: queryKeys.products });
+    },
+  });
+}
+
+/* Sample Shopify products have no store domain: they count as the sample store (""). */
+function withShop(p: Product, key: string): Product {
+  return p.source === "shopify" && p.shopDomain === undefined && key === ""
+    ? { ...p, shopDomain: "" }
+    : p;
 }
 
 /** Save a product row, uploading its photo first when it's a local file. */

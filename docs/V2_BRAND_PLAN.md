@@ -118,6 +118,11 @@ Each step: type check, tests, commit to `v2`, import into Lovable, check on the 
    - Seen, not brand-related: the split layout's CTA can cover part of the product; the before/after 1:1 headline crosses the divider; Ad Studio forgets the product when you come back from a result; the brand chip reads "Add your brand" for a moment while data loads.
    - **Not tested live:** a second brand and switching between brands (needs Pro), an opaque JPG logo, promoting a new default when the default is deleted.
 7. **Shopify store to brand mapping:** last, because it touches the connect flow.
+   - **Done (code, 2026-11-08):** migration `20261108120000_v2_store_brands.sql` adds `store_brands` (user, shop domain, brand; null = default chosen on purpose; RLS own rows; a trigger keeps it to the owner's brands; deleting a brand sets it back to null). `shopify_installations` is not touched.
+   - Products: Shopify products get `shopDomain` and take their store's brand (`applyStoreBrands` in `types.ts`). Their brand chip now has a menu: "Ads for every product from <store> use", which sets the store's brand (`useSetStoreBrand`). Ad Studio starts on that brand as for uploads.
+   - Connect page: once a store is connected and the account has 2+ brands, it asks once "Which brand is <store>?"; after that it shows the brand with a menu to change it. With one brand it shows nothing (the default is used). Works for both ways of connecting (linking an install, or coming back from Shopify's approval).
+   - Server: a Shopify product with no brand picked in the studio falls back to the store's brand (`storeBrandId` in `generation.server.ts`), then the default.
+   - Tests in `brand-kits.test.ts`. Checked in sample mode (chip menu and save). **Not tested live:** the test account has one brand and no Shopify store, so the connect question can't show there; needs a Pro test account with a connected store.
 
 No extra AI cost: fonts and logos are drawn by our code, not the image model.
 

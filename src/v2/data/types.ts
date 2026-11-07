@@ -86,7 +86,24 @@ export type Product = {
   createdAt: string;
   /** The product's brand; missing or null means the account's default brand. */
   brandKitId?: string | null;
+  /** Shopify products: the store they come from (its brand applies to all of them). */
+  shopDomain?: string;
 };
+
+/**
+ * Give a Shopify store's products the store's brand. `stores` maps a shop domain to its brand
+ * (null = default). Products from other stores, and uploads, are left as they are.
+ */
+export function applyStoreBrands(
+  list: Product[],
+  stores: Record<string, string | null>,
+): Product[] {
+  return list.map((p) =>
+    p.source === "shopify" && p.shopDomain !== undefined && p.shopDomain in stores
+      ? { ...p, brandKitId: stores[p.shopDomain] }
+      : p,
+  );
+}
 
 export type PieceKind = "scene" | "prop" | "character" | "style";
 
