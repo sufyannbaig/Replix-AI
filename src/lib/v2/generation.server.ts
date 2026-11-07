@@ -17,6 +17,7 @@ import type {
   UploadRef,
 } from "@/v2/data/types";
 import { LAYOUT_PHOTO_BRIEF, THEME_LAYOUT, type AdLayoutId } from "./ad-layouts";
+import { brandFontsForPlan } from "@/v2/data/pricing";
 import { isSafePublicUrl } from "./page-meta";
 import {
   AD_THEME_RECIPES,
@@ -292,7 +293,9 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
 }
 
 /** The brand fonts a designed ad keeps (blank names dropped); undefined when there are none. */
-function adFonts(fonts: BrandHints["fonts"]) {
+function adFonts(brandFonts: BrandHints["fonts"], plan: string) {
+  /* Free uses Google Fonts only: uploaded fonts are left out (the layout font is used). */
+  const fonts = brandFontsForPlan(brandFonts, plan);
   const heading = fonts?.heading?.trim().slice(0, 80);
   const body = fonts?.body?.trim().slice(0, 80);
   if (!heading && !body) return undefined;
@@ -372,7 +375,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
             .slice(0, 200)
         : null),
   };
-  const fonts = adFonts(brand.fonts);
+  const fonts = adFonts(brand.fonts, ctx.plan);
   const logo = job.showLogo === false ? undefined : adLogo(brand.logos);
   return copies.map((c: AdCopy, i): Plan => ({
     refs,

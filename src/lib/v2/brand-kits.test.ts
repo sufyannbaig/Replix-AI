@@ -1,8 +1,13 @@
 // Run with: node --test src/lib/v2/brand-kits.test.ts
 import { describe, test } from "node:test";
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
-import { BRAND_KIT_LIMITS, brandKitLimit } from "../../v2/data/pricing.ts";
+import {
+  BRAND_KIT_LIMITS,
+  brandFontsForPlan,
+  brandKitLimit,
+  canUploadFonts,
+} from "../../v2/data/pricing.ts";
 import { brandForProduct, type BrandKit } from "../../v2/data/types.ts";
 
 const kit = (id: string, isDefault = false): BrandKit => ({
@@ -67,5 +72,31 @@ describe("brandForProduct", () => {
 
   test("no kits gives null", () => {
     strictEqual(brandForProduct([], { brandKitId: "a" }), null);
+  });
+});
+
+describe("uploaded fonts by plan", () => {
+  test("Free (and unknown plans) use Google Fonts only; paid plans may upload", () => {
+    strictEqual(canUploadFonts("free"), false);
+    strictEqual(canUploadFonts(undefined), false);
+    strictEqual(canUploadFonts("enterprise"), false);
+    strictEqual(canUploadFonts("starter"), true);
+    strictEqual(canUploadFonts("pro"), true);
+    strictEqual(canUploadFonts("scale"), true);
+  });
+
+  const fonts = {
+    heading: "Playfair Display",
+    body: "My Font",
+    files: { body: "u/brand/fonts/my.woff" },
+  };
+
+  test("on Free an uploaded role is dropped and the Google font stays", () => {
+    deepStrictEqual(brandFontsForPlan(fonts, "free"), { heading: "Playfair Display" });
+  });
+
+  test("on a paid plan the fonts pass through unchanged", () => {
+    deepStrictEqual(brandFontsForPlan(fonts, "pro"), fonts);
+    strictEqual(brandFontsForPlan(null, "free"), undefined);
   });
 });

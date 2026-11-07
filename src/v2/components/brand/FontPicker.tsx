@@ -1,10 +1,13 @@
+import { Link } from "@tanstack/react-router";
 import { Check, ChevronDown, Loader2, Search, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCredits } from "@/hooks/use-credits";
 import { cn } from "@/lib/utils";
 import { useGoogleFonts, useUploadBrandFile } from "@/v2/data/api";
 import { loadFontFace, nearestWeight, searchFonts, type GoogleFont } from "@/v2/data/fonts";
+import { canUploadFonts } from "@/v2/data/pricing";
 
 /** A chosen font: a Google family, or an uploaded file (`file` set). */
 export type FontChoice = { family: string; file?: { ref: string; url: string } };
@@ -66,6 +69,10 @@ export function FontPicker({
   const fileInput = useRef<HTMLInputElement>(null);
   const { data: fonts = [], isLoading } = useGoogleFonts();
   const upload = useUploadBrandFile();
+  const { plan, loading: planLoading } = useCredits();
+  /* Free uses Google Fonts only; uploads are for paid plans. */
+  const uploads = !planLoading && canUploadFonts(plan);
+  const freePlan = !planLoading && !uploads;
   const results = useMemo(() => searchFonts(fonts, query, 30), [fonts, query]);
 
   const pick = (font: GoogleFont) => {
@@ -105,7 +112,11 @@ export function FontPicker({
                   className="truncate font-inter-tight text-lg leading-tight text-v2-ink"
                 />
                 <span className="font-inter-tight text-xs text-v2-ink-60">
-                  {value.file ? "Uploaded font" : "Google Font"}
+                  {value.file
+                    ? freePlan
+                      ? "Uploaded font · not used on Free"
+                      : "Uploaded font"
+                    : "Google Font"}
                 </span>
               </span>
             ) : (
@@ -136,7 +147,8 @@ export function FontPicker({
               </li>
             ) : results.length === 0 ? (
               <li className="px-3 py-3 font-inter-tight text-sm text-v2-ink-60">
-                No Google font called “{query}”. Upload it below if you have the file.
+                No Google font called “{query}”.
+                {uploads ? " Upload it below if you have the file." : null}
               </li>
             ) : (
               results.map((font) => {
@@ -164,38 +176,49 @@ export function FontPicker({
             )}
           </ul>
           <div className="flex flex-col gap-2 border-t border-v2-line p-3">
-            <label className="flex items-start gap-2 font-inter-tight text-xs leading-snug text-v2-ink-70">
-              <input
-                type="checkbox"
-                checked={licensed}
-                onChange={(e) => setLicensed(e.target.checked)}
-                className="mt-0.5 size-3.5 accent-v2-blue"
-              />
-              I have the licence to use my uploaded font in ads.
-            </label>
-            <button
-              type="button"
-              disabled={!licensed || upload.isPending}
-              onClick={() => fileInput.current?.click()}
-              className="flex h-9 items-center justify-center gap-2 rounded-full border border-[#a2a2a2] font-inter-tight text-sm text-v2-ink transition-opacity hover:bg-v2-surface-2 disabled:opacity-40 night:border-v2-border"
-            >
-              {upload.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Upload className="size-4" />
-              )}
-              Upload font file (TTF, OTF, WOFF)
-            </button>
-            <input
-              ref={fileInput}
-              type="file"
-              accept=".ttf,.otf,.woff"
-              className="hidden"
-              onChange={(e) => {
-                onFile(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
+            {uploads ? (
+              <>
+                <label className="flex items-start gap-2 font-inter-tight text-xs leading-snug text-v2-ink-70">
+                  <input
+                    type="checkbox"
+                    checked={licensed}
+                    onChange={(e) => setLicensed(e.target.checked)}
+                    className="mt-0.5 size-3.5 accent-v2-blue"
+                  />
+                  I have the licence to use my uploaded font in ads.
+                </label>
+                <button
+                  type="button"
+                  disabled={!licensed || upload.isPending}
+                  onClick={() => fileInput.current?.click()}
+                  className="flex h-9 items-center justify-center gap-2 rounded-full border border-[#a2a2a2] font-inter-tight text-sm text-v2-ink transition-opacity hover:bg-v2-surface-2 disabled:opacity-40 night:border-v2-border"
+                >
+                  {upload.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Upload className="size-4" />
+                  )}
+                  Upload font file (TTF, OTF, WOFF)
+                </button>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept=".ttf,.otf,.woff"
+                  className="hidden"
+                  onChange={(e) => {
+                    onFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </>
+            ) : (
+              <p className="font-inter-tight text-xs leading-snug text-v2-ink-70">
+                Your own font files are on paid plans.{" "}
+                <Link to="/upgrade" className="text-v2-blue underline-offset-2 hover:underline">
+                  See plans
+                </Link>
+              </p>
+            )}
             {value ? (
               <button
                 type="button"

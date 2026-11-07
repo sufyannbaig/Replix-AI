@@ -29,6 +29,32 @@ export function brandKitLimit(plan: string | null | undefined) {
   return BRAND_KIT_LIMITS[plan ?? "free"] ?? 1;
 }
 
+/** Plans that may upload their own font files. Free uses Google Fonts only (decided 2026-11-08). */
+export const FONT_UPLOAD_PLANS = ["starter", "pro", "scale"];
+
+export function canUploadFonts(plan: string | null | undefined) {
+  return FONT_UPLOAD_PLANS.includes(plan ?? "free");
+}
+
+type BrandFonts = { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+
+/**
+ * The brand fonts an ad may use on this plan. Without font uploads (Free), a role set from an
+ * uploaded file is dropped, so the layout's own font is used; Google Fonts stay.
+ */
+export function brandFontsForPlan(
+  fonts: BrandFonts | null | undefined,
+  plan: string | null | undefined,
+): BrandFonts | undefined {
+  if (!fonts) return undefined;
+  if (canUploadFonts(plan)) return fonts;
+  const { files, ...names } = fonts;
+  return {
+    ...(names.heading && !files?.heading ? { heading: names.heading } : {}),
+    ...(names.body && !files?.body ? { body: names.body } : {}),
+  };
+}
+
 /**
  * Video lengths each studio offers, in seconds. Kept short on purpose: the models make
  * 5–10 s clips, and every extra second costs us money (docs/V2_GENERATION_COSTS.md).

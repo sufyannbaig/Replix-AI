@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import replixLogoAsset from "@/assets/replix-mark.png.asset.json";
 import {
   AD_TEMPLATES,
   clampHeadline,
@@ -7,8 +6,6 @@ import {
   resolveAccent,
   type AdTemplateId,
 } from "@/lib/ad-templates";
-
-const replixLogo = replixLogoAsset.url;
 
 /** Kept for backwards compatibility with existing callers. */
 export type AdStyleId = AdTemplateId;
@@ -176,8 +173,7 @@ export function AdPreview({
                     fontWeight: 800,
                     fontSize: "3em",
                     lineHeight: 1,
-                    padding:
-                      template.cta.shape === "pill" ? "1.6em 3.4em" : "0 0 0.6em 0",
+                    padding: template.cta.shape === "pill" ? "1.6em 3.4em" : "0 0 0.6em 0",
                     borderRadius: template.cta.shape === "pill" ? "999em" : 0,
                     borderBottom:
                       template.cta.shape === "rule" ? `0.12em solid ${accent}` : undefined,
@@ -225,22 +221,6 @@ export function AdPreview({
             {chip}
           </div>
         )}
-
-        {/* Replix watermark */}
-        <img
-          src={replixLogo}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute z-10 select-none object-contain"
-          style={{
-            bottom: "1.6em",
-            right: "1.6em",
-            width: "7em",
-            height: "7em",
-            opacity: 0.85,
-            filter: "drop-shadow(0 0.1em 0.3em rgba(0,0,0,0.45))",
-          }}
-        />
       </div>
     </div>
   );
