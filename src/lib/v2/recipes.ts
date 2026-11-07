@@ -140,7 +140,8 @@ export const AD_THEME_RECIPES: Record<string, { story: string; layout: string }>
 export type AdCopy = { headline: string; subline: string; cta: string };
 
 export type AdCopyBrief = {
-  product: { name: string; description?: string | null; price?: string | null };
+  /** `dataUrl` is the product photo, so the copy is about what the product really is. */
+  product: { name: string; description?: string | null; price?: string | null; dataUrl?: string };
   themeName: string;
   themeId: string | null;
   brand: BrandHints;
@@ -151,6 +152,12 @@ export type AdCopyBrief = {
 
 export function adCopyMessages(brief: AdCopyBrief) {
   const theme = brief.themeId ? AD_THEME_RECIPES[brief.themeId] : undefined;
+  const photo = brief.product.dataUrl;
+  const text = `${photo ? "The attached photo shows the product. Work out what it is from the photo and details, not from the name alone.\n" : ""}Product: ${brief.product.name}
+${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
+${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
+Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle.
+Return {"ads":[{"headline": max 6 words, "subline": max 12 words, "cta": 2-3 words like "Shop now"}]}.`;
   return [
     {
       role: "system",
@@ -159,11 +166,12 @@ export function adCopyMessages(brief: AdCopyBrief) {
     },
     {
       role: "user",
-      content: `Product: ${brief.product.name}
-${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
-${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
-Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle.
-Return {"ads":[{"headline": max 6 words, "subline": max 12 words, "cta": 2-3 words like "Shop now"}]}.`,
+      content: photo
+        ? [
+            { type: "text", text },
+            { type: "image_url", image_url: { url: photo } },
+          ]
+        : text,
     },
   ];
 }
