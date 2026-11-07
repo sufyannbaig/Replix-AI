@@ -83,7 +83,15 @@ function CreditsCard() {
               {loading ? "–" : `${remaining}/${planInfo.ads}`}
             </span>
           </span>
-          <span className="rounded-[15px] bg-v2-cream px-2.5 py-1.5 font-jakarta text-xs font-medium leading-[1.26] text-black/60 night:text-v2-ink-70">
+          <span
+            className={cn(
+              "rounded-[15px] px-2.5 py-1.5 font-jakarta text-xs font-medium leading-[1.26]",
+              /* Paid plans get the same green-to-cream gradient as the Pro template badges. */
+              planInfo.key === "free"
+                ? "bg-v2-cream text-black/60 night:text-v2-ink-70"
+                : "bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] text-black",
+            )}
+          >
             {planInfo.name}
           </span>
         </span>
