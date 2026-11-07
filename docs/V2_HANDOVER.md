@@ -156,3 +156,5 @@ The backend plan is `docs/V2_BACKEND_PLAN.md`; what phase 0 built, and what to c
 **Phase 1 (same day):** Photo Studio and Ad Studio generate for real on the server (Lovable built-in Nano Banana and Gemini, no new keys); credits are reserved, settled and refunded in SQL. Second migration `20261106160000_v2_generation_jobs.sql`. Details in the plan's section 11; costs per generation in `docs/V2_GENERATION_COSTS.md`.
 
 **Type scale (2026-11-06):** every heading and paragraph on signed-in v2 screens uses the `type-*` utilities defined at the end of `src/v2/theme.css` (page title 28/34, section title 22/26, card title 20, label 16, subtitle and body 14, caption 12). Use them instead of hand-picked `text-[..px]` sizes; colour stays a separate class.
+
+**Designed ads (2026-11-07):** Ad Studio ads are now an AI photo with no text plus our own type layer (five layouts in `src/lib/v2/ad-layouts.ts`, one per theme), composed in the browser (`src/v2/data/compose-ad.ts`) and saved by `saveComposedAd`. Plan and status: `docs/V2_AD_DESIGN_PLAN.md`.

@@ -1,6 +1,6 @@
 # Ad Studio: designed ads plan
 
-Status: proposed, 2026-11-07. Nothing in this plan is built yet.
+Status: steps 1–5 built 2026-11-07 (17b83c3). Waiting on the Lovable import and the test batch (step 6).
 
 ## 1. Why
 
@@ -77,13 +77,14 @@ Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
 ## 5. Steps
 
 1. **Spike: done.** The render runs in the browser (section 4).
-2. **Approve the look: mockups made, waiting on Sufyan.** Seven mockups (all five layouts in 1:1, plus Hook and Editorial in 9:16) over 8 new text-free photos made with Photo Studio notes. Lessons from them:
+2. **Approve the look: approved by Sufyan.** Seven mockups (all five layouts in 1:1, plus Hook and Editorial in 9:16) over 8 new text-free photos made with Photo Studio notes. Lessons from them:
    - The photo model doesn't reliably leave empty space, even when told to. The Poster therefore shows the whole photo as a framed card on the brand colour, and the Quote puts the text on a solid cream panel beside a crop of the photo. Neither depends on the photo following the brief.
    - 9:16 needs story safe zones: text stays below the top 12% and above the bottom 17%.
    - Small products still come back with redrawn labels ("200ml", "250ml"). The hero-size rule has to be part of the photo prompt for ads.
 3. **Layout engine: first version done.** `src/lib/v2/ad-layouts.ts` (pure) and `ad-layouts.test.ts` (25 tests: every layout × every aspect gives the right size, the exact copy and finite styles; label rules; colour fallbacks).
-4. **Prompts:** the creative-direction call returns `layout`, `scene` and `accent`; the photo prompt for ads has no text and leaves the text zone empty. The layout reference images are no longer sent, since they carried text.
-5. **Wire into `runJob`:** render, then store both files, then save the layout in `copy`. If a render fails, save the clean photo with a plain fallback layout rather than failing the job.
+4. **Prompts: done.** The layout comes from the theme (`THEME_LAYOUT`; no theme uses Hook), not from the model. The copy call is told the layout's composition and returns, per ad, the copy plus `scene` (photo direction) and `accent` (a colour from the product). `adPhotoPrompt` replaces `adImagePrompt`: no text at all, the layout's `LAYOUT_PHOTO_BRIEF`, the scene, scene-matched light and shadows, the hero-size rule. The theme reference images are no longer sent.
+5. **Wire in: done.** `runJob` stores the ad photo as `{n}-photo.png` and writes `copy` = `{headline, subline, cta, layout, colors, labels?, photo, composed: false}` (colours: Brand Kit first, then the accent). `getGenerationJob` sends uncomposed ads with a `design` field. `useGenerationJob` (api.ts) composes each one in the browser with `src/v2/data/compose-ad.ts`, shows it at once from a blob link, and saves it with `saveComposedAd`. That server function checks that the output is the caller's own uncomposed ad and that the file is a JPEG under 8 MB, writes `{n}.jpg` (the name comes from the row) and sets `image_path` and `composed: true`. If composing fails, the photo stays and the next visit to the result page tries again. Fonts come from jsdelivr (`@fontsource` 5.1.0, static latin woff, about 160 KB) rather than the `catalog` bucket, so nothing binary had to be uploaded. Measured in a local browser: 0.3–0.7 s per ad, 100–300 KB JPEG. The Editorial link lost its "→" because the latin font files have no arrow glyph.
+   - **Not yet:** Assets and Recent show the clean photo for an ad whose result page was never opened after it finished. That's rare (the result page opens when you press Generate). Composing there too is a follow-up.
 6. **Test batch:** 2 products × 5 themes × 2 aspect ratios, checked against a list: no stray text, the label is correct, the type sits on the grid, contrast holds and the photo is composed for the text zone. Then import into Lovable and run the same batch on the preview.
 7. **Phase 2:** the B layouts, brand kit fonts, and the photo accent colour.
 8. **Phase 3, Edit text:** on the result screen, change the headline, subline, CTA or layout and re-render from `{n}-photo.png` for free. This is the editable overlay the backend plan listed as later.
