@@ -6,7 +6,7 @@ Written 2026-11-07, to hand the work to another Claude session. Read this first,
 
 Replix AI 2.0 is a TanStack Start app on Supabase (Lovable Cloud), hosted by Lovable on Cloudflare Workers. Phase 0 (data) and phase 1 (Photo Studio and Ad Studio generating for real) are built and tested on the Lovable preview. Ad Studio was just rebuilt so ads look designed: the AI makes a text-free photo and our own code sets the headline, subline and button over it. Video studios (phases 2–4) are still front-end stand-ins.
 
-- Repo: https://github.com/sufyannbaig/Replix-AI, branch **`v2`** (latest commit `2a83956`). Local path: `C:\Users\Isra University\OneDrive\Documents\GitHub\Replix-AI`.
+- Repo: https://github.com/sufyannbaig/Replix-AI, branch **`v2`**. Lovable has everything up to `016c96d`. Local path: `C:\Users\Isra University\OneDrive\Documents\GitHub\Replix-AI`.
 - Lovable project: https://lovable.dev/projects/0a083220-8ffb-4ce6-b754-315b07d1704f (in Benjamin's workspace).
 - Preview: https://preview--replixai.lovable.app (needs a Lovable sign-in, then the app's own sign-in).
 - Supabase project ref: `mfjfnbhpkdwysjdybzaq`.
@@ -61,7 +61,7 @@ Practical notes from driving it with the in-app browser:
 
 1. **Done:** the 10-ad batch on a second product (Acme Glow Serum), results in `V2_AD_DESIGN_PLAN.md` step 6. All 10 good; the Poster bottle came out small.
 2. **Done and verified live:** ads never opened on the result page are composed in Recent and Assets (`composeListed` in `api.ts`, 861ec0c, imported into Lovable).
-3. **Done:** the bigger-product quote brief worked. **New:** the Poster brief now asks for the product to fill about 70% of the frame (commit after 861ec0c). Import `src/lib/v2/ad-layouts.ts` into Lovable and run two Bold offer ads (1:1, 9:16) to check it.
+3. **Done:** the bigger-product quote brief worked. **New:** the Poster brief now asks for the product to fill about 70% of the frame (commit after 861ec0c). Imported and re-tested: the bottle is bigger (about 70% of the card on 1:1, about half on 9:16). If 9:16 posters still look small on real products, try a taller crop of the photo inside the 9:16 card.
 4. Plan step 7: the B layouts, Brand Kit fonts, and photo-picked accent when there is no brand colour.
 5. Plan step 8: "Edit text" on the result screen, re-rendering from `{n}-photo.png` for free.
 6. Open questions in the plan's section 7: a "Made with Replix" mark on Free ads; layout choice in the studio.
