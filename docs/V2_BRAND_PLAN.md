@@ -1,6 +1,6 @@
 # Brand kits: several brands, and ads that use them
 
-Status: step 1 (data) built 2026-11-07; steps 2–7 to do. Decisions agreed with Sufyan the same day (section 2).
+Status: step 1 (data) built and live on the preview 2026-11-07; steps 2–7 to do. Decisions agreed with Sufyan the same day (section 2).
 
 ## 1. Where it stands
 
@@ -95,7 +95,7 @@ Each step: type check, tests, commit to `v2`, import into Lovable, check on the 
 
 1. **Migration and data layer:** `brand_kit_id`, `is_default`, the limit trigger; then `useBrandKits` / `useSaveBrandKit` / `useDeleteBrandKit` / `useSetProductBrand` in `api.ts`, and `loadBrand(userId, brandKitId)`. Lovable has to run the migration (it asks for approval).
    - **Done:** `supabase/migrations/20261107120000_v2_brand_kits.sql` adds `brand_kits.is_default` (one per user; existing accounts' oldest kit becomes it), `products.brand_kit_id` (owner-checked by a trigger, set to null when the brand is deleted), the limit trigger (also makes a first kit the default and serialises inserts per user), a trigger that promotes the oldest kit when the default is deleted, and `v2_set_default_brand_kit`. In `api.ts`: `useSaveBrandKit`, `useDeleteBrandKit`, `useSetDefaultBrandKit`, `useSetProductBrand`, `useBrandKitLimit` and `BrandLimitError`; kits list default first. `brandForProduct` and `brandKitLimit` are pure, with tests (`brand-kits.test.ts`). The server's `loadBrand` now takes the studio's `brandKitId`, else the product's brand, else the default, so ads already follow a product's brand before any screen changes.
-   - **Not applied yet (2026-11-07):** Lovable copied all the step 1 files, but its migration tool fails before running any SQL (`Cannot find module 'drizzle-kit'`, read from the template's `drizzle.config.ts`), twice. Its SQL runner can't change schema. Until the migration runs, the code falls back (a832af1): kits list in creation order and the oldest acts as the default, and product brands are ignored. The preview's Brand Kit page loads fine this way. To unblock: let Lovable add `drizzle-kit` as a dev dependency so its tool works, or run the SQL another way.
+   - **Applied 2026-11-07.** Lovable's migration tool needed three dev packages first: `drizzle-kit` 0.31.11, `drizzle-orm` 0.45.4 and `postgres` 4.1.0 (approved by Sufyan; dev-only, used by Lovable's tool, not shipped). It then ran the SQL unchanged and kept its own copy as `drizzle/migrations/0002_v2_brand_kits.sql`. Checked on the preview with the test account (Free plan) over REST: the first kit became the default; a second kit was refused with "Your plan allows 1 brand"; a product took the kit and was refused a brand that isn't the user's; `v2_set_default_brand_kit` worked; deleting the kit set the product's brand back to null. The test data was removed afterwards. Not yet seen live: promoting a new default when the default is deleted (needs a plan with 2+ brands). The fallback from a832af1 stays harmless.
 2. **Brand Kit page:** cards, editor, logo and font uploads, Google Fonts search, limits and the upgrade prompt.
 3. **Products and studios:** the brand chip on products, the brand pill and logo switch in the composer, and the request fields.
 4. **Fonts in ads:** FontRefs, the font loader, `measure()` in the layout engine, fallbacks, tests.

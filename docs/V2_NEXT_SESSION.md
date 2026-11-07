@@ -28,6 +28,10 @@ Lovable's GitHub sync isn't on `v2`, so each change is copied in by asking Lovab
 
 > Please import these files exactly from GitHub (repo sufyannbaig/Replix-AI, branch v2, commit `<sha>`), byte-for-byte: 1) `<path>` 2) `<path>` … Rules: don't edit any other file, no migrations, no database changes, no new packages (unless named), don't touch main, don't merge and don't publish. When done, restart the preview, confirm the build passes and the preview loads, and tell me if any file didn't match the commit.
 
+- Lovable can also be driven through its MCP connector (`send_message`), which is what was used on 2026-11-07. It costs the same Lovable credits as the chat.
+- **Lovable's `package.json` differs from `v2`:** it has three extra devDependencies its migration tool needs (`drizzle-kit`, `drizzle-orm`, `postgres`), plus its own `drizzle.config.ts` and `drizzle/migrations/`. Never import `package.json`, `bun.lock` or `drizzle/` from `v2` byte-for-byte, or the migration tool breaks again.
+- **Migrations:** ask Lovable to apply the file in `supabase/migrations/` unchanged; its tool keeps a copy under `drizzle/migrations/` and regenerates `src/integrations/supabase/types.ts` (fine; `v2` code uses `src/v2/data/db-types.ts`).
+
 Practical notes from driving it with the in-app browser:
 
 - The chat box is a ProseMirror editor. Fill it with `el.focus(); document.execCommand('selectAll'); document.execCommand('insertText', false, msg)`, then click `button[aria-label="Send message"]`. Enter doesn't send.
