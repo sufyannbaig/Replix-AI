@@ -57,7 +57,7 @@ export function describeRefs(refs: PromptRef[]) {
     pose: (n) =>
       `the POSE reference ("${n}"). The model takes this pose; ignore everything else in it.`,
     layout: (n) =>
-      `a LAYOUT reference for the "${n}" ad style. Borrow its structure and energy only, never its product, people, words or brand.`,
+      `a LAYOUT reference for the "${n}" ad style. Borrow its structure and energy only, never its product, people, brand or any of its words, labels, bubbles or lists.`,
   };
   return refs.map((r, i) => `IMAGE ${i + 1} is ${what[r.role](r.name)}`).join("\n");
 }
@@ -109,16 +109,20 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
 }
 
 /** Ad theme recipes: the story each theme tells and how the frame is laid out. */
-export const AD_THEME_RECIPES: Record<string, { story: string; layout: string }> = {
+export const AD_THEME_RECIPES: Record<
+  string,
+  { story: string; layout: string; /** Extra words the layout may show. */ labels?: string[] }
+> = {
   "problem-fix": {
     story: "Name the customer's pain in the headline, show the product as the fix.",
     layout:
-      "Split energy: a hint of the problem on one side or in the background, the product bright and confident as the answer.",
+      "Split energy: the problem shown as a photo (a person, moment or mess, no words) on one side or in the background, the product bright and confident as the answer.",
   },
   "before-after": {
     story: "Side-by-side proof of the difference the product makes.",
     layout:
       "Two clear halves (before / after) with a crisp divider; the product sits on the 'after' side. Small 'Before' and 'After' labels.",
+    labels: ["Before", "After"],
   },
   testimonial: {
     story: "A short, believable customer voice. No invented names, star counts or statistics.",
@@ -205,14 +209,16 @@ export function adImagePrompt(
     colors ? `- Brand colours: ${colors} (use for background, shapes and the CTA button).` : "",
     `- Typography: ${font ? `a typeface like ${font}` : "a clean bold sans-serif"} for the headline; one secondary weight for the rest.`,
     "",
-    "TEXT ON THE AD (spell exactly, nothing else):",
+    "TEXT ON THE AD. These are the ONLY words allowed anywhere in the image, apart from what is printed on the product itself. Spell them exactly and use each once:",
     `- Headline: "${brief.copy.headline}"`,
     brief.copy.subline ? `- Subline: "${brief.copy.subline}"` : "",
     `- Button: "${brief.copy.cta}"`,
+    ...(theme?.labels ?? []).map((l) => `- Label: "${l}"`),
     "",
     "RULES",
     "- The product is reproduced exactly from its image: shape, colours, label and logo unchanged.",
-    "- No other words, prices, ratings, badges, watermarks or fake UI.",
+    "- Add no other text of any kind: no section titles (like 'Problem' or 'Solution'), captions, speech bubbles, bullet lists, arrows with words, extra slogans, prices, ratings, badges, watermarks or fake UI. Tell the story with images, not more words.",
+    "- Signs, screens and packaging in the scene stay blank or unreadable.",
     "- Crisp, legible text with strong contrast; photorealistic product and set.",
     variationLine(index, total),
   ]
