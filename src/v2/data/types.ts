@@ -107,6 +107,9 @@ export type Generation = {
   createdAt: string;
   /** Set for generations made in this session; opens their result page. */
   jobId?: string;
+  /** The output behind the thumbnail, and its layout while the ad isn't composed yet. */
+  outputId?: string;
+  design?: AdDesign;
 };
 
 export type UgcStyle = "tutorial" | "review" | "unboxing" | "reveal" | "try-on";
@@ -143,6 +146,9 @@ export type AssetItem = {
   title: string;
   thumbnailUrl: string;
   createdAt: string;
+  /** Generated ads only: the output, and its layout while it isn't composed yet. */
+  outputId?: string;
+  design?: AdDesign;
 };
 
 export type HelpCategory = "getting-started" | "credits-billing" | "studios";

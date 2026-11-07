@@ -44,6 +44,7 @@ import {
 } from "./mock";
 import type {
   AdTheme,
+  AdDesign,
   AssetItem,
   BrandKit,
   CommunityCreation,
@@ -386,6 +387,7 @@ export function useAdThemes() {
 
 /** The user's latest generations, newest first. Sections hide when this is empty. */
 export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.recent(kind),
     queryFn: async (): Promise<Generation[]> => {
@@ -402,7 +404,9 @@ export function useRecentGenerations(kind: GenerationKind | "all" = "all") {
         }));
       /* Signed-in users: their saved jobs (photos, ads) plus this session's video stand-ins. */
       if (await backendUser("generation_jobs")) {
-        const { recent } = await listGenerations({ data: { kind, limit: 20 } });
+        const listed = await listGenerations({ data: { kind, limit: 20 } });
+        composeListed(queryClient, listed.recent);
+        const recent = withComposedThumbs(listed.recent);
         return [...recent, ...fromJobs]
           .filter((g) => kind === "all" || g.kind === kind)
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -536,12 +540,18 @@ export async function importProductFromUrl(
  * A signed-in user's Assets: results they saved with "Save to Assets", this session's
  * video stand-ins (until phase 2), and their uploads.
  */
-async function ownAssets(rows: LibraryItemRow[], productList: Product[]): Promise<AssetItem[]> {
+async function ownAssets(
+  rows: LibraryItemRow[],
+  productList: Product[],
+  queryClient: ReturnType<typeof useQueryClient>,
+): Promise<AssetItem[]> {
   const pieces = await piecesFromRows(rows.filter((r) => r.kind !== "prop" && r.kind !== "pose"));
   const created = new Map(rows.map((r) => [r.id, r.created_at]));
-  const saved = await listGenerations({ data: { savedOnly: true, limit: 100 } })
+  const listed = await listGenerations({ data: { savedOnly: true, limit: 100 } })
     .then((r) => r.assets)
     .catch(() => [] as AssetItem[]);
+  composeListed(queryClient, listed);
+  const saved = withComposedThumbs(listed);
   const generations: AssetItem[] = [
     ...saved,
     ...Object.values(readJobs())
@@ -584,11 +594,12 @@ async function ownAssets(rows: LibraryItemRow[], productList: Product[]): Promis
  */
 export function useAssets() {
   const { data: productList = products } = useProducts();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["v2", "assets", productList.length] as const,
     queryFn: async (): Promise<AssetItem[]> => {
       const libraryRows = await fetchLibraryRows();
-      if (libraryRows) return ownAssets(libraryRows, productList);
+      if (libraryRows) return ownAssets(libraryRows, productList, queryClient);
       const day = (n: number) => new Date(Date.UTC(2026, 9, 31 - n)).toISOString();
       const generations: AssetItem[] = [
         ...recentGenerations.map((g) => ({
@@ -845,8 +856,52 @@ function withComposed(job: GenerationJob | null): GenerationJob | null {
   };
 }
 
-function composeOutputs(job: GenerationJob | null, onShown: () => void, onSaved: () => void) {
-  for (const o of job?.outputs ?? []) {
+/** Thumbnails of listed ads (Recent, Assets) that were composed on this page. */
+function withComposedThumbs<
+  T extends { outputId?: string; thumbnailUrl: string; design?: AdDesign },
+>(items: T[]) {
+  return items.map((item) => {
+    const local = item.design && item.outputId && composedLocal.get(item.outputId);
+    return local ? { ...item, thumbnailUrl: local } : item;
+  });
+}
+
+/**
+ * Ads that finished while nobody had the result page open reach Recent and Assets still
+ * uncomposed. Compose them there the same way, then refresh the lists and result pages.
+ */
+function composeListed(
+  queryClient: ReturnType<typeof useQueryClient>,
+  items: { outputId?: string; thumbnailUrl: string; design?: AdDesign }[],
+) {
+  const pending = items.flatMap((i) =>
+    i.outputId && i.design ? [{ id: i.outputId, imageUrl: i.thumbnailUrl, design: i.design }] : [],
+  );
+  if (!pending.length) return;
+  composeOutputs(
+    pending,
+    () => {
+      queryClient.setQueriesData<Generation[]>({ queryKey: ["v2", "recent"] }, (list) =>
+        list ? withComposedThumbs(list) : list,
+      );
+      queryClient.setQueriesData<AssetItem[]>({ queryKey: ["v2", "assets"] }, (list) =>
+        list ? withComposedThumbs(list) : list,
+      );
+    },
+    () => {
+      void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
+      void queryClient.invalidateQueries({ queryKey: ["v2", "assets"] });
+      void queryClient.invalidateQueries({ queryKey: ["v2", "job"] });
+    },
+  );
+}
+
+function composeOutputs(
+  outputs: { id: string; imageUrl: string; design?: AdDesign }[],
+  onShown: () => void,
+  onSaved: () => void,
+) {
+  for (const o of outputs) {
     const design = o.design;
     if (!design || !o.imageUrl || composing.has(o.id)) continue;
     composing.add(o.id);
@@ -877,7 +932,7 @@ export function useGenerationJob(jobId: string) {
           keepSignedUrls(await getGenerationJob({ data: { jobId } }), previous),
         );
         composeOutputs(
-          job,
+          job?.outputs ?? [],
           () =>
             queryClient.setQueryData<GenerationJob | null>(queryKeys.job(jobId), (current) =>
               withComposed(current ?? null),

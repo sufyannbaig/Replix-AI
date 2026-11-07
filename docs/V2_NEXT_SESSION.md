@@ -60,8 +60,8 @@ Practical notes from driving it with the in-app browser:
 **Ad Studio**
 
 1. Run the same 10-ad batch on a **second product** (for example the serum) and look for issues. Not done yet.
-2. Compose ads that were never opened on the result page. Today Assets and Recent show the clean photo for those. Hook into `listGenerations` / `useAssets` / `useRecentGenerations`; outputs need a `design` field there too.
-3. The model sometimes still draws the product small (one Testimonial 9:16). Consider a stronger hero line in `LAYOUT_PHOTO_BRIEF.quote`.
+2. **Code done, not yet tried live:** ads never opened on the result page are now composed in Recent and Assets (`composeListed` in `api.ts`). Check it on the preview: start an ad batch, close the tab before it finishes, then open Home or Assets.
+3. **Code done, not yet re-tested:** `LAYOUT_PHOTO_BRIEF.quote` now asks for the product at least 40% of the frame height, vertically centred. Check it in the second-product batch.
 4. Plan step 7: the B layouts, Brand Kit fonts, and photo-picked accent when there is no brand colour.
 5. Plan step 8: "Edit text" on the result screen, re-rendering from `{n}-photo.png` for free.
 6. Open questions in the plan's section 7: a "Made with Replix" mark on Free ads; layout choice in the studio.

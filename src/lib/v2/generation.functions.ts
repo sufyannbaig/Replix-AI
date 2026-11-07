@@ -162,17 +162,21 @@ async function signOutputs(db: SupabaseClient<V2Database>, rows: GenerationOutpu
   );
 }
 
+/** The layout of a designed ad whose type isn't set yet; undefined once it's composed. */
+function adDesign(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | undefined {
+  return o.copy?.layout && !o.copy.composed
+    ? {
+        layout: o.copy.layout,
+        aspect: job.aspect as AspectRatio,
+        copy: { headline: o.copy.headline, subline: o.copy.subline, cta: o.copy.cta },
+        colors: o.copy.colors,
+        labels: o.copy.labels,
+      }
+    : undefined;
+}
+
 function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<string, string>) {
-  const design = (o: GenerationOutputRow): AdDesign | undefined =>
-    o.copy?.layout && !o.copy.composed
-      ? {
-          layout: o.copy.layout,
-          aspect: row.aspect as AspectRatio,
-          copy: { headline: o.copy.headline, subline: o.copy.subline, cta: o.copy.cta },
-          colors: o.copy.colors,
-          labels: o.copy.labels,
-        }
-      : undefined;
+  const design = (o: GenerationOutputRow) => adDesign(row, o);
   const job: GenerationJob & { error?: string | null; refunded?: boolean } = {
     id: row.id,
     request: row.request as GenerationRequest,
@@ -336,6 +340,7 @@ export const listGenerations = createServerFn({ method: "POST" })
 
     const recent: Generation[] = jobs.flatMap((j) => {
       const first = (outputs ?? []).find((o) => o.job_id === j.id && o.image_path);
+      const design = first && adDesign(j, first);
       return first
         ? [
             {
@@ -345,6 +350,8 @@ export const listGenerations = createServerFn({ method: "POST" })
               title: title(j),
               thumbnailUrl: urls.get(first.image_path ?? "") ?? "",
               createdAt: j.created_at,
+              outputId: first.id,
+              ...(design ? { design } : {}),
             },
           ]
         : [];
@@ -352,6 +359,7 @@ export const listGenerations = createServerFn({ method: "POST" })
     const assets: AssetItem[] = (outputs ?? []).flatMap((o) => {
       const j = byJob.get(o.job_id);
       if (!j || !o.image_path) return [];
+      const design = adDesign(j, o);
       return [
         {
           id: `asset_${o.id}`,
@@ -360,6 +368,8 @@ export const listGenerations = createServerFn({ method: "POST" })
           title: title(j),
           thumbnailUrl: urls.get(o.image_path) ?? "",
           createdAt: o.created_at,
+          outputId: o.id,
+          ...(design ? { design } : {}),
         },
       ];
     });

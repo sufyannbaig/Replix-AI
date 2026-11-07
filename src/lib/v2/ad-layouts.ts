@@ -53,7 +53,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   split:
     "One photo split down the middle: the left half shows the problem in dim, cool light; the right half shows the same place bright and warm with the product. Keep the top 25% calm on both sides.",
   quote:
-    "A person in a warm, real setting holding the product on the right side of the frame, label to camera. The left half is soft, out of focus and calm.",
+    "A person in a warm, real setting holding the product close to camera on the right side of the frame, label to camera. The product is big: at least 40% of the frame height, vertically centred, never small or in the background. The left half is soft, out of focus and calm.",
   poster:
     "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame, centred and large, with a little space around it.",
   editorial:
