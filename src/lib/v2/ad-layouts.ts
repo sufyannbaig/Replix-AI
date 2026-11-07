@@ -391,6 +391,8 @@ function hook(ctx: Ctx): AdNode {
     measure: ctx.fit,
     tracking: -0.01,
   });
+  /* Tall: the logo sits above the headline (products often fill the lower corners). */
+  const logoRoom = tall && ctx.logo ? logoHeight(ctx) + 24 : 0;
   return el(
     "div",
     { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
@@ -410,7 +412,7 @@ function hook(ctx: Ctx): AdNode {
         {
           position: "absolute",
           left: ctx.pad,
-          top: ctx.top,
+          top: ctx.top + logoRoom,
           width: textW,
           display: "flex",
           flexDirection: "column",
@@ -452,9 +454,9 @@ function hook(ctx: Ctx): AdNode {
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
         pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
       ),
-      /* Tall frames give the headline most of the width, so the logo goes opposite the CTA. */
+      /* Tall frames give the headline the width, so the logo goes above it, on the wash. */
       ...(tall
-        ? logoMark(ctx, "photo", { right: ctx.pad, bottom: ctx.bottom })
+        ? logoMark(ctx, "light", { left: ctx.pad, top: ctx.top })
         : logoMark(ctx, "light", { right: ctx.pad, top: ctx.top })),
     ],
   );
@@ -805,8 +807,9 @@ function quote(ctx: Ctx): AdNode {
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
         pill(ctx.copy.cta, "#1A1714", 32, ctx.body),
       ),
+      /* Tall: top right of the cream panel, level with the quote mark (clear of the product). */
       ...(tall
-        ? logoMark(ctx, "photo", { right: ctx.pad, bottom: ctx.bottom })
+        ? logoMark(ctx, "light", { right: ctx.pad, top: ctx.top })
         : logoMark(ctx, "light", { left: ctx.pad, top: ctx.pad })),
     ],
   );

@@ -168,6 +168,36 @@ describe("logo placement", () => {
     }
   });
 
+  test("tall hook and quote keep the logo in the top part, off the product", () => {
+    for (const layout of ["hook", "quote"] as const) {
+      const frame = AD_SIZES["9:16"];
+      const { tree } = buildAdLayout({
+        layout,
+        aspect: "9:16",
+        photo: "data:,",
+        copy,
+        logo: WORDMARK,
+      });
+      const [img] = findLogo(tree, frame);
+      ok(img.y + img.h < frame.height * 0.3, `${layout}: logo bottom ${img.y + img.h}`);
+    }
+  });
+
+  test("tall hook moves the headline below the logo", () => {
+    const top = (logo?: AdLogo) => {
+      const { tree } = buildAdLayout({
+        layout: "hook",
+        aspect: "9:16",
+        photo: "data:,",
+        copy,
+        logo,
+      });
+      const kids = tree.props.children as AdNode[];
+      return (kids[2].props.style as Record<string, number>).top;
+    };
+    ok(top(WORDMARK) >= top(undefined) + 70);
+  });
+
   test("poster moves the headline down to make room for the logo", () => {
     const top = (logo?: AdLogo) => {
       const { tree } = buildAdLayout({
