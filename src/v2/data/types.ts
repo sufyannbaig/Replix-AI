@@ -293,6 +293,11 @@ export type AdDesign = {
    * server, signed links once the browser resolves them. Missing roles keep layout fonts.
    */
   fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+  /**
+   * The brand logo to draw (only when "Show logo" was on). Storage paths or https links from
+   * the server; the browser swaps in signed links. `light` is the version for dark spots.
+   */
+  logo?: { main: string; light?: string };
 };
 
 /** A generation run, polled by the result screen until it is done or failed. */

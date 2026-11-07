@@ -4,7 +4,13 @@
  * text as vector paths, and a canvas rasterises it. Rendering on the server was too slow
  * (docs/V2_AD_DESIGN_PLAN.md, section 4), a browser does it in well under a second.
  */
-import { FONT, buildAdLayout } from "@/lib/v2/ad-layouts";
+import {
+  FONT,
+  buildAdLayout,
+  readLogoPixels,
+  type AdLogo,
+  type AdLogoImage,
+} from "@/lib/v2/ad-layouts";
 import { fontsourceId, googleFontFile, nearestWeight } from "./fonts";
 import type { AdDesign } from "./types";
 
@@ -168,6 +174,43 @@ async function brandFonts(design: AdDesign) {
   };
 }
 
+/* ---------- logo ---------- */
+
+/** Load a logo, draw it to a PNG (satori can't read WebP), longest side at most 640 px. */
+async function logoImage(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Logo: ${res.status}`);
+  const bitmap = await createImageBitmap(await res.blob());
+  const k = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * k));
+  const height = Math.max(1, Math.round(bitmap.height * k));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const g = canvas.getContext("2d");
+  if (!g) throw new Error("No canvas");
+  g.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const pixels = g.getImageData(0, 0, width, height).data;
+  return { image: { src: canvas.toDataURL("image/png"), width, height }, pixels };
+}
+
+/** The design's logo, analysed for the layouts. Null if it can't be loaded. */
+async function loadLogo(design: AdDesign): Promise<AdLogo | null> {
+  if (!design.logo?.main) return null;
+  try {
+    const [main, light] = await Promise.all([
+      logoImage(design.logo.main),
+      design.logo.light ? logoImage(design.logo.light).catch(() => null) : null,
+    ]);
+    const read = readLogoPixels(main.pixels, main.image.width, main.image.height);
+    return { ...main.image, ...read, ...(light ? { light: light.image as AdLogoImage } : {}) };
+  } catch (error) {
+    console.warn("[v2 ads] logo skipped", error);
+    return null;
+  }
+}
+
 /** The photo inlined, so the SVG has no outside links and the canvas stays exportable. */
 async function inlinePhoto(url: string) {
   const res = await fetch(url);
@@ -183,11 +226,12 @@ async function inlinePhoto(url: string) {
 
 /** Compose one ad. Rejects if anything fails; the caller keeps showing the photo then. */
 export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blob> {
-  const [{ default: satori }, fonts, photo, brand] = await Promise.all([
+  const [{ default: satori }, fonts, photo, brand, logo] = await Promise.all([
     import("satori"),
     loadFonts(),
     inlinePhoto(photoUrl),
     design.fonts ? brandFonts(design).catch(() => null) : Promise.resolve(null),
+    loadLogo(design),
   ]);
   const render = async (withBrand: boolean) => {
     const { width, height, tree } = buildAdLayout({
@@ -197,6 +241,7 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       copy: design.copy,
       colors: design.colors,
       labels: design.labels,
+      ...(logo ? { logo } : {}),
       ...(withBrand && brand ? { fonts: brand.names, measure: brand.measure } : {}),
     });
     const svg = await satori(tree as unknown as Parameters<typeof satori>[0], {

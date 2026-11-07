@@ -17,6 +17,8 @@ export type BrandHints = {
   fonts?: { heading: string; body: string; files?: { heading?: string; body?: string } } | null;
   tone?: string | null;
   toneTags?: string[];
+  /** Main logo first, then the light version for dark backgrounds (refs as stored). */
+  logos?: string[];
 };
 
 const ASPECT_TEXT: Record<AspectRatio, string> = {

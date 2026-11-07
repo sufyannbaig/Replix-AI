@@ -1206,16 +1206,28 @@ function composeListed(
   );
 }
 
-/** Uploaded brand fonts arrive as storage paths; the composer needs signed links. */
-async function withFontLinks(design: AdDesign): Promise<AdDesign> {
+/** Uploaded fonts and logos arrive as storage paths; the composer needs signed links. */
+async function withFileLinks(design: AdDesign): Promise<AdDesign> {
   const files = design.fonts?.files;
-  if (!files) return design;
-  const paths = [files.heading, files.body].filter((p): p is string => !!p);
+  const logo = design.logo;
+  const paths = [files?.heading, files?.body, logo?.main, logo?.light].filter(
+    (p): p is string => !!p,
+  );
+  if (!paths.length) return design;
   const urls = await resolveUrls(paths).catch(() => new Map<string, string>());
   const link = (path?: string) => (path ? urls.get(path) : undefined);
+  const main = link(logo?.main);
   return {
     ...design,
-    fonts: { ...design.fonts, files: { heading: link(files.heading), body: link(files.body) } },
+    ...(files
+      ? {
+          fonts: {
+            ...design.fonts,
+            files: { heading: link(files.heading), body: link(files.body) },
+          },
+        }
+      : {}),
+    logo: main ? { main, light: link(logo?.light) } : undefined,
   };
 }
 
@@ -1231,7 +1243,7 @@ function composeOutputs(
     void (async () => {
       try {
         const { composeAd, blobToBase64 } = await import("./compose-ad");
-        const blob = await composeAd(await withFontLinks(design), o.imageUrl);
+        const blob = await composeAd(await withFileLinks(design), o.imageUrl);
         composedLocal.set(o.id, URL.createObjectURL(blob));
         onShown();
         await saveComposedAd({ data: { outputId: o.id, image: await blobToBase64(blob) } });

@@ -209,6 +209,7 @@ async function loadBrand(
         fonts: data.fonts,
         tone: data.tone,
         toneTags: data.tone_tags,
+        logos: data.logos,
       }
     : {};
 }
@@ -307,6 +308,21 @@ function adFonts(fonts: BrandHints["fonts"]) {
   };
 }
 
+/** A logo ref the browser may load: the user's own upload path, or an https link. */
+function logoRef(ref?: string) {
+  if (!ref) return undefined;
+  if (/^[0-9a-f-]{36}\/brand\/[\w./-]+$/i.test(ref) && !ref.includes("..")) return ref;
+  return isSafePublicUrl(ref) ? ref.slice(0, 2000) : undefined;
+}
+
+/** The logo a designed ad draws: main logo, plus the light version when there is one. */
+function adLogo(logos?: string[]) {
+  const main = logoRef(logos?.[0]);
+  if (!main) return undefined;
+  const light = logoRef(logos?.[1]);
+  return { main, ...(light ? { light } : {}) };
+}
+
 async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInputs) {
   if (inputs.studio !== "ad") throw new GenerationError("Wrong studio.");
   const product = await loadProduct(ctx, job.product);
@@ -356,6 +372,8 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
             .slice(0, 200)
         : null),
   };
+  const fonts = adFonts(brand.fonts);
+  const logo = job.showLogo === false ? undefined : adLogo(brand.logos);
   return copies.map((c: AdCopy, i): Plan => ({
     refs,
     copy: {
@@ -365,7 +383,8 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       layout,
       colors: [...(brand.colors ?? []), ...(c.accent ? [c.accent] : [])].slice(0, 5),
       ...(labels ? { labels } : {}),
-      ...(adFonts(brand.fonts) ? { fonts: adFonts(brand.fonts) } : {}),
+      ...(fonts ? { fonts } : {}),
+      ...(logo ? { logo } : {}),
       composed: false,
     },
     prompt: adPhotoPrompt(

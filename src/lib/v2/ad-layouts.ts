@@ -31,6 +31,22 @@ export type AdLayoutInput = {
    * headline is fitted with this. Without it, the estimate is used.
    */
   measure?: (text: string, size: number) => number;
+  /** The brand logo, already analysed by the renderer (see AdLogo). */
+  logo?: AdLogo;
+};
+
+/** A logo image ready to draw: PNG data URL plus what the renderer learnt about it. */
+export type AdLogoImage = { src: string; width: number; height: number };
+
+export type AdLogo = AdLogoImage & {
+  /** Has a see-through background (checked on the corner pixels). */
+  transparent: boolean;
+  /** Overall ink of the logo's visible pixels. */
+  tone: "dark" | "light";
+  /** For opaque logos: the colour at its edges, so a chip can match it. */
+  edge: "dark" | "light";
+  /** The brand's light version, for dark spots. */
+  light?: AdLogoImage;
 };
 
 /** Element tree in the shape satori expects. */
@@ -204,6 +220,107 @@ function fitMeasured(
   return opts.min;
 }
 
+/* ---------- logo ---------- */
+
+/** What a logo's pixels say: see-through or not, dark or light ink, and its edge colour. */
+export function readLogoPixels(data: Uint8ClampedArray, width: number, height: number) {
+  const at = (x: number, y: number) => (y * width + x) * 4;
+  const lum = (i: number) => (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+  const corners = [at(0, 0), at(width - 1, 0), at(0, height - 1), at(width - 1, height - 1)];
+  const transparent = corners.some((i) => data[i + 3] < 200);
+  let ink = 0;
+  let weight = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    const a = data[i + 3] / 255;
+    if (a < 0.5) continue;
+    ink += lum(i) * a;
+    weight += a;
+  }
+  const edgeLum = corners.reduce((sum, i) => sum + lum(i), 0) / corners.length;
+  const tone: "dark" | "light" = weight && ink / weight > 0.6 ? "light" : "dark";
+  return { transparent, tone, edge: (edgeLum > 0.5 ? "light" : "dark") as "light" | "dark" };
+}
+
+/** Logo box: up to 20% of the width and 6.5% of the short side (about 70 px at 1080). */
+export function logoBox(width: number, height: number) {
+  return {
+    maxW: Math.round(width * 0.2),
+    maxH: Math.round(Math.min(width, height) * 0.065),
+  };
+}
+
+/** Fit an image into a box, keeping its shape. */
+export function fitInto(img: { width: number; height: number }, maxW: number, maxH: number) {
+  const k = Math.min(maxW / img.width, maxH / img.height);
+  return { width: Math.round(img.width * k), height: Math.round(img.height * k) };
+}
+
+/**
+ * How a logo sits on a spot: which image, and a chip behind it when the logo wouldn't read.
+ * `light`/`dark` spots are known flat areas; `photo` spots can be anything, so a see-through
+ * logo there always gets a soft chip.
+ */
+export function logoTreatment(logo: AdLogo, spot: "light" | "dark" | "photo") {
+  if (!logo.transparent) {
+    return { image: logo as AdLogoImage, chip: logo.edge === "light" ? "#FFFFFF" : "#111111" };
+  }
+  if (spot === "dark" && logo.light) return { image: logo.light, chip: null };
+  if (spot === "photo") {
+    return {
+      image: logo as AdLogoImage,
+      chip: logo.tone === "dark" ? "rgba(255,255,255,0.9)" : "rgba(17,17,17,0.72)",
+    };
+  }
+  const clash = (spot === "light") === (logo.tone === "light");
+  return {
+    image: logo as AdLogoImage,
+    chip: clash ? (spot === "light" ? "#111111" : "#FFFFFF") : null,
+  };
+}
+
+/** The logo node, absolutely placed with `place` (left/right/top/bottom). Null without one. */
+function logoMark(
+  ctx: Ctx,
+  spot: "light" | "dark" | "photo",
+  place: Record<string, number>,
+): AdNode[] {
+  if (!ctx.logo) return [];
+  const { maxW, maxH } = logoBox(ctx.width, ctx.height);
+  const { image, chip } = logoTreatment(ctx.logo, spot);
+  const padY = chip ? Math.round(maxH * 0.18) : 0;
+  const padX = chip ? Math.round(maxH * 0.26) : 0;
+  const size = fitInto(image, maxW - padX * 2, maxH - padY * 2);
+  return [
+    el(
+      "div",
+      {
+        position: "absolute",
+        ...place,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...(chip
+          ? {
+              background: chip,
+              padding: `${padY}px ${padX}px`,
+              borderRadius: Math.round(maxH * 0.22),
+            }
+          : {}),
+      },
+      el("img", { width: size.width, height: size.height }, undefined, {
+        src: image.src,
+        width: size.width,
+        height: size.height,
+      }),
+    ),
+  ];
+}
+
+/** Height a logo mark takes (for layouts that move type down to make room). */
+function logoHeight(ctx: Ctx) {
+  return ctx.logo ? logoBox(ctx.width, ctx.height).maxH : 0;
+}
+
 /* ---------- layouts ---------- */
 
 /**
@@ -335,13 +452,20 @@ function hook(ctx: Ctx): AdNode {
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
         pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
       ),
+      /* Tall frames give the headline most of the width, so the logo goes opposite the CTA. */
+      ...(tall
+        ? logoMark(ctx, "photo", { right: ctx.pad, bottom: ctx.bottom })
+        : logoMark(ctx, "light", { right: ctx.pad, top: ctx.top })),
     ],
   );
 }
 
 /** Bold offer: a solid colour field with huge condensed type, the product photo below it. */
 function poster(ctx: Ctx): AdNode {
-  let field = ctx.top + ctx.height * (ctx.height > ctx.width ? 0.2 : 0.3);
+  /* The logo sits top centre; everything else moves down by its height. */
+  const logoRoom = ctx.logo ? logoHeight(ctx) + 20 : 0;
+  const textTop = ctx.top + logoRoom;
+  let field = textTop + ctx.height * (ctx.height > ctx.width ? 0.2 : 0.3);
   const textW = ctx.width - ctx.pad * 2;
   const words = ctx.copy.headline.toUpperCase();
   /* Anton is condensed by design; a brand font is usually wider, so it gets a lower cap and
@@ -357,7 +481,7 @@ function poster(ctx: Ctx): AdNode {
     /* A brand headline can take three lines: start the photo card below the real text. */
     const lines = measuredLines(words, textW, size, ctx.fit);
     const sub = ctx.copy.subline ? 18 + 34 * 1.3 : 0;
-    field = Math.max(field, ctx.top + lines * size * 0.98 + sub + 28);
+    field = Math.max(field, textTop + lines * size * 0.98 + sub + 28);
   }
   const ink = inkOn(ctx.accent);
   /* The whole photo sits as a framed card under the type, so nothing in it gets covered. */
@@ -401,7 +525,7 @@ function poster(ctx: Ctx): AdNode {
         {
           position: "absolute",
           left: ctx.pad,
-          top: ctx.top,
+          top: textTop,
           width: textW,
           display: "flex",
           flexDirection: "column",
@@ -452,6 +576,25 @@ function poster(ctx: Ctx): AdNode {
         },
         pill(ctx.copy.cta, "#FFFFFF", 34, ctx.body),
       ),
+      ...(ctx.logo
+        ? [
+            el(
+              "div",
+              {
+                position: "absolute",
+                left: 0,
+                top: ctx.top,
+                width: ctx.width,
+                display: "flex",
+                justifyContent: "center",
+              },
+              logoMark(ctx, ink === "#FFFFFF" ? "dark" : "light", { left: 0, top: 0 }).map((n) => ({
+                ...n,
+                props: { ...n.props, style: { ...n.props.style, position: "relative" } },
+              })),
+            ),
+          ]
+        : []),
     ],
   );
 }
@@ -543,6 +686,7 @@ function editorial(ctx: Ctx): AdNode {
           ),
         ],
       ),
+      ...logoMark(ctx, "photo", { left: ctx.pad, top: ctx.top }),
     ],
   );
 }
@@ -608,7 +752,7 @@ function quote(ctx: Ctx): AdNode {
         {
           position: "absolute",
           left: ctx.pad,
-          top: tall ? ctx.top : ctx.height * 0.14,
+          top: tall ? ctx.top : Math.max(ctx.height * 0.14, ctx.pad + logoHeight(ctx) + 28),
           width: textW,
           display: "flex",
           flexDirection: "column",
@@ -661,6 +805,9 @@ function quote(ctx: Ctx): AdNode {
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
         pill(ctx.copy.cta, "#1A1714", 32, ctx.body),
       ),
+      ...(tall
+        ? logoMark(ctx, "photo", { right: ctx.pad, bottom: ctx.bottom })
+        : logoMark(ctx, "light", { left: ctx.pad, top: ctx.pad })),
     ],
   );
 }
@@ -748,6 +895,25 @@ function split(ctx: Ctx): AdNode {
         { position: "absolute", right: ctx.pad, bottom: ctx.bottom, display: "flex" },
         pill(ctx.copy.cta, ctx.accent, 32, ctx.body),
       ),
+      ...(ctx.logo
+        ? [
+            el(
+              "div",
+              {
+                position: "absolute",
+                left: 0,
+                bottom: ctx.bottom,
+                width: ctx.width,
+                display: "flex",
+                justifyContent: "center",
+              },
+              logoMark(ctx, "photo", { left: 0, top: 0 }).map((n) => ({
+                ...n,
+                props: { ...n.props, style: { ...n.props.style, position: "relative" } },
+              })),
+            ),
+          ]
+        : []),
     ],
   );
 }

@@ -124,6 +124,8 @@ export type OutputCopy = {
   labels?: string[];
   /** The brand fonts the ad uses; `files` are storage paths of uploaded fonts. */
   fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+  /** The brand logo the ad draws: storage paths or https links. */
+  logo?: { main: string; light?: string };
   photo?: string;
   composed?: boolean;
 };
