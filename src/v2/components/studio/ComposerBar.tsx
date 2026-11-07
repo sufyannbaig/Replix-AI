@@ -24,7 +24,8 @@ export const ASPECT_OPTIONS: readonly { value: AspectRatio; label: string }[] = 
   { value: "16:9", label: "16:9 Landscape" },
 ];
 
-const chip =
+/** Style of a setting chip in the composer's lower row; studios can add their own. */
+export const composerChip =
   "flex h-9 shrink-0 items-center gap-2.5 rounded-[5.69px] bg-v2-chip font-inter-tight text-xs tracking-[0.24px] text-black night:text-v2-ink";
 
 function MaskIcon({ src, width, height }: { src: string; width: number; height: number }) {
@@ -186,7 +187,7 @@ export function ComposerBar({
       <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-2">
         {chips}
         <DropdownMenu>
-          <DropdownMenuTrigger className={cn(chip, "px-[13px] py-2.5")}>
+          <DropdownMenuTrigger className={cn(composerChip, "px-[13px] py-2.5")}>
             <MaskIcon src={sizeSquare} width={11} height={11} />
             {aspectLabel}
             <ChevronDown className="size-3 opacity-60" />
@@ -204,7 +205,7 @@ export function ComposerBar({
         </DropdownMenu>
         {duration ? (
           <DropdownMenu>
-            <DropdownMenuTrigger className={cn(chip, "px-[13px] py-2.5")}>
+            <DropdownMenuTrigger className={cn(composerChip, "px-[13px] py-2.5")}>
               {duration.value} sec
               <ChevronDown className="size-3 opacity-60" />
             </DropdownMenuTrigger>
@@ -224,7 +225,7 @@ export function ComposerBar({
           </DropdownMenu>
         ) : (
           <div
-            className={cn(chip, "px-[13px] py-2.5")}
+            className={cn(composerChip, "px-[13px] py-2.5")}
             role="group"
             aria-label={`Number of ${unit[1]}`}
           >
@@ -259,7 +260,7 @@ export function ComposerBar({
 /** Chip showing the chosen template (thumbnail + name). */
 export function TemplateChip({ name, imageUrl }: { name: string; imageUrl: string }) {
   return (
-    <span title={name} className={cn(chip, "max-w-[160px] py-1.5 pl-1 pr-3")}>
+    <span title={name} className={cn(composerChip, "max-w-[160px] py-1.5 pl-1 pr-3")}>
       <img src={imageUrl} alt="" className="size-6 shrink-0 rounded-[2.28px] object-cover" />
       <span className="truncate text-black/80 night:text-v2-ink">{name}</span>
     </span>
@@ -283,7 +284,11 @@ export function ChipSelect<T extends string>({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`${label}: ${value}`}
-        className={cn(chip, "gap-2 py-1.5 pr-[13px]", current?.previewSrc ? "pl-1" : "pl-[13px]")}
+        className={cn(
+          composerChip,
+          "gap-2 py-1.5 pr-[13px]",
+          current?.previewSrc ? "pl-1" : "pl-[13px]",
+        )}
       >
         {current?.previewSrc ? <PreviewLoop src={current.previewSrc} className="size-6" /> : null}
         {label}: {value}

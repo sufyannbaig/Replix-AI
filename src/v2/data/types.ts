@@ -263,6 +263,8 @@ export type GenerationRequest = {
   cost: number;
   /** The brand this generation uses; missing means the product's brand, then the default. */
   brandKitId?: string;
+  /** Draw the brand's logo on designed ads (on by default; off when the brand has none). */
+  showLogo?: boolean;
 };
 
 export type GenerationStatus = "queued" | "running" | "done" | "failed";

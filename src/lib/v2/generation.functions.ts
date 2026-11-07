@@ -74,6 +74,7 @@ const Request = z.object({
   note: str(1000).optional(),
   cost: z.number().int().min(0),
   brandKitId: z.string().uuid().optional(),
+  showLogo: z.boolean().optional(),
 });
 
 function userDb(context: { supabase: unknown }) {

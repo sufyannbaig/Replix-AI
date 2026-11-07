@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
 import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import { StudioBrandChip, useStudioBrand } from "@/v2/components/brand/BrandMenus";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { adGenerationCost, useAdThemes, useProductInsights } from "@/v2/data/api";
 import type { AdTheme, AspectRatio, Product } from "@/v2/data/types";
@@ -29,6 +30,7 @@ function AdStudioPage() {
   const [note, setNote] = useState("");
   const insights = useProductInsights(product);
   const { data: themes = [] } = useAdThemes();
+  const brand = useStudioBrand(product);
 
   return (
     <AppShell title="Ad Studio" subtitle="Turn one product into ready-to-run ad creatives">
@@ -109,9 +111,12 @@ function AdStudioPage() {
             product={product}
             onPickProduct={() => setPickerOpen(true)}
             chips={
-              theme ? (
-                <TemplateChip name={`Theme: ${theme.name}`} imageUrl={theme.imageUrl} />
-              ) : null
+              <>
+                {theme ? (
+                  <TemplateChip name={`Theme: ${theme.name}`} imageUrl={theme.imageUrl} />
+                ) : null}
+                <StudioBrandChip brand={brand} />
+              </>
             }
             aspect={aspect}
             onAspectChange={setAspect}
@@ -139,6 +144,7 @@ function AdStudioPage() {
                 count,
                 note: note.trim() || undefined,
                 cost: adGenerationCost(count),
+                ...brand.request,
               })
             }
             generating={generating}

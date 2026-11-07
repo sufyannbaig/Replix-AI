@@ -8,6 +8,7 @@ import { AppShell } from "@/v2/components/shell/AppShell";
 import { PillButton, pillClass } from "@/v2/components/primitives";
 import { importProductFromUrl, useAddProduct, useProducts } from "@/v2/data/api";
 import type { Product, ProductSource } from "@/v2/data/types";
+import { ProductBrandChip } from "@/v2/components/brand/BrandMenus";
 import closeIcon from "@/assets/v2/icons/close.svg";
 
 export const Route = createFileRoute("/_app/products")({
@@ -160,6 +161,9 @@ function ProductTile({ product }: { product: Product }) {
           {product.name}
         </p>
         <SourceBadge source={product.source} />
+      </div>
+      <div className="-mt-1.5 px-[14px] pb-[14px]">
+        <ProductBrandChip product={product} />
       </div>
     </div>
   );

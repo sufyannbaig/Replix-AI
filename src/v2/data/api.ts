@@ -425,14 +425,16 @@ export function useSetProductBrand() {
           .eq("id", productId)
           .eq("user_id", userId);
         if (error) throw new Error(error.message);
+        return { productId, brandKitId, live: true };
       }
-      return { productId, brandKitId };
+      return { productId, brandKitId, live: false };
     },
-    onSuccess: ({ productId, brandKitId }) => {
+    onSuccess: ({ productId, brandKitId, live }) => {
       queryClient.setQueryData<Product[]>(queryKeys.products, (prev) =>
         prev?.map((p) => (p.id === productId ? { ...p, brandKitId } : p)),
       );
-      void queryClient.invalidateQueries({ queryKey: queryKeys.products });
+      // Sample data has nothing to refetch; a refetch would undo the change.
+      if (live) void queryClient.invalidateQueries({ queryKey: queryKeys.products });
     },
   });
 }
