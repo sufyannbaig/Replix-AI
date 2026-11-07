@@ -300,10 +300,16 @@ export type GenerationOutput = {
 };
 
 export type AdDesign = {
-  layout: "hook" | "split" | "quote" | "poster" | "editorial";
+  layout: import("@/lib/v2/ad-layouts").AdLayoutId;
   aspect: AspectRatio;
   copy: { headline: string; subline: string; cta: string };
+  /** Brand colours. Older ads also carry the accent here. */
   colors?: string[];
+  /**
+   * The copywriter's colour from the product. With no brand colours the browser reads the
+   * accent from the finished photo, using this as the hint (photoAccent in ad-layouts).
+   */
+  accent?: string;
   labels?: string[];
   /**
    * The brand's fonts (family names). `files` are uploaded fonts: storage paths from the

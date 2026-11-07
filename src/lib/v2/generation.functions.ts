@@ -172,6 +172,7 @@ function adDesign(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | und
         aspect: job.aspect as AspectRatio,
         copy: { headline: o.copy.headline, subline: o.copy.subline, cta: o.copy.cta },
         colors: o.copy.colors,
+        ...(o.copy.accent ? { accent: o.copy.accent } : {}),
         labels: o.copy.labels,
         ...(o.copy.fonts ? { fonts: o.copy.fonts } : {}),
         ...(o.copy.logo ? { logo: o.copy.logo } : {}),

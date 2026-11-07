@@ -6,7 +6,21 @@
  */
 import type { AspectRatio } from "@/v2/data/types";
 
-export type AdLayoutId = "hook" | "split" | "quote" | "poster" | "editorial";
+/** Layout A for each theme (phase 1), then layout B (phase 2). See THEME_LAYOUTS. */
+export const AD_LAYOUT_IDS = [
+  "hook",
+  "split",
+  "quote",
+  "poster",
+  "editorial",
+  "caption",
+  "stacked",
+  "note",
+  "stamp",
+  "magazine",
+] as const;
+
+export type AdLayoutId = (typeof AD_LAYOUT_IDS)[number];
 
 export type AdCopyText = { headline: string; subline?: string | null; cta: string };
 
@@ -72,6 +86,8 @@ export const FONT = {
   display: "Archivo",
   condensed: "Anton",
   serif: "Instrument Serif",
+  /** Handwriting, for the Note testimonial (Caveat, loaded at weight 700). */
+  hand: "Caveat",
 } as const;
 
 /** What the photo prompt asks for, per layout, so the picture leaves room for the type. */
@@ -85,6 +101,15 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
     "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 70% of the frame height, with only a little space around it. Never a small product in a big empty set.",
   editorial:
     "Candid lifestyle moment with the product held close to camera, label facing it and at least a quarter of the frame height, kept in the upper 55% of the frame. The bottom 30% (45% on a vertical frame) is calm and slightly darker, with nothing important in it.",
+  caption:
+    "The product stands large and clear in the upper part of the frame, at least a third of the frame height, in a real scene that shows the problem it fixes. The bottom 35% of the frame (the bottom half on a vertical frame) will be covered by a solid bar, so keep the product and anything important above it.",
+  stacked:
+    "One vertical photo split across the middle into two stacked halves of the same place: the top half shows the problem in dim, cool light; the bottom half shows it bright and warm with the product, large and clear. Keep the top 20% calm on both.",
+  note: "A person in a warm, real setting holding the product close to camera, label to camera, at least 40% of the frame height, on the right side of the frame (in the lower half on a vertical frame). The left half (the top half on a vertical frame) is soft, out of focus and calm, like a table, wall or window, so a paper note can sit there.",
+  stamp:
+    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 55% of the frame height. The bottom 20% of the frame and the top right corner are plain background with nothing in them.",
+  magazine:
+    "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
 
 /* ---------- small helpers ---------- */
@@ -124,6 +149,109 @@ export function contrast(a: string, b: string) {
 /** Text colour that reads on `bg`: near-black or white. */
 export function inkOn(bg: string) {
   return contrast(bg, "#111111") >= contrast(bg, "#FFFFFF") ? "#111111" : "#FFFFFF";
+}
+
+/** RGB to hex, upper case. */
+function rgbToHex(r: number, g: number, b: number) {
+  const h = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`.toUpperCase();
+}
+
+/** Hue (0-360) and HSV saturation/value of an RGB colour. */
+function hsv(r: number, g: number, b: number) {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let hue = 0;
+  if (d) {
+    if (max === r) hue = ((g - b) / d) % 6;
+    else if (max === g) hue = (b - r) / d + 2;
+    else hue = (r - g) / d + 4;
+    hue = (hue * 60 + 360) % 360;
+  }
+  return { hue, s: max ? d / max : 0, v: max / 255 };
+}
+
+/**
+ * Darken a colour until black or white text reads on it at 4.5:1 (mid tones can miss both).
+ * Fields, pills and badges use the accent as a background, so it must carry text.
+ */
+export function usableAccent(hex: string) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  let { r, g, b } = rgb;
+  let out = rgbToHex(r, g, b);
+  for (let i = 0; i < 16; i++) {
+    if (contrast(out, "#FFFFFF") >= 4.5 || contrast(out, "#111111") >= 4.5) break;
+    r *= 0.92;
+    g *= 0.92;
+    b *= 0.92;
+    out = rgbToHex(r, g, b);
+  }
+  return out;
+}
+
+const HUE_BINS = 18;
+
+/**
+ * The accent colour read from the finished photo (RGBA pixels, any small size), for ads with
+ * no brand colours. Colourful pixels are grouped by hue; centre pixels count more (the product
+ * is usually there). With `hint` (the copywriter's pick from the product) the photo's own shade
+ * of that hue wins when the photo has enough of it, so the accent stays the product's colour
+ * but matches how the photo shows it. Null for a grey photo: the caller keeps the hint.
+ */
+export function photoAccent(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  hint?: string,
+): string | null {
+  const weight = new Float64Array(HUE_BINS);
+  const sum = Array.from({ length: HUE_BINS }, () => [0, 0, 0]);
+  let pixels = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i + 3] < 128) continue;
+      pixels += 1;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const c = hsv(r, g, b);
+      if (c.s < 0.35 || c.v < 0.18 || c.v > 0.98) continue;
+      const dx = (x + 0.5) / width - 0.5;
+      const dy = (y + 0.5) / height - 0.5;
+      const centre = 1 - 0.6 * Math.min(1, Math.sqrt(dx * dx + dy * dy) / Math.SQRT1_2);
+      const w = c.s * centre;
+      const bin = Math.floor(c.hue / (360 / HUE_BINS)) % HUE_BINS;
+      weight[bin] += w;
+      sum[bin][0] += r * w;
+      sum[bin][1] += g * w;
+      sum[bin][2] += b * w;
+    }
+  }
+  if (!pixels) return null;
+  const at = (b: number) => (b + HUE_BINS) % HUE_BINS;
+  const best = (bins: number[]) => bins.reduce((a, b) => (weight[b] > weight[a] ? b : a));
+  let pick = -1;
+  const h = hint ? hexToRgb(hint) : null;
+  if (h) {
+    const c = hsv(h.r, h.g, h.b);
+    if (c.s >= 0.25) {
+      const hb = Math.floor(c.hue / (360 / HUE_BINS)) % HUE_BINS;
+      const near = [at(hb - 1), hb, at(hb + 1)];
+      if (near.reduce((t, b) => t + weight[b], 0) >= pixels * 0.02) pick = best(near);
+    }
+  }
+  if (pick < 0) {
+    pick = best(Array.from({ length: HUE_BINS }, (_, i) => i));
+    if (weight[pick] < pixels * 0.03) return null;
+  }
+  const w = weight[pick];
+  return usableAccent(rgbToHex(sum[pick][0] / w, sum[pick][1] / w, sum[pick][2] / w));
 }
 
 /** First usable colour from the brand/accent list, else the fallback. */
@@ -220,6 +348,28 @@ function fitMeasured(
   return opts.min;
 }
 
+/** Lines a headline takes at `size`: real widths when given, else the glyph estimate. */
+function estLines(
+  text: string,
+  width: number,
+  size: number,
+  glyph: number,
+  measure?: (text: string, size: number) => number,
+) {
+  if (measure) return measuredLines(text, width, size, measure);
+  const perLine = width / (size * glyph);
+  let lines = 1;
+  let used = 0;
+  for (const w of text.trim().split(/\s+/).filter(Boolean)) {
+    const len = w.length + (used ? 1 : 0);
+    if (used + len > perLine && used > 0) {
+      lines += 1;
+      used = w.length;
+    } else used += len;
+  }
+  return lines;
+}
+
 /* ---------- logo ---------- */
 
 /** What a logo's pixels say: see-through or not, dark or light ink, and its edge colour. */
@@ -314,6 +464,14 @@ function logoMark(
       }),
     ),
   ];
+}
+
+/** The logo as an in-flow node (for flex rows and cards). Empty without one. */
+function inlineLogo(ctx: Ctx, spot: "light" | "dark" | "photo"): AdNode[] {
+  return logoMark(ctx, spot, { left: 0, top: 0 }).map((n) => ({
+    ...n,
+    props: { ...n.props, style: { ...n.props.style, position: "relative" } },
+  }));
 }
 
 /** Height a logo mark takes (for layouts that move type down to make room). */
@@ -921,7 +1079,567 @@ function split(ctx: Ctx): AdNode {
   );
 }
 
-const LAYOUTS: Record<AdLayoutId, (ctx: Ctx) => AdNode> = { hook, split, quote, poster, editorial };
+/* ---------- layout B set (phase 2) ---------- */
+
+/** Problem → Fix B: a full-bleed photo with a solid colour bar at the bottom for the words. */
+function caption(ctx: Ctx): AdNode {
+  const tall = ctx.height > ctx.width;
+  const inner = ctx.width - ctx.pad * 2;
+  const ctaSize = 32;
+  /* Pill width: text plus its side padding (see pill()). */
+  const ctaW = Math.ceil(ctx.copy.cta.length * ctaSize * 0.6 + ctaSize * 2.7);
+  const textW = tall ? inner : inner - ctaW - 40;
+  const glyph = 0.56;
+  const size = fitHeadline(ctx.copy.headline, textW, {
+    maxLines: tall ? 3 : 2,
+    max: tall ? 104 : 84,
+    min: 48,
+    glyph,
+    measure: ctx.fit,
+    tracking: -0.01,
+  });
+  const lh = ctx.fit ? 1.04 : 1;
+  const subSize = 30;
+  const subLines = ctx.copy.subline ? estLines(ctx.copy.subline, textW, subSize, 0.5) : 0;
+  const textH =
+    estLines(ctx.copy.headline, textW, size, glyph, ctx.fit) * size * lh +
+    (subLines ? 12 + subLines * subSize * 1.3 : 0);
+  const ctaH = ctaSize * 2.3;
+  const blockH = tall ? textH + 28 + ctaH : Math.max(textH, ctaH);
+  const inset = Math.round(ctx.pad * 0.9);
+  const barTop = Math.round(ctx.height - ctx.bottom - blockH - inset);
+  const ink = inkOn(ctx.accent);
+  return el(
+    "div",
+    { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
+    [
+      photoLayer(ctx),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        top: barTop,
+        width: ctx.width,
+        height: ctx.height - barTop,
+        background: ctx.accent,
+      }),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: ctx.pad,
+          top: barTop + inset,
+          width: inner,
+          display: "flex",
+          flexDirection: tall ? "column" : "row",
+          alignItems: tall ? "flex-start" : "center",
+          justifyContent: "space-between",
+          gap: tall ? 28 : 40,
+        },
+        [
+          el("div", { display: "flex", flexDirection: "column", gap: 12, width: textW }, [
+            el(
+              "div",
+              {
+                fontFamily: ctx.heading(FONT.display),
+                fontWeight: 800,
+                fontSize: size,
+                lineHeight: lh,
+                letterSpacing: -size * (ctx.fit ? 0.01 : 0.03),
+                color: ink,
+              },
+              ctx.copy.headline,
+            ),
+            ...(ctx.copy.subline
+              ? [
+                  el(
+                    "div",
+                    {
+                      fontFamily: ctx.body,
+                      fontWeight: 500,
+                      fontSize: subSize,
+                      lineHeight: 1.3,
+                      color: ink,
+                      opacity: 0.88,
+                    },
+                    ctx.copy.subline,
+                  ),
+                ]
+              : []),
+          ]),
+          el("div", { display: "flex", flexShrink: 0 }, pill(ctx.copy.cta, ink, ctaSize, ctx.body)),
+        ],
+      ),
+      ...logoMark(ctx, "photo", { left: ctx.pad, top: ctx.top }),
+    ],
+  );
+}
+
+/** Before / After B (4:5 and 9:16): before above, after below, our own labels and divider. */
+function stacked(ctx: Ctx): AdNode {
+  const [before, after] = ctx.labels?.length === 2 ? ctx.labels : ["Before", "After"];
+  const textW = ctx.width - ctx.pad * 2;
+  const glyph = 0.56;
+  const size = fitHeadline(ctx.copy.headline, textW, {
+    maxLines: 2,
+    max: 96,
+    min: 52,
+    glyph,
+    measure: ctx.fit,
+    tracking: -0.01,
+  });
+  const lh = ctx.fit ? 1.04 : 1;
+  const headH = estLines(ctx.copy.headline, textW, size, glyph, ctx.fit) * size * lh;
+  const mid = Math.round(ctx.height / 2);
+  const label = (text: string, top: number, dark: boolean) =>
+    el(
+      "div",
+      {
+        position: "absolute",
+        left: ctx.pad,
+        top,
+        display: "flex",
+        padding: "10px 22px",
+        borderRadius: 999,
+        background: dark ? "rgba(17,17,17,0.72)" : "#FFFFFF",
+        color: dark ? "#FFFFFF" : "#111111",
+        fontFamily: ctx.body,
+        fontWeight: 700,
+        fontSize: 28,
+        letterSpacing: 2,
+      },
+      text.toUpperCase(),
+    );
+  const { maxH } = logoBox(ctx.width, ctx.height);
+  return el(
+    "div",
+    { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
+    [
+      photoLayer(ctx),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: ctx.width,
+        height: Math.round(ctx.top + headH + ctx.height * 0.12),
+        backgroundImage: "linear-gradient(180deg, rgba(10,10,10,0.6) 0%, rgba(10,10,10,0) 100%)",
+      }),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        top: mid - 2,
+        width: ctx.width,
+        height: 4,
+        background: "#FFFFFF",
+      }),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: ctx.pad,
+          top: ctx.top,
+          width: textW,
+          display: "flex",
+          justifyContent: "center",
+        },
+        el(
+          "div",
+          {
+            fontFamily: ctx.heading(FONT.display),
+            fontWeight: 800,
+            fontSize: size,
+            lineHeight: lh,
+            letterSpacing: -size * (ctx.fit ? 0.01 : 0.03),
+            color: "#FFFFFF",
+            textAlign: "center",
+          },
+          ctx.copy.headline,
+        ),
+      ),
+      label(before, Math.round(ctx.top + headH + 28), true),
+      label(after, mid + 28, false),
+      el(
+        "div",
+        { position: "absolute", right: ctx.pad, bottom: ctx.bottom, display: "flex" },
+        pill(ctx.copy.cta, ctx.accent, 32, ctx.body),
+      ),
+      /* The logo sits on the divider, centred, like a seal between the two halves. */
+      ...(ctx.logo
+        ? [
+            el(
+              "div",
+              {
+                position: "absolute",
+                left: 0,
+                top: Math.round(mid - maxH / 2),
+                width: ctx.width,
+                display: "flex",
+                justifyContent: "center",
+              },
+              inlineLogo(ctx, "photo"),
+            ),
+          ]
+        : []),
+    ],
+  );
+}
+
+/** Testimonial B: a handwritten quote on a paper note over the calm side of the photo. */
+function note(ctx: Ctx): AdNode {
+  const tall = ctx.height > ctx.width;
+  const cardW = Math.round(ctx.width * (tall ? 0.8 : 0.46));
+  const cardPad = Math.round(cardW * 0.08);
+  const textW = cardW - cardPad * 2;
+  const size = fitHeadline(ctx.copy.headline, textW, {
+    maxLines: 4,
+    max: tall ? 96 : 80,
+    min: 44,
+    /* Caveat is narrow: about 0.4 em per character. */
+    glyph: 0.42,
+    measure: ctx.fit,
+  });
+  const card = el(
+    "div",
+    {
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      gap: 18,
+      width: cardW,
+      padding: `${Math.round(cardPad * 1.2)}px ${cardPad}px ${cardPad}px`,
+      background: "#FBF7EE",
+      borderRadius: 6,
+      /* A hard shadow (no blur) lifts the paper off the photo. */
+      boxShadow: "10px 12px 0px rgba(0,0,0,0.22)",
+      transform: "rotate(-2deg)",
+    },
+    [
+      /* A strip of tape across the top edge. */
+      el("div", {
+        position: "absolute",
+        left: Math.round(cardW / 2 - 70),
+        top: -18,
+        width: 140,
+        height: 38,
+        background: "rgba(255,236,190,0.82)",
+        transform: "rotate(3deg)",
+      }),
+      el(
+        "div",
+        {
+          display: "flex",
+          fontFamily: FONT.hand,
+          fontWeight: 700,
+          fontSize: Math.round(size * 1.4),
+          lineHeight: 1,
+          height: Math.round(size * 0.62),
+          color: ctx.accent,
+        },
+        "“",
+      ),
+      el(
+        "div",
+        {
+          fontFamily: ctx.heading(FONT.hand),
+          fontWeight: 700,
+          fontSize: size,
+          lineHeight: ctx.fit ? 1.08 : 1.02,
+          color: "#1F2A44",
+        },
+        ctx.copy.headline,
+      ),
+      ...(ctx.copy.subline
+        ? [
+            el(
+              "div",
+              {
+                fontFamily: ctx.body,
+                fontWeight: 400,
+                fontSize: 28,
+                lineHeight: 1.35,
+                color: "#4A4540",
+              },
+              ctx.copy.subline,
+            ),
+          ]
+        : []),
+      ...(ctx.logo ? [el("div", { display: "flex", marginTop: 6 }, inlineLogo(ctx, "light"))] : []),
+    ],
+  );
+  return el(
+    "div",
+    { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
+    [
+      photoLayer(ctx),
+      tall
+        ? el(
+            "div",
+            {
+              position: "absolute",
+              left: Math.round((ctx.width - cardW) / 2),
+              top: ctx.top + 24,
+              display: "flex",
+            },
+            card,
+          )
+        : el(
+            "div",
+            {
+              position: "absolute",
+              left: ctx.pad,
+              top: 0,
+              height: ctx.height - ctx.pad * 2,
+              display: "flex",
+              alignItems: "center",
+            },
+            card,
+          ),
+      el(
+        "div",
+        { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
+        pill(ctx.copy.cta, ctx.accent, 32, ctx.body),
+      ),
+    ],
+  );
+}
+
+/** Bold offer B: the product centred, the headline set in a round badge like a stamp. */
+function stamp(ctx: Ctx): AdNode {
+  const tall = ctx.height > ctx.width;
+  const d = Math.round(Math.min(ctx.width, ctx.height) * (tall ? 0.46 : 0.4));
+  const words = ctx.copy.headline.toUpperCase();
+  const size = fitHeadline(words, d * 0.7, {
+    maxLines: 3,
+    max: Math.round(d * (ctx.fit ? 0.19 : 0.24)),
+    min: 30,
+    glyph: 0.52,
+    measure: ctx.fit,
+  });
+  const ink = inkOn(ctx.accent);
+  const ring = ink === "#FFFFFF" ? "rgba(255,255,255,0.55)" : "rgba(17,17,17,0.45)";
+  const inner = Math.round(d * 0.88);
+  return el(
+    "div",
+    { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
+    [
+      photoLayer(ctx),
+      el(
+        "div",
+        {
+          position: "absolute",
+          right: ctx.pad,
+          top: ctx.top,
+          width: d,
+          height: d,
+          borderRadius: d,
+          background: ctx.accent,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transform: "rotate(-8deg)",
+        },
+        el(
+          "div",
+          {
+            width: inner,
+            height: inner,
+            borderRadius: inner,
+            border: `3px solid ${ring}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          },
+          el(
+            "div",
+            {
+              width: Math.round(d * 0.7),
+              display: "flex",
+              justifyContent: "center",
+              fontFamily: ctx.heading(FONT.condensed),
+              fontWeight: ctx.fit ? 800 : 400,
+              fontSize: size,
+              lineHeight: ctx.fit ? 1 : 0.92,
+              color: ink,
+              textAlign: "center",
+              letterSpacing: ctx.fit ? 0 : 1,
+            },
+            words,
+          ),
+        ),
+      ),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: ctx.pad,
+          bottom: ctx.bottom,
+          width: ctx.width - ctx.pad * 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 18,
+        },
+        [
+          ...(ctx.copy.subline
+            ? [
+                el(
+                  "div",
+                  {
+                    display: "flex",
+                    padding: "10px 24px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.92)",
+                    fontFamily: ctx.body,
+                    fontWeight: 500,
+                    fontSize: 30,
+                    color: "#111111",
+                    textAlign: "center",
+                  },
+                  ctx.copy.subline,
+                ),
+              ]
+            : []),
+          pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
+        ],
+      ),
+      ...logoMark(ctx, "photo", { left: ctx.pad, top: ctx.top }),
+    ],
+  );
+}
+
+/** Lifestyle B: a masthead-style headline at the top with a thin rule, the CTA as text. */
+function magazine(ctx: Ctx): AdNode {
+  const tall = ctx.height > ctx.width;
+  const textW = tall ? ctx.width - ctx.pad * 2 : Math.round(ctx.width * 0.72);
+  const glyph = 0.42;
+  const size = fitHeadline(ctx.copy.headline, textW, {
+    maxLines: 2,
+    max: tall ? 124 : 104,
+    min: 56,
+    glyph,
+    measure: ctx.fit,
+    tracking: -0.01,
+  });
+  const logoRoom = ctx.logo ? logoHeight(ctx) + 20 : 0;
+  const headH = estLines(ctx.copy.headline, textW, size, glyph, ctx.fit) * size * 1.02;
+  const washH = ctx.top + logoRoom + headH + (ctx.copy.subline ? 90 : 40) + ctx.height * 0.12;
+  return el(
+    "div",
+    { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
+    [
+      photoLayer(ctx),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: ctx.width,
+        height: Math.round(washH),
+        backgroundImage:
+          "linear-gradient(180deg, rgba(10,10,10,0.66) 0%, rgba(10,10,10,0.5) 55%, rgba(10,10,10,0) 100%)",
+      }),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        bottom: 0,
+        width: ctx.width,
+        height: Math.round(ctx.bottom + ctx.height * 0.16),
+        backgroundImage: "linear-gradient(0deg, rgba(10,10,10,0.5) 0%, rgba(10,10,10,0) 100%)",
+      }),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: 0,
+          top: ctx.top,
+          width: ctx.width,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 20,
+        },
+        [
+          ...(ctx.logo ? [el("div", { display: "flex" }, inlineLogo(ctx, "photo"))] : []),
+          el(
+            "div",
+            {
+              width: textW,
+              display: "flex",
+              justifyContent: "center",
+              fontFamily: ctx.heading(FONT.serif),
+              fontSize: size,
+              lineHeight: 1.02,
+              color: "#FFFFFF",
+              textAlign: "center",
+              letterSpacing: -size * 0.01,
+            },
+            ctx.copy.headline,
+          ),
+          el("div", {
+            width: Math.round(Math.min(textW * 0.5, 360)),
+            height: 2,
+            background: "rgba(255,255,255,0.85)",
+          }),
+          ...(ctx.copy.subline
+            ? [
+                el(
+                  "div",
+                  {
+                    maxWidth: textW,
+                    display: "flex",
+                    justifyContent: "center",
+                    fontFamily: ctx.body,
+                    fontWeight: 500,
+                    fontSize: 28,
+                    lineHeight: 1.4,
+                    letterSpacing: 0.5,
+                    color: "rgba(255,255,255,0.9)",
+                    textAlign: "center",
+                  },
+                  ctx.copy.subline,
+                ),
+              ]
+            : []),
+        ],
+      ),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: 0,
+          bottom: ctx.bottom,
+          width: ctx.width,
+          display: "flex",
+          justifyContent: "center",
+        },
+        el(
+          "div",
+          {
+            display: "flex",
+            fontFamily: ctx.body,
+            fontWeight: 700,
+            fontSize: 30,
+            color: "#FFFFFF",
+            borderBottom: "3px solid #FFFFFF",
+            paddingBottom: 6,
+          },
+          ctx.copy.cta,
+        ),
+      ),
+    ],
+  );
+}
+
+const LAYOUTS: Record<AdLayoutId, (ctx: Ctx) => AdNode> = {
+  hook,
+  split,
+  quote,
+  poster,
+  editorial,
+  caption,
+  stacked,
+  note,
+  stamp,
+  magazine,
+};
 
 /** Default layout for each Ad Studio theme. */
 export const THEME_LAYOUT: Record<string, AdLayoutId> = {
@@ -931,6 +1649,37 @@ export const THEME_LAYOUT: Record<string, AdLayoutId> = {
   "bold-offer": "poster",
   lifestyle: "editorial",
 };
+
+/** Each theme's layouts: A first, then B. */
+export const THEME_LAYOUTS: Record<string, AdLayoutId[]> = {
+  "problem-fix": ["hook", "caption"],
+  "before-after": ["split", "stacked"],
+  testimonial: ["quote", "note"],
+  "bold-offer": ["poster", "stamp"],
+  lifestyle: ["editorial", "magazine"],
+};
+
+/** Layouts that only work on some frames (Stacked needs a tall one). */
+export const LAYOUT_ASPECTS: Partial<Record<AdLayoutId, AspectRatio[]>> = {
+  stacked: ["4:5", "9:16"],
+};
+
+/**
+ * The layout of each ad in a generation: the theme's layouts that suit the frame, taking
+ * turns from a random start (`seed`), so a batch shows both and single ads vary.
+ */
+export function layoutsFor(
+  themeId: string | null | undefined,
+  aspect: AspectRatio,
+  count: number,
+  seed: number,
+): AdLayoutId[] {
+  const all = (themeId && THEME_LAYOUTS[themeId]) || THEME_LAYOUTS["problem-fix"];
+  const usable = all.filter((l) => LAYOUT_ASPECTS[l]?.includes(aspect) ?? true);
+  const list = usable.length ? usable : [all[0]];
+  const start = Math.abs(Math.floor(seed)) % list.length;
+  return Array.from({ length: Math.max(0, count) }, (_, i) => list[(start + i) % list.length]);
+}
 
 export function buildAdLayout(input: AdLayoutInput): {
   width: number;
@@ -956,5 +1705,6 @@ export function buildAdLayout(input: AdLayoutInput): {
     body: input.fonts?.body ?? FONT.sans,
     fit: brandHeading ? input.measure : undefined,
   };
-  return { width, height, tree: LAYOUTS[input.layout](ctx) };
+  /* An unknown id (bad data, or a layout newer than this code) falls back to Hook. */
+  return { width, height, tree: (LAYOUTS[input.layout] ?? hook)(ctx) };
 }

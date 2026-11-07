@@ -2,7 +2,9 @@
 import { describe, test } from "node:test";
 import { ok, strictEqual } from "node:assert";
 import {
+  AD_LAYOUT_IDS,
   AD_SIZES,
+  LAYOUT_ASPECTS,
   THEME_LAYOUT,
   buildAdLayout,
   contrast,
@@ -13,7 +15,10 @@ import {
   type AdNode,
 } from "./ad-layouts.ts";
 
-const LAYOUTS: AdLayoutId[] = ["hook", "split", "quote", "poster", "editorial"];
+const LAYOUTS: AdLayoutId[] = [...AD_LAYOUT_IDS];
+/** Stacked only exists on tall frames (LAYOUT_ASPECTS). */
+const fits = (l: AdLayoutId, a: string) =>
+  (LAYOUT_ASPECTS[l] as string[] | undefined)?.includes(a) ?? true;
 const ASPECTS = ["1:1", "4:5", "9:16", "16:9"] as const;
 
 function texts(node: AdNode, out: string[] = []) {
@@ -63,6 +68,7 @@ describe("buildAdLayout", () => {
 
   for (const layout of LAYOUTS) {
     for (const aspect of ASPECTS) {
+      if (!fits(layout, aspect)) continue;
       test(`${layout} ${aspect}: right size, exact copy, no NaN`, () => {
         const { width, height, tree } = buildAdLayout({
           layout,

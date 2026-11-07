@@ -67,7 +67,7 @@ Practical notes from driving it with the in-app browser:
 1. **Done:** the 10-ad batch on a second product (Acme Glow Serum), results in `V2_AD_DESIGN_PLAN.md` step 6. All 10 good; the Poster bottle came out small.
 2. **Done and verified live:** ads never opened on the result page are composed in Recent and Assets (`composeListed` in `api.ts`, 861ec0c, imported into Lovable).
 3. **Done:** the bigger-product quote brief worked. **New:** the Poster brief now asks for the product to fill about 70% of the frame (commit after 861ec0c). Imported and re-tested: the bottle is bigger (about 70% of the card on 1:1, about half on 9:16). If 9:16 posters still look small on real products, try a taller crop of the photo inside the 9:16 card.
-4. Plan step 7: the B layouts, Brand Kit fonts, and photo-picked accent when there is no brand colour.
+4. **Plan step 7 written (2026-11-08):** the five B layouts, layout A/B taking turns per ad, and the accent read from the photo when there's no brand colour. Checked with tests and local renders; a live batch is next (each theme, 1:1 and 9:16, count 2 so both layouts show).
 5. Plan step 8: "Edit text" on the result screen, re-rendering from `{n}-photo.png` for free.
 6. Open question in the plan's section 7: layout choice in the studio. (No "Made with Replix" mark on any plan, decided 2026-11-08.)
 

@@ -16,7 +16,7 @@ import type {
   PieceRef,
   UploadRef,
 } from "@/v2/data/types";
-import { LAYOUT_PHOTO_BRIEF, THEME_LAYOUT, type AdLayoutId } from "./ad-layouts";
+import { LAYOUT_PHOTO_BRIEF, layoutsFor, type AdLayoutId } from "./ad-layouts";
 import { brandFontsForPlan } from "@/v2/data/pricing";
 import { isSafePublicUrl } from "./page-meta";
 import {
@@ -361,8 +361,13 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   });
   /* No theme reference image any more: those carried words the model copied. */
   const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
-  const layout: AdLayoutId = (inputs.themeId && THEME_LAYOUT[inputs.themeId]) || "hook";
-  const layoutBrief = LAYOUT_PHOTO_BRIEF[layout];
+  /* Each ad takes one of the theme's layouts (A or B), in turns from a random start. */
+  const layouts: AdLayoutId[] = layoutsFor(
+    inputs.themeId,
+    job.aspect,
+    job.count,
+    Math.floor(Math.random() * 1000),
+  );
   const labels = inputs.themeId ? AD_THEME_RECIPES[inputs.themeId]?.labels : undefined;
 
   const raw = await gatewayChat({
@@ -375,7 +380,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       brand,
       count: job.count,
       note: job.note,
-      layoutBrief,
+      layoutBriefs: layouts.map((l) => LAYOUT_PHOTO_BRIEF[l]),
     }),
   });
   let parsed: unknown = null;
@@ -406,8 +411,11 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       headline: c.headline,
       subline: c.subline,
       cta: c.cta,
-      layout,
-      colors: [...(brand.colors ?? []), ...(c.accent ? [c.accent] : [])].slice(0, 5),
+      layout: layouts[i] ?? layouts[0],
+      /* Brand colours only; the accent is kept apart so the browser can refine it from the
+         finished photo when there are no brand colours. */
+      colors: (brand.colors ?? []).slice(0, 5),
+      ...(c.accent ? { accent: c.accent } : {}),
       ...(labels ? { labels } : {}),
       ...(fonts ? { fonts } : {}),
       ...(logo ? { logo } : {}),
@@ -420,7 +428,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
         aspect: job.aspect,
         themeId: inputs.themeId,
         themeName,
-        layoutBrief,
+        layoutBrief: LAYOUT_PHOTO_BRIEF[layouts[i] ?? layouts[0]],
         scene: c.scene,
         brand,
       },

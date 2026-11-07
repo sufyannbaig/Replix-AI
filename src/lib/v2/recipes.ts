@@ -165,7 +165,23 @@ export type AdCopyBrief = {
   insights?: { painPoints: string[]; adAngles: string[] } | null;
   /** What the photo must leave room for (LAYOUT_PHOTO_BRIEF), so each scene suits the layout. */
   layoutBrief?: string;
+  /** One brief per ad, when the ads use different layouts (layout A and B). */
+  layoutBriefs?: string[];
 };
+
+/** How each ad's photo is composed, for the copy call: one line, or one per ad. */
+function compositionText(brief: AdCopyBrief) {
+  const list = brief.layoutBriefs?.length ? brief.layoutBriefs : [];
+  const distinct = [...new Set(list)];
+  if (distinct.length > 1) {
+    const lines = list.map((b, i) => `Ad ${i + 1}: ${b}`).join("\n");
+    return `Each ad is a photo composed for its own layout. We set the words over it ourselves.\n${lines}\nWrite the ads in this order; each scene must fit its own ad's composition.\n`;
+  }
+  const one = distinct[0] ?? brief.layoutBrief;
+  return one
+    ? `Each ad is a photo composed like this: ${one} We set the words over it ourselves.\n`
+    : "";
+}
 
 export function adCopyMessages(brief: AdCopyBrief) {
   const theme = brief.themeId ? AD_THEME_RECIPES[brief.themeId] : undefined;
@@ -173,7 +189,7 @@ export function adCopyMessages(brief: AdCopyBrief) {
   const text = `${photo ? "The attached photo shows the product. Work out what it is from the photo and details, not from the name alone.\n" : ""}Product: ${brief.product.name}
 ${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
-${brief.layoutBrief ? `Each ad is a photo composed like this: ${brief.layoutBrief} We set the words over it ourselves.\n` : ""}
+${compositionText(brief)}
 Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle.
 Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "ads":[{"headline": max 6 words, "subline": max 10 words, "cta": 2-3 words like "Shop now", "scene": one or two sentences of photo direction for this ad (who, where, what moment, light) that fits the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB}]}. Every ad must be about that product.`;
   return [

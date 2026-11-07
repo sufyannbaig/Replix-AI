@@ -128,8 +128,11 @@ export type OutputCopy = {
   headline: string;
   subline: string;
   cta: string;
-  layout?: "hook" | "split" | "quote" | "poster" | "editorial";
+  layout?: import("@/lib/v2/ad-layouts").AdLayoutId;
+  /** Brand colours (older ads: brand colours plus the accent). */
   colors?: string[];
+  /** The copywriter's product colour; the browser refines it from the photo. */
+  accent?: string;
   labels?: string[];
   /** The brand fonts the ad uses; `files` are storage paths of uploaded fonts. */
   fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };

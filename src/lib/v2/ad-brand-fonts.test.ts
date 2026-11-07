@@ -4,7 +4,9 @@
 import { describe, test } from "node:test";
 import { ok, strictEqual } from "node:assert";
 import {
+  AD_LAYOUT_IDS,
   AD_SIZES,
+  LAYOUT_ASPECTS,
   FONT,
   buildAdLayout,
   fitHeadline,
@@ -13,7 +15,10 @@ import {
   type AdNode,
 } from "./ad-layouts.ts";
 
-const LAYOUTS: AdLayoutId[] = ["hook", "split", "quote", "poster", "editorial"];
+const LAYOUTS: AdLayoutId[] = [...AD_LAYOUT_IDS];
+/** Stacked only exists on tall frames (LAYOUT_ASPECTS). */
+const fits = (l: AdLayoutId, a: string) =>
+  (LAYOUT_ASPECTS[l] as string[] | undefined)?.includes(a) ?? true;
 const ASPECTS = ["1:1", "4:5", "9:16", "16:9"] as const;
 
 /* Fake fonts: every character the same width (in em). Wide ~ a wide grotesk, narrow ~ condensed. */
@@ -90,6 +95,7 @@ describe("layouts with brand fonts", () => {
 
   for (const layout of LAYOUTS) {
     for (const aspect of ASPECTS) {
+      if (!fits(layout, aspect)) continue;
       test(`${layout} ${aspect}: brand heading and body fonts are used`, () => {
         const { tree } = buildAdLayout({
           layout,
@@ -103,7 +109,7 @@ describe("layouts with brand fonts", () => {
         const all = styled(tree);
         strictEqual(headline(tree, copy.headline)?.family, "Brand H");
         const sub = all.find((s) => s.text === copy.subline);
-        if (layout !== "split") strictEqual(sub?.family, "Brand B");
+        if (layout !== "split" && layout !== "stacked") strictEqual(sub?.family, "Brand B");
         strictEqual(all.find((s) => s.text === copy.cta)?.family, "Brand B");
         /* Only the testimonial's decorative quote mark keeps a layout face. */
         for (const s of all) {

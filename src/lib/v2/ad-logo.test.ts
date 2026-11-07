@@ -3,7 +3,9 @@
 import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import {
+  AD_LAYOUT_IDS,
   AD_SIZES,
+  LAYOUT_ASPECTS,
   buildAdLayout,
   fitInto,
   logoBox,
@@ -14,7 +16,10 @@ import {
   type AdNode,
 } from "./ad-layouts.ts";
 
-const LAYOUTS: AdLayoutId[] = ["hook", "split", "quote", "poster", "editorial"];
+const LAYOUTS: AdLayoutId[] = [...AD_LAYOUT_IDS];
+/** Stacked only exists on tall frames (LAYOUT_ASPECTS). */
+const fits = (l: AdLayoutId, a: string) =>
+  (LAYOUT_ASPECTS[l] as string[] | undefined)?.includes(a) ?? true;
 const ASPECTS = ["1:1", "4:5", "9:16", "16:9"] as const;
 const copy = {
   headline: "Tired of dull skin by noon?",
@@ -142,6 +147,7 @@ describe("readLogoPixels", () => {
 describe("logo placement", () => {
   for (const layout of LAYOUTS) {
     for (const aspect of ASPECTS) {
+      if (!fits(layout, aspect)) continue;
       test(`${layout} ${aspect}: one logo, inside the safe area, within the box`, () => {
         const frame = AD_SIZES[aspect];
         const { tree } = buildAdLayout({ layout, aspect, photo: "data:,", copy, logo: WORDMARK });

@@ -1,6 +1,6 @@
 # Ad Studio: designed ads plan
 
-Status: steps 1–6 done 2026-11-07 (17b83c3, f7e994b) and live on the Lovable preview. Next: phase 2 (step 7).
+Status: steps 1–6 done 2026-11-07 (17b83c3, f7e994b) and live on the Lovable preview. Phase 2 (step 7) written and checked locally 2026-11-08; not yet tried live. Next: phase 3 (step 8).
 
 ## 1. Why
 
@@ -94,6 +94,17 @@ Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
      - **Issue:** both Poster ads had a small bottle inside the card (about a quarter of the card height on 9:16). The poster brief now asks for the product to fill about 70% of the frame height (016c96d). Re-tested on the preview with two more serum Bold offer ads (4 credits): on 1:1 the bottle now fills about 70% of the card (it was about 60%), and on 9:16 about half the card (it was about a quarter). Better, though 9:16 still falls short of the 70% asked for. Both composed from Home with their result pages closed.
      - Copy: one headline used "three drops", which came from the Product Insights angles, not from the product page. Fine for a test product; worth watching on real products.
 7. **Phase 2:** the B layouts, brand kit fonts, and the photo accent colour.
+   - **Brand kit fonts:** done with the brand plan (steps 4-6 in `V2_BRAND_PLAN.md`).
+   - **B layouts (code, 2026-11-08):** `caption`, `stacked`, `note`, `stamp` and `magazine` in `ad-layouts.ts`, each with its own `LAYOUT_PHOTO_BRIEF`, logo spot and 9:16 safe zones.
+     - Caption bar: full-bleed photo, a solid accent bar at the bottom with the headline, subline and a contrasting pill; the logo top left.
+     - Stacked (4:5 and 9:16 only, `LAYOUT_ASPECTS`): before above, after below, white divider, our own labels, the logo centred on the divider. No subline, like Split. Square and wide Before / After ads stay Split.
+     - Note: the quote handwritten in Caveat (one more font file, about 60 KB, `caveat@5.1.0` from jsdelivr) on a slightly turned paper card with tape and a hard shadow (no blur), over the calm side of the photo; the logo on the card. A brand heading font replaces Caveat, as on the other layouts. This answers the open question on a handwriting face.
+     - Stamp: the product photo full frame, the headline in condensed capitals inside a round accent badge (turned 8 degrees) at the top right; the subline and CTA at the bottom. Text on a curve isn't possible in satori, so it's a badge.
+     - Magazine: a masthead-style serif headline at the top with a thin rule and the subline, the CTA as underlined text at the bottom; the logo above the masthead.
+   - **Which layout an ad gets:** `THEME_LAYOUTS` lists A then B per theme; `layoutsFor` gives each ad in a generation its layout, taking turns from a random start, so a batch of 2+ shows both and single ads vary. The copy call now gets one composition line per ad when the layouts differ (`layoutBriefs` in `adCopyMessages`), and each photo prompt gets its own ad's brief. Still automatic (no picker in the studio); switching on the result screen fits with phase 3.
+   - **Photo accent (code, 2026-11-08):** the server keeps the brand colours in `copy.colors` and the copywriter's product colour apart in `copy.accent`. With no brand colours the browser reads the accent from the finished photo (`photoAccent`: colourful pixels grouped by hue, centre pixels count more; the copywriter's colour is the hint, so the photo's own shade of the product colour wins when the photo has it). A grey photo falls back to the copywriter's colour. Either way `usableAccent` darkens it until black or white text reads on it at 4.5:1. Older ads (accent inside `colors`) render as before.
+   - **Checked:** 16 new tests (`ad-layouts-b.test.ts`), and every B layout is in the size, copy, logo and brand-font tests (230 tests pass). Rendered all five B layouts in a local browser at 1:1, 4:5 and 9:16 over sample photos: all compose (0.2-0.5 MB JPEG), the accent came out blue on the can photo and warm brown on a lifestyle photo without blue. Fix from that check: Stamp's brief now asks for plain space in the bottom 20%, because the subline and CTA sat on the product's base.
+   - **Not tried live yet:** a real batch of the B layouts (needs the Lovable import and test credits).
 8. **Phase 3, Edit text:** on the result screen, change the headline, subline, CTA or layout and re-render from `{n}-photo.png` for free. This is the editable overlay the backend plan listed as later.
 
 ## 6. What doesn't change
@@ -105,6 +116,6 @@ Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
 
 ## 7. Open questions
 
-- Is a third font family (a script or handwriting face) worth it for the "Note" testimonial layout?
+- ~~Is a third font family (a script or handwriting face) worth it for the "Note" testimonial layout?~~ Used Caveat (one 60 KB file); easy to drop if the Note looks off live.
 - ~~Should Free-plan ads carry a small "Made with Replix" mark?~~ **Decided 2026-11-08: no mark on any plan.**
 - Do we offer layout choice in the studio, or keep it automatic per theme and let people switch on the result screen (phase 3)?

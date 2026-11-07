@@ -7,7 +7,9 @@
 import {
   FONT,
   buildAdLayout,
+  photoAccent,
   readLogoPixels,
+  usableAccent,
   type AdLogo,
   type AdLogoImage,
 } from "@/lib/v2/ad-layouts";
@@ -40,6 +42,8 @@ const FONT_FILES: { name: string; weight: 400 | 500 | 700 | 800; file: string }[
     weight: 400,
     file: "instrument-serif@5.1.0/files/instrument-serif-latin-400-normal.woff",
   },
+  /* Handwriting for the Note testimonial: the 600 file, registered as 700 (what Note asks for). */
+  { name: FONT.hand, weight: 700, file: "caveat@5.1.0/files/caveat-latin-600-normal.woff" },
 ];
 
 type SatoriFont = {
@@ -216,30 +220,57 @@ async function inlinePhoto(url: string) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Photo: ${res.status}`);
   const blob = await res.blob();
-  return new Promise<string>((resolve, reject) => {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+  return { blob, dataUrl };
+}
+
+/**
+ * The ad's colours: brand colours when there are any (older ads also carry the accent there).
+ * Otherwise the accent read from the photo itself, with the copywriter's pick as the hint and
+ * the fallback.
+ */
+async function adColors(design: AdDesign, photo: Blob) {
+  if (design.colors?.length) return design.colors;
+  try {
+    const bitmap = await createImageBitmap(photo, { resizeWidth: 48, resizeHeight: 48 });
+    const canvas = document.createElement("canvas");
+    canvas.width = 48;
+    canvas.height = 48;
+    const g = canvas.getContext("2d");
+    if (!g) throw new Error("No canvas");
+    g.drawImage(bitmap, 0, 0, 48, 48);
+    bitmap.close();
+    const picked = photoAccent(g.getImageData(0, 0, 48, 48).data, 48, 48, design.accent);
+    if (picked) return [picked];
+  } catch (error) {
+    console.warn("[v2 ads] photo accent skipped", error);
+  }
+  return design.accent ? [usableAccent(design.accent)] : undefined;
 }
 
 /** Compose one ad. Rejects if anything fails; the caller keeps showing the photo then. */
 export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blob> {
-  const [{ default: satori }, fonts, photo, brand, logo] = await Promise.all([
-    import("satori"),
-    loadFonts(),
-    inlinePhoto(photoUrl),
-    design.fonts ? brandFonts(design).catch(() => null) : Promise.resolve(null),
-    loadLogo(design),
-  ]);
+  const [{ default: satori }, fonts, { blob: photoBlob, dataUrl: photo }, brand, logo] =
+    await Promise.all([
+      import("satori"),
+      loadFonts(),
+      inlinePhoto(photoUrl),
+      design.fonts ? brandFonts(design).catch(() => null) : Promise.resolve(null),
+      loadLogo(design),
+    ]);
+  const colors = await adColors(design, photoBlob);
   const render = async (withBrand: boolean) => {
     const { width, height, tree } = buildAdLayout({
       layout: design.layout,
       aspect: design.aspect,
       photo,
       copy: design.copy,
-      colors: design.colors,
+      colors,
       labels: design.labels,
       ...(logo ? { logo } : {}),
       ...(withBrand && brand ? { fonts: brand.names, measure: brand.measure } : {}),
