@@ -297,11 +297,32 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
     /* fall back to safe default copy */
   }
   const copies = parseAdCopy(parsed, job.count, product.name);
+  // What the copywriter saw in the photo, so the image model doesn't guess from the name either.
+  const seen = (parsed as { product?: unknown } | null)?.product;
+  const described = {
+    ...product,
+    description:
+      product.description ||
+      (typeof seen === "string"
+        ? seen
+            .replace(/["\n\r]+/g, " ")
+            .trim()
+            .slice(0, 200)
+        : null),
+  };
   return copies.map((copy, i) => ({
     refs,
     copy,
     prompt: adImagePrompt(
-      { product, refs, aspect: job.aspect, themeId: inputs.themeId, themeName, brand, copy },
+      {
+        product: described,
+        refs,
+        aspect: job.aspect,
+        themeId: inputs.themeId,
+        themeName,
+        brand,
+        copy,
+      },
       i,
       job.count,
     ),

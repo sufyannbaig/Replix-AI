@@ -157,7 +157,7 @@ export function adCopyMessages(brief: AdCopyBrief) {
 ${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
 Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle.
-Return {"ads":[{"headline": max 6 words, "subline": max 12 words, "cta": 2-3 words like "Shop now"}]}.`;
+Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "ads":[{"headline": max 6 words, "subline": max 12 words, "cta": 2-3 words like "Shop now"}]}. Every ad must be about that product.`;
   return [
     {
       role: "system",
