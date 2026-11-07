@@ -217,6 +217,7 @@ export function adImagePrompt(
     "",
     "RULES",
     "- The product is reproduced exactly from its image: shape, colours, label and logo unchanged.",
+    "- The product is a hero, at least a third of the frame height, so every word on its label stays sharp and correct. Never shrink it into the background.",
     "- Add no other text of any kind: no section titles (like 'Problem' or 'Solution'), captions, speech bubbles, bullet lists, arrows with words, extra slogans, prices, ratings, badges, watermarks or fake UI. Tell the story with images, not more words.",
     "- Signs, screens and packaging in the scene stay blank or unreadable.",
     "- Crisp, legible text with strong contrast; photorealistic product and set.",
