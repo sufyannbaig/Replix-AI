@@ -141,7 +141,15 @@ export const AD_THEME_RECIPES: Record<
   },
 };
 
-export type AdCopy = { headline: string; subline: string; cta: string };
+export type AdCopy = {
+  headline: string;
+  subline: string;
+  cta: string;
+  /** Photo direction for this ad (who, where, moment, light), when the copywriter gave one. */
+  scene?: string;
+  /** One colour from the product photo, as #RRGGBB, for the type layer. */
+  accent?: string;
+};
 
 export type AdCopyBrief = {
   /** `dataUrl` is the product photo, so the copy is about what the product really is. */
@@ -152,6 +160,8 @@ export type AdCopyBrief = {
   count: number;
   note?: string | null;
   insights?: { painPoints: string[]; adAngles: string[] } | null;
+  /** What the photo must leave room for (LAYOUT_PHOTO_BRIEF), so each scene suits the layout. */
+  layoutBrief?: string;
 };
 
 export function adCopyMessages(brief: AdCopyBrief) {
@@ -160,8 +170,9 @@ export function adCopyMessages(brief: AdCopyBrief) {
   const text = `${photo ? "The attached photo shows the product. Work out what it is from the photo and details, not from the name alone.\n" : ""}Product: ${brief.product.name}
 ${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
+${brief.layoutBrief ? `Each ad is a photo composed like this: ${brief.layoutBrief} We set the words over it ourselves.\n` : ""}
 Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle.
-Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "ads":[{"headline": max 6 words, "subline": max 12 words, "cta": 2-3 words like "Shop now"}]}. Every ad must be about that product.`;
+Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "ads":[{"headline": max 6 words, "subline": max 10 words, "cta": 2-3 words like "Shop now", "scene": one or two sentences of photo direction for this ad (who, where, what moment, light) that fits the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB}]}. Every ad must be about that product.`;
   return [
     {
       role: "system",
@@ -180,47 +191,49 @@ Return {"product": what the product is and does, in under 15 words, judged from 
   ];
 }
 
-export function adImagePrompt(
+/**
+ * The photo for a designed ad. It has NO text: our type layer (ad-layouts.ts) sets the copy
+ * over it, so the picture only has to be a great photograph composed for that layout.
+ */
+export function adPhotoPrompt(
   brief: {
     product: { name: string; description?: string | null };
     refs: PromptRef[];
     aspect: AspectRatio;
     themeId: string | null;
     themeName: string;
+    /** LAYOUT_PHOTO_BRIEF for the chosen layout. */
+    layoutBrief: string;
+    /** The copywriter's scene for this ad. */
+    scene?: string;
     brand: BrandHints;
-    copy: AdCopy;
   },
   index: number,
   total: number,
 ) {
   const theme = brief.themeId ? AD_THEME_RECIPES[brief.themeId] : undefined;
   const colors = brief.brand.colors?.length ? brief.brand.colors.slice(0, 4).join(", ") : null;
-  const font = brief.brand.fonts?.heading;
   return [
-    "You are an award-winning art director making ONE finished static social ad.",
+    "You are an award-winning advertising photographer. Create ONE photograph for a paid social ad. Our designers add the headline and button afterwards, so the photo itself has no text.",
     "",
     describeRefs(brief.refs),
     "",
     "MASTER SHOT",
-    `- Brief: a "${brief.themeName}" ad for ${brief.product.name}${brief.product.description ? ` (${clip(brief.product.description, 200)})` : ""}.`,
+    `- Brief: a "${brief.themeName}" ad photo for ${brief.product.name}${brief.product.description ? ` (${clip(brief.product.description, 200)})` : ""}.`,
     theme ? `- Story: ${theme.story}` : "",
-    `- Layout: ${theme?.layout ?? "clean, modern ad layout with clear hierarchy."}`,
-    `- Frame: ${ASPECT_TEXT[brief.aspect]}; keep text inside a 6% safe margin.`,
-    colors ? `- Brand colours: ${colors} (use for background, shapes and the CTA button).` : "",
-    `- Typography: ${font ? `a typeface like ${font}` : "a clean bold sans-serif"} for the headline; one secondary weight for the rest.`,
-    "",
-    "TEXT ON THE AD. These are the ONLY words allowed anywhere in the image, apart from what is printed on the product itself. Spell them exactly and use each once:",
-    `- Headline: "${brief.copy.headline}"`,
-    brief.copy.subline ? `- Subline: "${brief.copy.subline}"` : "",
-    `- Button: "${brief.copy.cta}"`,
-    ...(theme?.labels ?? []).map((l) => `- Label: "${l}"`),
+    brief.scene ? `- Scene: ${clip(brief.scene, 400)}` : "",
+    `- Composition: ${ASPECT_TEXT[brief.aspect]}. ${brief.layoutBrief}`,
+    "- Light: real, motivated light from the scene. The product is lit by that same light and casts its own shadows and reflections, so it sits in the scene instead of looking pasted in.",
+    "- People, if any: real and candid, mid-moment, never posing for the camera or looking like stock photos.",
+    colors ? `- Brand colours: ${colors}. Let them appear naturally in the set or background.` : "",
     "",
     "RULES",
     "- The product is reproduced exactly from its image: shape, colours, label and logo unchanged.",
     "- The product is a hero, at least a third of the frame height, so every word on its label stays sharp and correct. Never shrink it into the background.",
-    "- Add no other text of any kind: no section titles (like 'Problem' or 'Solution'), captions, speech bubbles, bullet lists, arrows with words, extra slogans, prices, ratings, badges, watermarks or fake UI. Tell the story with images, not more words.",
-    "- Signs, screens and packaging in the scene stay blank or unreadable.",
-    "- Crisp, legible text with strong contrast; photorealistic product and set.",
+    "- NO text anywhere except what is printed on the product itself: no headline, captions, labels, buttons, logos, watermarks, badges, prices, speech bubbles or fake UI.",
+    "- Signs, screens, books and packaging in the scene stay blank or unreadable.",
+    "- Leave the calm area described in the composition truly empty: no objects, faces or bright highlights there.",
+    "- Photorealistic, natural physics, anatomically correct hands and faces.",
     variationLine(index, total),
   ]
     .filter((l, i, all) => l !== "" || all[i - 1] !== "")
@@ -241,11 +254,18 @@ export function parseAdCopy(raw: unknown, count: number, productName: string): A
           .trim()
           .slice(0, max)
       : "";
-  const out = ads.slice(0, count).map((a) => ({
-    headline: safe(a.headline, 60) || productName.slice(0, 60),
-    subline: safe(a.subline, 90),
-    cta: safe(a.cta, 24) || "Shop now",
-  }));
+  const out: AdCopy[] = ads.slice(0, count).map((a) => {
+    const copy: AdCopy = {
+      headline: safe(a.headline, 60) || productName.slice(0, 60),
+      subline: safe(a.subline, 90),
+      cta: safe(a.cta, 24) || "Shop now",
+    };
+    const scene = safe(a.scene, 400);
+    if (scene) copy.scene = scene;
+    const accent = safe(a.accent, 7);
+    if (/^#[0-9a-f]{6}$/i.test(accent)) copy.accent = accent.toUpperCase();
+    return copy;
+  });
   while (out.length < count)
     out.push({ headline: productName.slice(0, 60), subline: "", cta: "Shop now" });
   return out;

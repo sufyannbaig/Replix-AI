@@ -441,7 +441,7 @@ function editorial(ctx: Ctx): AdNode {
               paddingBottom: 6,
               flexShrink: 0,
             },
-            `${ctx.copy.cta} →`,
+            ctx.copy.cta,
           ),
         ],
       ),

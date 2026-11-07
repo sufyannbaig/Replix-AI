@@ -12,6 +12,7 @@ import {
   getProductInsights,
   listGenerations,
   runGeneration,
+  saveComposedAd,
   startGeneration,
 } from "@/lib/v2/generation.functions";
 import { notifyCreditsChanged } from "@/hooks/use-credits";
@@ -825,6 +826,45 @@ function keepSignedUrls(
   return { ...job, outputs, request: { ...job.request, product } };
 }
 
+/*
+ * Designed ads arrive as a text-free photo plus a layout. Each is composed here once per page
+ * load: shown at once from a local blob link, then saved so every other view gets it too.
+ * If composing fails the photo stays, and the next visit tries again.
+ */
+const composedLocal = new Map<string, string>();
+const composing = new Set<string>();
+
+function withComposed(job: GenerationJob | null): GenerationJob | null {
+  if (!job || !job.outputs.some((o) => o.design && composedLocal.has(o.id))) return job;
+  return {
+    ...job,
+    outputs: job.outputs.map((o) => {
+      const local = o.design && composedLocal.get(o.id);
+      return local ? { ...o, imageUrl: local } : o;
+    }),
+  };
+}
+
+function composeOutputs(job: GenerationJob | null, onShown: () => void, onSaved: () => void) {
+  for (const o of job?.outputs ?? []) {
+    const design = o.design;
+    if (!design || !o.imageUrl || composing.has(o.id)) continue;
+    composing.add(o.id);
+    void (async () => {
+      try {
+        const { composeAd, blobToBase64 } = await import("./compose-ad");
+        const blob = await composeAd(design, o.imageUrl);
+        composedLocal.set(o.id, URL.createObjectURL(blob));
+        onShown();
+        await saveComposedAd({ data: { outputId: o.id, image: await blobToBase64(blob) } });
+        onSaved();
+      } catch (error) {
+        console.warn("[v2 ads] couldn't compose", o.id, error);
+      }
+    })();
+  }
+}
+
 /** One job, polled every half second until it finishes. `null` when the id is unknown. */
 export function useGenerationJob(jobId: string) {
   const queryClient = useQueryClient();
@@ -833,7 +873,21 @@ export function useGenerationJob(jobId: string) {
     queryFn: async (): Promise<GenerationJob | null> => {
       if (UUID.test(jobId) && (await backendUser("generation_jobs"))) {
         const previous = queryClient.getQueryData<GenerationJob | null>(queryKeys.job(jobId));
-        const job = keepSignedUrls(await getGenerationJob({ data: { jobId } }), previous);
+        const job = withComposed(
+          keepSignedUrls(await getGenerationJob({ data: { jobId } }), previous),
+        );
+        composeOutputs(
+          job,
+          () =>
+            queryClient.setQueryData<GenerationJob | null>(queryKeys.job(jobId), (current) =>
+              withComposed(current ?? null),
+            ),
+          () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) });
+            void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
+            void queryClient.invalidateQueries({ queryKey: ["v2", "assets"] });
+          },
+        );
         /* Still queued well after start (the first run call was lost): ask again. */
         if (
           job?.status === "queued" &&

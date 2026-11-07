@@ -1,7 +1,7 @@
 // Run with: node --test src/lib/v2/recipes.test.ts
 import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
-import { adImagePrompt, describeRefs, parseAdCopy, photoPrompt, variationLine } from "./recipes.ts";
+import { adPhotoPrompt, describeRefs, parseAdCopy, photoPrompt, variationLine } from "./recipes.ts";
 
 describe("describeRefs", () => {
   test("numbers images in attachment order", () => {
@@ -62,23 +62,42 @@ describe("ad copy", () => {
       { headline: "Pad", subline: "", cta: "Shop now" },
     ]);
   });
-  test("image prompt spells the copy and brand colours", () => {
-    const p = adImagePrompt(
+  test("keeps a scene and a valid accent, drops a bad accent", () => {
+    const [a, b] = parseAdCopy(
+      {
+        ads: [
+          { headline: "Go", cta: "Shop", scene: "A runner at dawn", accent: "#1e4fd6" },
+          { headline: "Go", cta: "Shop", accent: "blue" },
+        ],
+      },
+      2,
+      "Pad",
+    );
+    strictEqual(a.scene, "A runner at dawn");
+    strictEqual(a.accent, "#1E4FD6");
+    strictEqual(b.accent, undefined);
+    strictEqual(b.scene, undefined);
+  });
+  test("ad photo prompt has no copy, follows the layout and scene", () => {
+    const p = adPhotoPrompt(
       {
         product: { name: "Pad" },
         refs: [{ role: "product", name: "Pad" }],
         aspect: "1:1",
         themeId: "bold-offer",
         themeName: "Bold offer",
-        brand: { colors: ["#162544", "#FAB91B"], fonts: { heading: "Archivo", body: "Inter" } },
-        copy: { headline: "Charge faster", subline: "", cta: "Shop now" },
+        layoutBrief: "Studio hero shot on a plain seamless background.",
+        scene: "Warm late light on a kitchen counter.",
+        brand: { colors: ["#162544", "#FAB91B"] },
       },
       0,
       1,
     );
-    ok(p.includes('Headline: "Charge faster"'));
+    ok(p.includes("Studio hero shot on a plain seamless background."));
+    ok(p.includes("Scene: Warm late light"));
     ok(p.includes("#162544, #FAB91B"));
-    ok(p.includes("Archivo"));
-    ok(!p.includes("Subline"));
+    ok(p.includes("NO text anywhere"));
+    ok(!p.includes("Headline:"));
+    ok(!p.includes("\n\n\n"));
   });
 });

@@ -15,6 +15,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { GenerationJobRow, GenerationOutputRow, V2Database } from "@/v2/data/db-types";
 import { generationCost, MAX_IMAGES_PER_JOB } from "@/v2/data/pricing";
 import type {
+  AdDesign,
+  AspectRatio,
   AssetItem,
   Generation,
   GenerationJob,
@@ -161,6 +163,16 @@ async function signOutputs(db: SupabaseClient<V2Database>, rows: GenerationOutpu
 }
 
 function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<string, string>) {
+  const design = (o: GenerationOutputRow): AdDesign | undefined =>
+    o.copy?.layout && !o.copy.composed
+      ? {
+          layout: o.copy.layout,
+          aspect: row.aspect as AspectRatio,
+          copy: { headline: o.copy.headline, subline: o.copy.subline, cta: o.copy.cta },
+          colors: o.copy.colors,
+          labels: o.copy.labels,
+        }
+      : undefined;
   const job: GenerationJob & { error?: string | null; refunded?: boolean } = {
     id: row.id,
     request: row.request as GenerationRequest,
@@ -174,6 +186,7 @@ function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<
         id: o.id,
         imageUrl: urls.get(o.image_path ?? "") ?? "",
         savedToAssets: o.saved_to_assets,
+        ...(design(o) ? { design: design(o) } : {}),
       })),
     error: row.error,
     refunded: row.refunded,
@@ -216,6 +229,50 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     const job = toJob(row, outputs ?? [], urls);
     await refreshProductImage(db, job.request);
     return job;
+  });
+
+const SaveAd = z.object({
+  outputId: z.string().uuid(),
+  /** The finished ad as base64 JPEG (no data: prefix). 1080×1920 is well under 2 MB. */
+  image: z.string().min(100).max(11_000_000),
+});
+
+/**
+ * Store a designed ad the browser composed over its text-free photo. The output must be the
+ * caller's own, still uncomposed ad; the file name comes from the row, never the browser.
+ */
+export const saveComposedAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => SaveAd.parse(data))
+  .handler(async ({ data, context }) => {
+    const { admin } = await import("./generation.server");
+    const { data: row } = await admin
+      .from("generation_outputs")
+      .select("*")
+      .eq("id", data.outputId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!row?.copy?.layout || !row.copy.photo) throw new Error("This ad can't be updated.");
+    if (row.copy.composed) return { saved: false };
+    const bin = atob(data.image);
+    if (bin.length > 8 * 1024 * 1024) throw new Error("That image is too large.");
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+      throw new Error("That isn't a JPEG.");
+    }
+    const path = `${context.userId}/${row.job_id}/${row.position + 1}.jpg`;
+    const up = await admin.storage
+      .from("outputs")
+      .upload(path, bytes, { contentType: "image/jpeg", upsert: true });
+    if (up.error) throw new Error("Couldn't save the ad. Please try again.");
+    const { error } = await admin
+      .from("generation_outputs")
+      .update({ image_path: path, copy: { ...row.copy, composed: true } })
+      .eq("id", row.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error("Couldn't save the ad. Please try again.");
+    return { saved: true };
   });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

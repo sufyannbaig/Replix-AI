@@ -243,6 +243,19 @@ export type GenerationOutput = {
   imageUrl: string;
   videoUrl?: string;
   savedToAssets: boolean;
+  /**
+   * Designed ads whose type isn't set yet: `imageUrl` is the text-free photo and the
+   * browser composes the finished ad from this (src/v2/data/compose-ad.ts).
+   */
+  design?: AdDesign;
+};
+
+export type AdDesign = {
+  layout: "hook" | "split" | "quote" | "poster" | "editorial";
+  aspect: AspectRatio;
+  copy: { headline: string; subline: string; cta: string };
+  colors?: string[];
+  labels?: string[];
 };
 
 /** A generation run, polled by the result screen until it is done or failed. */

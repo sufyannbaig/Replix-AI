@@ -103,8 +103,24 @@ export type GenerationOutputRow = {
   image_path: string | null;
   video_path: string | null;
   saved_to_assets: boolean;
-  copy: { headline: string; subline: string; cta: string } | null;
+  copy: OutputCopy | null;
   created_at: string;
+};
+
+/**
+ * The words on an ad, plus (for designed ads) what the browser needs to set them over the
+ * text-free photo: see docs/V2_AD_DESIGN_PLAN.md. `composed` turns true once the finished ad
+ * replaces the photo in `image_path`; `photo` keeps the clean photo's path for re-renders.
+ */
+export type OutputCopy = {
+  headline: string;
+  subline: string;
+  cta: string;
+  layout?: "hook" | "split" | "quote" | "poster" | "editorial";
+  colors?: string[];
+  labels?: string[];
+  photo?: string;
+  composed?: boolean;
 };
 
 export type V2Database = {

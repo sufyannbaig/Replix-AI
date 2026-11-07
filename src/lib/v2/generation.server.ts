@@ -7,7 +7,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { gatewayChat, parseJsonBlock } from "@/lib/ai-gateway.server";
-import type { GenerationJobRow, V2Database } from "@/v2/data/db-types";
+import type { GenerationJobRow, OutputCopy, V2Database } from "@/v2/data/db-types";
 import { adThemes, catalogImage, catalogPathForUrl, pieceOptions } from "@/v2/data/mock";
 import type {
   AspectRatio,
@@ -16,10 +16,12 @@ import type {
   PieceRef,
   UploadRef,
 } from "@/v2/data/types";
+import { LAYOUT_PHOTO_BRIEF, THEME_LAYOUT, type AdLayoutId } from "./ad-layouts";
 import { isSafePublicUrl } from "./page-meta";
 import {
+  AD_THEME_RECIPES,
   adCopyMessages,
-  adImagePrompt,
+  adPhotoPrompt,
   parseAdCopy,
   photoPrompt,
   type AdCopy,
@@ -220,7 +222,8 @@ async function generateImage(prompt: string, refs: Loaded[]) {
   return { bytes, type };
 }
 
-type Plan = { prompt: string; refs: Loaded[]; copy?: AdCopy };
+/** `copy` is set for ads: the photo is stored text-free and the browser sets the type. */
+type Plan = { prompt: string; refs: Loaded[]; copy?: OutputCopy };
 
 async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInputs) {
   if (inputs.studio !== "photo") throw new GenerationError("Wrong studio.");
@@ -270,13 +273,11 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   if (inputs.themeId) await loadTemplate(ctx, inputs.themeId, "ad");
   const themeName = theme?.name ?? "Product ad";
   const brand = await loadBrand(ctx.userId);
+  /* No theme reference image any more: those carried words the model copied. */
   const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
-  if (theme)
-    refs.push({
-      role: "layout",
-      name: theme.name,
-      dataUrl: await bundledArt(theme.imageUrl, ctx.site),
-    });
+  const layout: AdLayoutId = (inputs.themeId && THEME_LAYOUT[inputs.themeId]) || "hook";
+  const layoutBrief = LAYOUT_PHOTO_BRIEF[layout];
+  const labels = inputs.themeId ? AD_THEME_RECIPES[inputs.themeId]?.labels : undefined;
 
   const raw = await gatewayChat({
     model: TEXT_MODEL,
@@ -288,6 +289,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       brand,
       count: job.count,
       note: job.note,
+      layoutBrief,
     }),
   });
   let parsed: unknown = null;
@@ -310,18 +312,27 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
             .slice(0, 200)
         : null),
   };
-  return copies.map((copy, i) => ({
+  return copies.map((c: AdCopy, i): Plan => ({
     refs,
-    copy,
-    prompt: adImagePrompt(
+    copy: {
+      headline: c.headline,
+      subline: c.subline,
+      cta: c.cta,
+      layout,
+      colors: [...(brand.colors ?? []), ...(c.accent ? [c.accent] : [])].slice(0, 5),
+      ...(labels ? { labels } : {}),
+      composed: false,
+    },
+    prompt: adPhotoPrompt(
       {
         product: described,
         refs,
         aspect: job.aspect,
         themeId: inputs.themeId,
         themeName,
+        layoutBrief,
+        scene: c.scene,
         brand,
-        copy,
       },
       i,
       job.count,
@@ -367,7 +378,9 @@ export async function runJob(jobRow: GenerationJobRow, site: Site) {
       try {
         const image = await generateImage(plan.prompt, plan.refs);
         cost += EST_USD.image;
-        const path = `${jobRow.user_id}/${jobRow.id}/${position + 1}.${extension(image.type)}`;
+        /* Ads: the clean photo; the browser uploads the finished ad as {n}.jpg. */
+        const name = plan.copy ? `${position + 1}-photo` : `${position + 1}`;
+        const path = `${jobRow.user_id}/${jobRow.id}/${name}.${extension(image.type)}`;
         const up = await admin.storage
           .from("outputs")
           .upload(path, image.bytes, { contentType: image.type, upsert: true });
@@ -377,7 +390,7 @@ export async function runJob(jobRow: GenerationJobRow, site: Site) {
           user_id: jobRow.user_id,
           position,
           image_path: path,
-          copy: plan.copy ?? null,
+          copy: plan.copy ? { ...plan.copy, photo: path } : null,
         });
         if (ins.error) throw new Error(ins.error.message);
         ok += 1;
