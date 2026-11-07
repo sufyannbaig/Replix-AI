@@ -190,9 +190,18 @@ async function loadBrand(
     kitId = product?.brand_kit_id ?? undefined;
   }
   let data = kitId ? (await own().eq("id", kitId).maybeSingle()).data : null;
-  data ??= (
-    await own().order("is_default", { ascending: false }).order("created_at").limit(1).maybeSingle()
-  ).data;
+  if (!data) {
+    const byDefault = await own()
+      .order("is_default", { ascending: false })
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    /* Before the brand-kits migration there's no is_default column: take the oldest kit. */
+    data =
+      byDefault.error?.code === "42703"
+        ? (await own().order("created_at").limit(1).maybeSingle()).data
+        : byDefault.data;
+  }
   return data
     ? {
         name: data.name,

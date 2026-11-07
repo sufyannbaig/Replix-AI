@@ -110,17 +110,28 @@ async function kitsFromRows(rows: BrandKitRow[]): Promise<BrandKit[]> {
     audience: row.audience,
     images: row.images.map((i) => urls.get(i) ?? i),
     isComplete: row.colors.length > 0 || !!row.fonts || !!row.tone,
-    isDefault: row.is_default,
+    isDefault: row.is_default ?? false,
   }));
 }
 
 async function fetchBrandKits(): Promise<BrandKit[]> {
   if (!(await backendUser("brand_kits"))) return brandKits;
-  const rows = await tryTable("brand_kits", () =>
-    db.from("brand_kits").select("*").order("is_default", { ascending: false }).order("created_at"),
-  );
+  const rows = await tryTable("brand_kits", async () => {
+    const res = await db
+      .from("brand_kits")
+      .select("*")
+      .order("is_default", { ascending: false })
+      .order("created_at");
+    /* Before the brand-kits migration there's no is_default column: use creation order. */
+    return res.error?.code === "42703"
+      ? await db.from("brand_kits").select("*").order("created_at")
+      : res;
+  });
   if (!rows) return brandKits;
-  return rows.length ? kitsFromRows(rows) : [BLANK_KIT];
+  if (!rows.length) return [BLANK_KIT];
+  const kits = await kitsFromRows(rows);
+  /* No kit marked (not migrated yet): the first, oldest one acts as the default. */
+  return kits.some((k) => k.isDefault) ? kits : kits.map((k, i) => ({ ...k, isDefault: i === 0 }));
 }
 
 async function fetchCommunity(): Promise<CommunityCreation[]> {
