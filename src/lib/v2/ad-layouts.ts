@@ -107,7 +107,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
     "One vertical photo split across the middle into two stacked halves of the same place: the top half shows the problem in dim, cool light; the bottom half shows it bright and warm with the product, large and clear. Keep the top 20% calm on both.",
   note: "A person in a warm, real setting holding the product close to camera, label to camera, at least 40% of the frame height, on the right side of the frame (in the lower half on a vertical frame). The left half (the top half on a vertical frame) is soft, out of focus and calm, like a table, wall or window, so a paper note can sit there.",
   stamp:
-    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 55% of the frame height. The bottom 20% of the frame and the top right corner are plain background with nothing in them.",
+    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 55% of the frame height. The top right and bottom left corners are plain background with nothing in them.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -225,7 +225,10 @@ export function photoAccent(
       const dx = (x + 0.5) / width - 0.5;
       const dy = (y + 0.5) / height - 0.5;
       const centre = 1 - 0.6 * Math.min(1, Math.sqrt(dx * dx + dy * dy) / Math.SQRT1_2);
-      const w = c.s * centre;
+      /* Skin, wood and warm walls (muted oranges) fill lifestyle photos; they rarely make a
+         good accent, so they count for much less. */
+      const muted = c.hue >= 10 && c.hue < 50 && c.s < 0.65;
+      const w = c.s * centre * (muted ? 0.1 : 1);
       const bin = Math.floor(c.hue / (360 / HUE_BINS)) % HUE_BINS;
       weight[bin] += w;
       sum[bin][0] += r * w;
@@ -243,7 +246,8 @@ export function photoAccent(
     if (c.s >= 0.25) {
       const hb = Math.floor(c.hue / (360 / HUE_BINS)) % HUE_BINS;
       const near = [at(hb - 1), hb, at(hb + 1)];
-      if (near.reduce((t, b) => t + weight[b], 0) >= pixels * 0.02) pick = best(near);
+      /* Any clear sign of the product's colour is enough (a can can be small in a scene). */
+      if (near.reduce((t, b) => t + weight[b], 0) >= pixels * 0.008) pick = best(near);
     }
   }
   if (pick < 0) {
@@ -1109,11 +1113,14 @@ function caption(ctx: Ctx): AdNode {
   const inset = Math.round(ctx.pad * 0.9);
   const barTop = Math.round(ctx.height - ctx.bottom - blockH - inset);
   const ink = inkOn(ctx.accent);
+  /* Tall: the bar covers the lower ~45%, so lift the photo by most of the top safe zone
+     (hidden by the app's profile bar anyway); the gap it leaves is under the bar. */
+  const lift = tall ? Math.min(Math.round(ctx.top * 0.8), ctx.height - barTop) : 0;
   return el(
     "div",
     { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
     [
-      photoLayer(ctx),
+      photoLayer(ctx, { top: -lift }),
       el("div", {
         position: "absolute",
         left: 0,
@@ -1286,7 +1293,7 @@ function stacked(ctx: Ctx): AdNode {
 /** Testimonial B: a handwritten quote on a paper note over the calm side of the photo. */
 function note(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
-  const cardW = Math.round(ctx.width * (tall ? 0.8 : 0.46));
+  const cardW = Math.round(ctx.width * (tall ? 0.8 : 0.42));
   const cardPad = Math.round(cardW * 0.08);
   const textW = cardW - cardPad * 2;
   const size = fitHeadline(ctx.copy.headline, textW, {
@@ -1402,14 +1409,16 @@ function note(ctx: Ctx): AdNode {
   );
 }
 
-/** Bold offer B: the product centred, the headline set in a round badge like a stamp. */
+/** Bold offer B: the product centred, headline and subline in a round badge like a stamp. */
 function stamp(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
   const d = Math.round(Math.min(ctx.width, ctx.height) * (tall ? 0.46 : 0.4));
   const words = ctx.copy.headline.toUpperCase();
+  /* The subline shares the badge, so the headline gets a little less room when there is one. */
+  const room = ctx.copy.subline ? 0.84 : 1;
   const size = fitHeadline(words, d * 0.7, {
     maxLines: 3,
-    max: Math.round(d * (ctx.fit ? 0.19 : 0.24)),
+    max: Math.round(d * (ctx.fit ? 0.19 : 0.24) * room),
     min: 30,
     glyph: 0.52,
     measure: ctx.fit,
@@ -1453,60 +1462,62 @@ function stamp(ctx: Ctx): AdNode {
             {
               width: Math.round(d * 0.7),
               display: "flex",
-              justifyContent: "center",
-              fontFamily: ctx.heading(FONT.condensed),
-              fontWeight: ctx.fit ? 800 : 400,
-              fontSize: size,
-              lineHeight: ctx.fit ? 1 : 0.92,
-              color: ink,
-              textAlign: "center",
-              letterSpacing: ctx.fit ? 0 : 1,
+              flexDirection: "column",
+              alignItems: "center",
+              gap: Math.round(d * 0.035),
             },
-            words,
+            [
+              el(
+                "div",
+                {
+                  display: "flex",
+                  justifyContent: "center",
+                  fontFamily: ctx.heading(FONT.condensed),
+                  fontWeight: ctx.fit ? 800 : 400,
+                  fontSize: size,
+                  lineHeight: ctx.fit ? 1 : 0.92,
+                  color: ink,
+                  textAlign: "center",
+                  letterSpacing: ctx.fit ? 0 : 1,
+                },
+                words,
+              ),
+              ...(ctx.copy.subline
+                ? [
+                    el(
+                      "div",
+                      {
+                        display: "flex",
+                        justifyContent: "center",
+                        maxWidth: Math.round(d * 0.6),
+                        fontFamily: ctx.body,
+                        fontWeight: 500,
+                        fontSize: Math.max(20, Math.round(d * 0.05)),
+                        lineHeight: 1.25,
+                        color: ink,
+                        opacity: 0.88,
+                        textAlign: "center",
+                      },
+                      ctx.copy.subline,
+                    ),
+                  ]
+                : []),
+            ],
           ),
         ),
       ),
+      /* The product is centred and often fills the lower middle, so the CTA takes a corner. */
       el(
         "div",
-        {
-          position: "absolute",
-          left: ctx.pad,
-          bottom: ctx.bottom,
-          width: ctx.width - ctx.pad * 2,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 18,
-        },
-        [
-          ...(ctx.copy.subline
-            ? [
-                el(
-                  "div",
-                  {
-                    display: "flex",
-                    padding: "10px 24px",
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.92)",
-                    fontFamily: ctx.body,
-                    fontWeight: 500,
-                    fontSize: 30,
-                    color: "#111111",
-                    textAlign: "center",
-                  },
-                  ctx.copy.subline,
-                ),
-              ]
-            : []),
-          pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
-        ],
+        { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
+        pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
       ),
       ...logoMark(ctx, "photo", { left: ctx.pad, top: ctx.top }),
     ],
   );
 }
 
-/** Lifestyle B: a masthead-style headline at the top with a thin rule, the CTA as text. */
+/** Lifestyle B: a masthead-style headline at the top with a thin rule, subline and CTA text. */
 function magazine(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
   const textW = tall ? ctx.width - ctx.pad * 2 : Math.round(ctx.width * 0.72);
@@ -1521,7 +1532,7 @@ function magazine(ctx: Ctx): AdNode {
   });
   const logoRoom = ctx.logo ? logoHeight(ctx) + 20 : 0;
   const headH = estLines(ctx.copy.headline, textW, size, glyph, ctx.fit) * size * 1.02;
-  const washH = ctx.top + logoRoom + headH + (ctx.copy.subline ? 90 : 40) + ctx.height * 0.12;
+  const washH = ctx.top + logoRoom + headH + (ctx.copy.subline ? 90 : 40) + 70 + ctx.height * 0.12;
   return el(
     "div",
     { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
@@ -1535,14 +1546,6 @@ function magazine(ctx: Ctx): AdNode {
         height: Math.round(washH),
         backgroundImage:
           "linear-gradient(180deg, rgba(10,10,10,0.66) 0%, rgba(10,10,10,0.5) 55%, rgba(10,10,10,0) 100%)",
-      }),
-      el("div", {
-        position: "absolute",
-        left: 0,
-        bottom: 0,
-        width: ctx.width,
-        height: Math.round(ctx.bottom + ctx.height * 0.16),
-        backgroundImage: "linear-gradient(0deg, rgba(10,10,10,0.5) 0%, rgba(10,10,10,0) 100%)",
       }),
       el(
         "div",
@@ -1598,31 +1601,22 @@ function magazine(ctx: Ctx): AdNode {
                 ),
               ]
             : []),
+          /* The CTA sits in the masthead block: the product usually fills the lower part. */
+          el(
+            "div",
+            {
+              display: "flex",
+              marginTop: 6,
+              fontFamily: ctx.body,
+              fontWeight: 700,
+              fontSize: 30,
+              color: "#FFFFFF",
+              borderBottom: "3px solid #FFFFFF",
+              paddingBottom: 6,
+            },
+            ctx.copy.cta,
+          ),
         ],
-      ),
-      el(
-        "div",
-        {
-          position: "absolute",
-          left: 0,
-          bottom: ctx.bottom,
-          width: ctx.width,
-          display: "flex",
-          justifyContent: "center",
-        },
-        el(
-          "div",
-          {
-            display: "flex",
-            fontFamily: ctx.body,
-            fontWeight: 700,
-            fontSize: 30,
-            color: "#FFFFFF",
-            borderBottom: "3px solid #FFFFFF",
-            paddingBottom: 6,
-          },
-          ctx.copy.cta,
-        ),
       ),
     ],
   );

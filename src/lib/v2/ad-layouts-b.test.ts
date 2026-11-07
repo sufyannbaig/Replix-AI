@@ -140,10 +140,36 @@ describe("B layouts", () => {
             }
           : {}),
       });
-      const block = (tree.props.children as AdNode[])[3];
+      const block = (tree.props.children as AdNode[])[2];
       return (block.props.children as AdNode[]).length;
     };
     strictEqual(top(true), top(false) + 1);
+  });
+
+  /* Fixes from the live batch (2026-11-08). */
+  test("Magazine keeps the CTA in the masthead block, not on the product", () => {
+    const { tree } = buildAdLayout({ layout: "magazine", aspect: "9:16", photo: "x", copy });
+    const kids = tree.props.children as AdNode[];
+    strictEqual(kids.length, 3);
+    ok(texts(kids[2]).includes(copy.cta));
+  });
+
+  test("Stamp puts the subline in the badge and the CTA in the bottom-left corner", () => {
+    const { tree } = buildAdLayout({ layout: "stamp", aspect: "1:1", photo: "x", copy });
+    const kids = tree.props.children as AdNode[];
+    ok(texts(kids[1]).includes(copy.subline), "subline in the badge");
+    const cta = kids[2];
+    ok(texts(cta).includes(copy.cta));
+    strictEqual(cta.props.style?.left, Math.round(1080 * 0.065));
+  });
+
+  test("tall Caption lifts the photo so the bar covers less of the product", () => {
+    const lift = (aspect: "1:1" | "9:16") => {
+      const { tree } = buildAdLayout({ layout: "caption", aspect, photo: "x", copy });
+      return -((tree.props.children as AdNode[])[0].props.style?.top as number);
+    };
+    strictEqual(lift("1:1"), 0);
+    ok(lift("9:16") > 150 && lift("9:16") <= 1920 * 0.12, `lift ${lift("9:16")}`);
   });
 
   test("an unknown layout id falls back to Hook instead of crashing", () => {
@@ -188,6 +214,24 @@ describe("photo accent", () => {
     ok(hue(plain) < 40, `without hint: the wall (${plain})`);
     const hinted = photoAccent(scene, 32, 32, "#0A4CB0")!;
     ok(Math.abs(hue(hinted) - 220) < 15, `with hint: the can (${hinted})`);
+  });
+
+  test("skin and wood tones don't win over a real product colour", () => {
+    /* Live: a 9:16 Note came out brown from a face, hands and a desk around a blue can. */
+    const scene = image(32, 32, (x, y) =>
+      x > 12 && x < 19 && y > 11 && y < 20 ? [20, 150, 140, 255] : [200, 140, 100, 255],
+    );
+    const c = photoAccent(scene, 32, 32)!;
+    ok(Math.abs(hue(c) - hue("#14968C")) < 15, `teal object, not skin (${c})`);
+  });
+
+  test("a small product still matches the hint", () => {
+    /* About 1.5% of the pixels are the can; the rest is warm skin and wood. */
+    const scene = image(40, 40, (x, y) =>
+      x > 18 && x < 22 && y > 18 && y < 25 ? [20, 80, 190, 255] : [170, 110, 60, 255],
+    );
+    const c = photoAccent(scene, 40, 40, "#0A4CB0")!;
+    ok(Math.abs(hue(c) - 220) < 15, c);
   });
 
   test("a hint the photo doesn't show is ignored", () => {
