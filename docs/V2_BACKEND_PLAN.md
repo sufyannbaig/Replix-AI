@@ -174,3 +174,11 @@ Photo Studio (all three modes) and Ad Studio now generate for real for signed-in
 **Check after Lovable applies both migrations:** sign in on a paid plan, generate 1 photo from a template, 2 from piece by piece, 1 from build it yourself and 2 ads; reload the result page; save one to Assets; check credits went down by 12 and a failed run (for example, remove `LOVABLE_API_KEY` on a test project) gives them back. Then run the SQL in `V2_GENERATION_COSTS.md` section 5.
 
 **Applied 2026-11-06:** Lovable ran both migrations unchanged, created `uploads` (100 MB), `outputs` (500 MB) and `catalog` (500 MB), all private, and regenerated its types file (23 template rows, 5 storage policies confirmed). Its migration tool also keeps copies under `drizzle/migrations/`. Those copies and the types file are in the Lovable workspace, not on `v2` yet. The v2 code reads `db-types.ts`, so it does not depend on them. The end-to-end generation check above is still to do.
+
+**First real generation 2026-11-07:** one Photo Studio template shot (Linen Studio) ran on the Lovable preview. It finished in about 18 s, cost about $0.07, used 2 credits (10 → 8) and the result shows the product in the template scene. Two earlier failed runs were refunded. Three fixes were needed:
+
+- Lovable's preview host (`preview--…lovable.app`) answers 401 to any request without a Lovable sign-in, including the server fetching the app's own bundled art, and forwarding the caller's cookie didn't help. So the runner now reads template, theme and piece art from the private `catalog` bucket, at the same paths as `src/assets/v2/catalog/` (`bundledArt` in `generation.server.ts`), and only falls back to HTTP when a file is missing. Lovable uploaded all 99 webp files. **Any new catalog image must also be uploaded to the bucket.**
+- A signed-in user never gets the sample result; if the backend can't run, the start fails with "No credits were used".
+- The result page keeps earlier signed links for the same file, so the image doesn't reload on every refetch, and `getGenerationJob` re-signs the product photo from the `products` row, because the link saved with the job expires.
+
+Still to check: piece by piece, build it yourself, 2 ads, saving to Assets, and the cost SQL.
