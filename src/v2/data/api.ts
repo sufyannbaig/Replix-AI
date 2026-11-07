@@ -803,6 +803,28 @@ export function useStartGeneration() {
   });
 }
 
+/**
+ * Every server read signs fresh links. Reuse the links we already have for the same files, so
+ * a refetch (tab switch, focus) doesn't change the image src and restart the download.
+ */
+function keepSignedUrls(
+  job: GenerationJob | null,
+  previous: GenerationJob | null | undefined,
+): GenerationJob | null {
+  if (!job || !previous) return job;
+  const sameFile = (a: string, b: string) => a.split("?")[0] === b.split("?")[0];
+  const outputs = job.outputs.map((o) => {
+    const p = previous.outputs.find((x) => x.id === o.id);
+    return p?.imageUrl && sameFile(p.imageUrl, o.imageUrl) ? { ...o, imageUrl: p.imageUrl } : o;
+  });
+  const prevProduct = previous.request.product?.imageUrl;
+  const product =
+    job.request.product && prevProduct && sameFile(prevProduct, job.request.product.imageUrl)
+      ? { ...job.request.product, imageUrl: prevProduct }
+      : job.request.product;
+  return { ...job, outputs, request: { ...job.request, product } };
+}
+
 /** One job, polled every half second until it finishes. `null` when the id is unknown. */
 export function useGenerationJob(jobId: string) {
   const queryClient = useQueryClient();
@@ -810,7 +832,8 @@ export function useGenerationJob(jobId: string) {
     queryKey: queryKeys.job(jobId),
     queryFn: async (): Promise<GenerationJob | null> => {
       if (UUID.test(jobId) && (await backendUser("generation_jobs"))) {
-        const job = await getGenerationJob({ data: { jobId } });
+        const previous = queryClient.getQueryData<GenerationJob | null>(queryKeys.job(jobId));
+        const job = keepSignedUrls(await getGenerationJob({ data: { jobId } }), previous);
         /* Still queued well after start (the first run call was lost): ask again. */
         if (
           job?.status === "queued" &&
@@ -819,7 +842,10 @@ export function useGenerationJob(jobId: string) {
         ) {
           kickJob(jobId, () => queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) }));
         }
-        if (job && (job.status === "done" || job.status === "failed")) {
+        const finished = (j?: GenerationJob | null) =>
+          j?.status === "done" || j?.status === "failed";
+        /* Only when it finishes while we watch, not on every refetch of a finished job. */
+        if (finished(job) && previous && !finished(previous)) {
           void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
           notifyCreditsChanged();
         }

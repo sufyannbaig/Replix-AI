@@ -213,8 +213,33 @@ export const getGenerationJob = createServerFn({ method: "POST" })
 
     const { data: outputs } = await db.from("generation_outputs").select("*").eq("job_id", row.id);
     const urls = await signOutputs(db, outputs ?? []);
-    return toJob(row, outputs ?? [], urls);
+    const job = toJob(row, outputs ?? [], urls);
+    await refreshProductImage(db, job.request);
+    return job;
   });
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The request stores the product photo link from when the job started; for an uploaded
+ * product that is a signed link that expires after 6 hours. Re-sign it from the product row.
+ */
+async function refreshProductImage(db: SupabaseClient<V2Database>, request: GenerationRequest) {
+  const product = request.product;
+  if (!product || !UUID_RE.test(product.id)) return;
+  const { data: row } = await db
+    .from("products")
+    .select("image_path, image_url")
+    .eq("id", product.id)
+    .maybeSingle();
+  if (!row) return;
+  if (row.image_path) {
+    const { data } = await db.storage.from("uploads").createSignedUrl(row.image_path, 60 * 60 * 6);
+    if (data?.signedUrl) product.imageUrl = data.signedUrl;
+  } else if (row.image_url) {
+    product.imageUrl = row.image_url;
+  }
+}
 
 const ListInput = z.object({
   kind: z.enum(["photo", "ad", "video", "all"]).default("all"),
