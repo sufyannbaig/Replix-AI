@@ -173,6 +173,7 @@ function adDesign(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | und
         copy: { headline: o.copy.headline, subline: o.copy.subline, cta: o.copy.cta },
         colors: o.copy.colors,
         labels: o.copy.labels,
+        ...(o.copy.fonts ? { fonts: o.copy.fonts } : {}),
       }
     : undefined;
 }

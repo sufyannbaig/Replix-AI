@@ -5,6 +5,7 @@
  * (docs/V2_AD_DESIGN_PLAN.md, section 4), a browser does it in well under a second.
  */
 import { FONT, buildAdLayout } from "@/lib/v2/ad-layouts";
+import { fontsourceId, googleFontFile, nearestWeight } from "./fonts";
 import type { AdDesign } from "./types";
 
 /* Static woff files (satori can't read woff2 or variable fonts), latin subset, cached by the CDN. */
@@ -35,9 +36,14 @@ const FONT_FILES: { name: string; weight: 400 | 500 | 700 | 800; file: string }[
   },
 ];
 
-let fontsLoading: Promise<
-  { name: string; data: ArrayBuffer; weight: 400 | 500 | 700 | 800; style: "normal" }[]
-> | null = null;
+type SatoriFont = {
+  name: string;
+  data: ArrayBuffer;
+  weight: 400 | 500 | 700 | 800;
+  style: "normal";
+};
+
+let fontsLoading: Promise<SatoriFont[]> | null = null;
 
 function loadFonts() {
   fontsLoading ??= Promise.all(
@@ -58,6 +64,110 @@ function loadFonts() {
   return fontsLoading;
 }
 
+/* ---------- brand fonts ---------- */
+
+/* Our own names, so a brand font never clashes with a layout font of the same family. */
+const BRAND_HEADING = "Replix Brand Heading";
+const BRAND_BODY = "Replix Brand Body";
+/* One file serves every weight a layout asks for, so satori never fakes or swaps a weight. */
+const ALL_WEIGHTS = [400, 500, 700, 800] as const;
+
+const fontFiles = new Map<string, Promise<ArrayBuffer | null>>();
+
+function fetchFont(url: string) {
+  let job = fontFiles.get(url);
+  if (!job) {
+    job = fetch(url)
+      .then((res) => (res.ok ? res.arrayBuffer() : null))
+      .then((data) => (data && isSatoriFont(data) ? data : null))
+      .catch(() => null);
+    fontFiles.set(url, job);
+  }
+  return job;
+}
+
+/** TTF, OTF or WOFF (satori reads these; not WOFF2). */
+function isSatoriFont(data: ArrayBuffer) {
+  if (data.byteLength < 12) return false;
+  const tag = new TextDecoder("latin1").decode(new Uint8Array(data, 0, 4));
+  return tag === "wOFF" || tag === "OTTO" || tag === "true" || tag === "\u0000\u0001\u0000\u0000";
+}
+
+const fontWeights = new Map<string, Promise<number[] | null>>();
+
+/** The static weights Fontsource has for a Google family; null if unknown. */
+function googleWeights(family: string) {
+  const id = fontsourceId(family);
+  let job = fontWeights.get(id);
+  if (!job) {
+    job = fetch(`https://api.fontsource.org/v1/fonts/${id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((info: { weights?: number[] } | null) => (info?.weights?.length ? info.weights : null))
+      .catch(() => null);
+    fontWeights.set(id, job);
+  }
+  return job;
+}
+
+/**
+ * An uploaded file, or a Google family's weight closest to the first wanted one (one lookup,
+ * one file). If the lookup fails, try the wanted weights in order.
+ */
+async function brandFontData(
+  family: string | undefined,
+  url: string | undefined,
+  weights: number[],
+) {
+  if (!family) return null;
+  if (url) return fetchFont(url);
+  const known = await googleWeights(family);
+  if (known) return fetchFont(googleFontFile(family, nearestWeight(known, weights[0])));
+  for (const weight of weights) {
+    const data = await fetchFont(googleFontFile(family, weight));
+    if (data) return data;
+  }
+  return null;
+}
+
+let measureFaces = 0;
+
+/** Canvas text width in the loaded heading font, for fitting headlines (see ad-layouts). */
+async function measurer(data: ArrayBuffer) {
+  const family = `Replix Measure ${++measureFaces}`;
+  const face = await new FontFace(family, data.slice(0)).load();
+  document.fonts.add(face);
+  const g = document.createElement("canvas").getContext("2d");
+  if (!g) return undefined;
+  return (text: string, size: number) => {
+    g.font = `${size}px "${family}"`;
+    return g.measureText(text).width;
+  };
+}
+
+/** Load the design's brand fonts. Anything that fails is left out; the layout font stays. */
+async function brandFonts(design: AdDesign) {
+  const f = design.fonts;
+  const [heading, body] = await Promise.all([
+    brandFontData(f?.heading, f?.files?.heading, [700, 800, 600, 400]),
+    brandFontData(f?.body, f?.files?.body, [400, 500, 300]),
+  ]);
+  const files: SatoriFont[] = [];
+  const as = (name: string, data: ArrayBuffer) =>
+    ALL_WEIGHTS.forEach((weight) => files.push({ name, data, weight, style: "normal" }));
+  if (heading) as(BRAND_HEADING, heading);
+  if (body) as(BRAND_BODY, body);
+  const measure = heading ? await measurer(heading).catch(() => undefined) : undefined;
+  return {
+    files,
+    /* Without a measurer the brand heading can't be fitted safely, so it isn't used. */
+    names: {
+      ...(heading && measure ? { heading: BRAND_HEADING } : {}),
+      ...(body ? { body: BRAND_BODY } : {}),
+    },
+    measure,
+  };
+}
+
 /** The photo inlined, so the SVG has no outside links and the canvas stays exportable. */
 async function inlinePhoto(url: string) {
   const res = await fetch(url);
@@ -73,24 +183,37 @@ async function inlinePhoto(url: string) {
 
 /** Compose one ad. Rejects if anything fails; the caller keeps showing the photo then. */
 export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blob> {
-  const [{ default: satori }, fonts, photo] = await Promise.all([
+  const [{ default: satori }, fonts, photo, brand] = await Promise.all([
     import("satori"),
     loadFonts(),
     inlinePhoto(photoUrl),
+    design.fonts ? brandFonts(design).catch(() => null) : Promise.resolve(null),
   ]);
-  const { width, height, tree } = buildAdLayout({
-    layout: design.layout,
-    aspect: design.aspect,
-    photo,
-    copy: design.copy,
-    colors: design.colors,
-    labels: design.labels,
-  });
-  const svg = await satori(tree as unknown as Parameters<typeof satori>[0], {
-    width,
-    height,
-    fonts,
-  });
+  const render = async (withBrand: boolean) => {
+    const { width, height, tree } = buildAdLayout({
+      layout: design.layout,
+      aspect: design.aspect,
+      photo,
+      copy: design.copy,
+      colors: design.colors,
+      labels: design.labels,
+      ...(withBrand && brand ? { fonts: brand.names, measure: brand.measure } : {}),
+    });
+    const svg = await satori(tree as unknown as Parameters<typeof satori>[0], {
+      width,
+      height,
+      fonts: withBrand && brand ? [...fonts, ...brand.files] : fonts,
+    });
+    return { width, height, svg };
+  };
+  /* A broken brand font file must never cost the ad: retry with the layout's own fonts. */
+  const useBrand = !!brand && (!!brand.names.heading || !!brand.names.body);
+  const { width, height, svg } = useBrand
+    ? await render(true).catch((error) => {
+        console.warn("[v2 ads] brand font failed, using layout fonts", error);
+        return render(false);
+      })
+    : await render(false);
   const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   try {
     const img = new Image();

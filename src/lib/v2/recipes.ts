@@ -13,7 +13,8 @@ export type PromptRef = { role: RefRole; name: string };
 export type BrandHints = {
   name?: string | null;
   colors?: string[];
-  fonts?: { heading: string; body: string } | null;
+  /** `files` holds storage paths of uploaded font files, by role. */
+  fonts?: { heading: string; body: string; files?: { heading?: string; body?: string } } | null;
   tone?: string | null;
   toneTags?: string[];
 };

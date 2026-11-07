@@ -290,6 +290,23 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
   }));
 }
 
+/** The brand fonts a designed ad keeps (blank names dropped); undefined when there are none. */
+function adFonts(fonts: BrandHints["fonts"]) {
+  const heading = fonts?.heading?.trim().slice(0, 80);
+  const body = fonts?.body?.trim().slice(0, 80);
+  if (!heading && !body) return undefined;
+  const file = (role: "heading" | "body") => {
+    const path = fonts?.files?.[role];
+    return path && /^[0-9a-f-]{36}\/brand\/fonts\/[\w.-]+$/i.test(path) ? path : undefined;
+  };
+  const files = { heading: heading && file("heading"), body: body && file("body") };
+  return {
+    ...(heading ? { heading } : {}),
+    ...(body ? { body } : {}),
+    ...(files.heading || files.body ? { files } : {}),
+  };
+}
+
 async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInputs) {
   if (inputs.studio !== "ad") throw new GenerationError("Wrong studio.");
   const product = await loadProduct(ctx, job.product);
@@ -348,6 +365,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       layout,
       colors: [...(brand.colors ?? []), ...(c.accent ? [c.accent] : [])].slice(0, 5),
       ...(labels ? { labels } : {}),
+      ...(adFonts(brand.fonts) ? { fonts: adFonts(brand.fonts) } : {}),
       composed: false,
     },
     prompt: adPhotoPrompt(

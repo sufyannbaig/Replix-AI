@@ -1206,6 +1206,19 @@ function composeListed(
   );
 }
 
+/** Uploaded brand fonts arrive as storage paths; the composer needs signed links. */
+async function withFontLinks(design: AdDesign): Promise<AdDesign> {
+  const files = design.fonts?.files;
+  if (!files) return design;
+  const paths = [files.heading, files.body].filter((p): p is string => !!p);
+  const urls = await resolveUrls(paths).catch(() => new Map<string, string>());
+  const link = (path?: string) => (path ? urls.get(path) : undefined);
+  return {
+    ...design,
+    fonts: { ...design.fonts, files: { heading: link(files.heading), body: link(files.body) } },
+  };
+}
+
 function composeOutputs(
   outputs: { id: string; imageUrl: string; design?: AdDesign }[],
   onShown: () => void,
@@ -1218,7 +1231,7 @@ function composeOutputs(
     void (async () => {
       try {
         const { composeAd, blobToBase64 } = await import("./compose-ad");
-        const blob = await composeAd(design, o.imageUrl);
+        const blob = await composeAd(await withFontLinks(design), o.imageUrl);
         composedLocal.set(o.id, URL.createObjectURL(blob));
         onShown();
         await saveComposedAd({ data: { outputId: o.id, image: await blobToBase64(blob) } });

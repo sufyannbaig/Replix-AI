@@ -288,6 +288,11 @@ export type AdDesign = {
   copy: { headline: string; subline: string; cta: string };
   colors?: string[];
   labels?: string[];
+  /**
+   * The brand's fonts (family names). `files` are uploaded fonts: storage paths from the
+   * server, signed links once the browser resolves them. Missing roles keep layout fonts.
+   */
+  fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
 };
 
 /** A generation run, polled by the result screen until it is done or failed. */

@@ -122,6 +122,8 @@ export type OutputCopy = {
   layout?: "hook" | "split" | "quote" | "poster" | "editorial";
   colors?: string[];
   labels?: string[];
+  /** The brand fonts the ad uses; `files` are storage paths of uploaded fonts. */
+  fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
   photo?: string;
   composed?: boolean;
 };

@@ -20,6 +20,17 @@ export type AdLayoutInput = {
   colors?: string[];
   /** Extra words a layout shows, like Before / After. */
   labels?: string[];
+  /**
+   * Brand fonts, by the family names the renderer registered them under. A missing role
+   * keeps the layout's own font (each layout's display face, Inter Tight for body copy).
+   */
+  fonts?: { heading?: string; body?: string };
+  /**
+   * Width in px of `text` set in the brand heading font at `size` (no letter spacing).
+   * Brand fonts vary too much for a fixed glyph estimate, so with a brand heading the
+   * headline is fitted with this. Without it, the estimate is used.
+   */
+  measure?: (text: string, size: number) => number;
 };
 
 /** Element tree in the shape satori expects. */
@@ -111,9 +122,19 @@ export function pickAccent(colors: string[] | undefined, fallback = "#111111") {
 export function fitHeadline(
   text: string,
   width: number,
-  opts: { maxLines: number; max: number; min: number; glyph: number },
+  opts: {
+    maxLines: number;
+    max: number;
+    min: number;
+    glyph: number;
+    /** Real text width (see AdLayoutInput.measure); replaces the glyph estimate. */
+    measure?: (text: string, size: number) => number;
+    /** Letter spacing in em, added per character when measuring. */
+    tracking?: number;
+  },
 ) {
   const words = text.trim().split(/\s+/).filter(Boolean);
+  if (opts.measure) return fitMeasured(words, width, opts, opts.measure);
   for (let size = opts.max; size >= opts.min; size -= 2) {
     const perLine = width / (size * opts.glyph);
     let lines = 1;
@@ -131,6 +152,58 @@ export function fitHeadline(
   return opts.min;
 }
 
+/** Lines `text` takes at `size` with real widths (same breaks as fitMeasured). */
+export function measuredLines(
+  text: string,
+  width: number,
+  size: number,
+  measure: (text: string, size: number) => number,
+  tracking = 0,
+) {
+  const room = width * 0.96;
+  const w = (t: string) => measure(t, size) + tracking * size * t.length;
+  let lines = 1;
+  let line = "";
+  for (const word of text.trim().split(/\s+/).filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && w(next) > room) {
+      lines += 1;
+      line = word;
+    } else line = next;
+  }
+  return lines;
+}
+
+/** fitHeadline with real widths: greedy line breaks, 4% slack for rendering differences. */
+function fitMeasured(
+  words: string[],
+  width: number,
+  opts: { maxLines: number; max: number; min: number; tracking?: number },
+  measure: (text: string, size: number) => number,
+) {
+  const room = width * 0.96;
+  for (let size = opts.max; size >= opts.min; size -= 2) {
+    const track = (opts.tracking ?? 0) * size;
+    const w = (t: string) => measure(t, size) + track * t.length;
+    let lines = 1;
+    let line = "";
+    let fits = true;
+    for (const word of words) {
+      if (w(word) > room) {
+        fits = false;
+        break;
+      }
+      const next = line ? `${line} ${word}` : word;
+      if (line && w(next) > room) {
+        lines += 1;
+        line = word;
+      } else line = next;
+    }
+    if (fits && lines <= opts.maxLines) return size;
+  }
+  return opts.min;
+}
+
 /* ---------- layouts ---------- */
 
 /**
@@ -144,6 +217,12 @@ type Ctx = AdLayoutInput & {
   top: number;
   bottom: number;
   accent: string;
+  /** The headline family: the brand's heading font, else the layout's own face. */
+  heading: (layoutFont: string) => string;
+  /** Body copy, CTA and labels: the brand's body font, else Inter Tight. */
+  body: string;
+  /** Set only with a brand heading font; fitHeadline then measures real widths. */
+  fit?: (text: string, size: number) => number;
 };
 
 function photoLayer(ctx: Ctx, extra: Record<string, string | number> = {}) {
@@ -163,7 +242,7 @@ function photoLayer(ctx: Ctx, extra: Record<string, string | number> = {}) {
   );
 }
 
-function pill(text: string, bg: string, size: number) {
+function pill(text: string, bg: string, size: number, font: string = FONT.sans) {
   return el(
     "div",
     {
@@ -173,7 +252,7 @@ function pill(text: string, bg: string, size: number) {
       borderRadius: 999,
       background: bg,
       color: inkOn(bg),
-      fontFamily: FONT.sans,
+      fontFamily: font,
       fontWeight: 700,
       fontSize: size,
       letterSpacing: -0.2,
@@ -192,6 +271,8 @@ function hook(ctx: Ctx): AdNode {
     min: 56,
     /* Archivo 800 lowercase runs ~0.5-0.54 em per character; 0.56 keeps long words on one line. */
     glyph: 0.56,
+    measure: ctx.fit,
+    tracking: -0.01,
   });
   return el(
     "div",
@@ -222,11 +303,11 @@ function hook(ctx: Ctx): AdNode {
           el(
             "div",
             {
-              fontFamily: FONT.display,
+              fontFamily: ctx.heading(FONT.display),
               fontWeight: 800,
               fontSize: size,
-              lineHeight: 0.98,
-              letterSpacing: -size * 0.035,
+              lineHeight: ctx.fit ? 1.04 : 0.98,
+              letterSpacing: -size * (ctx.fit ? 0.01 : 0.035),
               color: "#111111",
             },
             ctx.copy.headline,
@@ -236,7 +317,7 @@ function hook(ctx: Ctx): AdNode {
                 el(
                   "div",
                   {
-                    fontFamily: FONT.sans,
+                    fontFamily: ctx.body,
                     fontWeight: 500,
                     fontSize: Math.max(30, Math.round(size * 0.28)),
                     lineHeight: 1.3,
@@ -252,7 +333,7 @@ function hook(ctx: Ctx): AdNode {
       el(
         "div",
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
-        pill(ctx.copy.cta, ctx.accent, 34),
+        pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
       ),
     ],
   );
@@ -260,15 +341,24 @@ function hook(ctx: Ctx): AdNode {
 
 /** Bold offer: a solid colour field with huge condensed type, the product photo below it. */
 function poster(ctx: Ctx): AdNode {
-  const field = ctx.top + ctx.height * (ctx.height > ctx.width ? 0.2 : 0.3);
+  let field = ctx.top + ctx.height * (ctx.height > ctx.width ? 0.2 : 0.3);
   const textW = ctx.width - ctx.pad * 2;
   const words = ctx.copy.headline.toUpperCase();
+  /* Anton is condensed by design; a brand font is usually wider, so it gets a lower cap and
+     a third line. */
   const size = fitHeadline(words, textW, {
-    maxLines: 2,
-    max: ctx.height > ctx.width ? 180 : 136,
-    min: 72,
+    maxLines: ctx.fit ? 3 : 2,
+    max: Math.round((ctx.height > ctx.width ? 180 : 136) * (ctx.fit ? 0.78 : 1)),
+    min: ctx.fit ? 60 : 72,
     glyph: 0.52,
+    measure: ctx.fit,
   });
+  if (ctx.fit) {
+    /* A brand headline can take three lines: start the photo card below the real text. */
+    const lines = measuredLines(words, textW, size, ctx.fit);
+    const sub = ctx.copy.subline ? 18 + 34 * 1.3 : 0;
+    field = Math.max(field, ctx.top + lines * size * 0.98 + sub + 28);
+  }
   const ink = inkOn(ctx.accent);
   /* The whole photo sits as a framed card under the type, so nothing in it gets covered. */
   const scale = Math.min(
@@ -322,12 +412,13 @@ function poster(ctx: Ctx): AdNode {
           el(
             "div",
             {
-              fontFamily: FONT.condensed,
+              fontFamily: ctx.heading(FONT.condensed),
+              fontWeight: ctx.fit ? 800 : 400,
               fontSize: size,
-              lineHeight: 0.9,
+              lineHeight: ctx.fit ? 0.98 : 0.9,
               color: ink,
               textAlign: "center",
-              letterSpacing: 1,
+              letterSpacing: ctx.fit ? 0 : 1,
             },
             words,
           ),
@@ -336,7 +427,7 @@ function poster(ctx: Ctx): AdNode {
                 el(
                   "div",
                   {
-                    fontFamily: FONT.sans,
+                    fontFamily: ctx.body,
                     fontWeight: 500,
                     fontSize: 34,
                     color: ink,
@@ -359,7 +450,7 @@ function poster(ctx: Ctx): AdNode {
           display: "flex",
           justifyContent: "center",
         },
-        pill(ctx.copy.cta, "#FFFFFF", 34),
+        pill(ctx.copy.cta, "#FFFFFF", 34, ctx.body),
       ),
     ],
   );
@@ -377,6 +468,8 @@ function editorial(ctx: Ctx): AdNode {
     max: ctx.height > ctx.width ? 110 : 92,
     min: 52,
     glyph: 0.42,
+    measure: ctx.fit,
+    tracking: -0.01,
   });
   return el(
     "div",
@@ -410,7 +503,7 @@ function editorial(ctx: Ctx): AdNode {
             el(
               "div",
               {
-                fontFamily: FONT.serif,
+                fontFamily: ctx.heading(FONT.serif),
                 fontSize: size,
                 lineHeight: 1.02,
                 color: "#FFFFFF",
@@ -423,7 +516,7 @@ function editorial(ctx: Ctx): AdNode {
                   el(
                     "div",
                     {
-                      fontFamily: FONT.sans,
+                      fontFamily: ctx.body,
                       fontWeight: 400,
                       fontSize: 30,
                       lineHeight: 1.35,
@@ -438,7 +531,7 @@ function editorial(ctx: Ctx): AdNode {
             "div",
             {
               display: "flex",
-              fontFamily: FONT.sans,
+              fontFamily: ctx.body,
               fontWeight: 700,
               fontSize: 30,
               color: "#FFFFFF",
@@ -470,6 +563,8 @@ function quote(ctx: Ctx): AdNode {
     max: tall ? 96 : 76,
     min: 44,
     glyph: 0.4,
+    measure: ctx.fit,
+    tracking: -0.01,
   });
   const photoBox = tall
     ? { left: 0, top: panelH, width: ctx.width, height: ctx.height - panelH }
@@ -536,7 +631,7 @@ function quote(ctx: Ctx): AdNode {
           el(
             "div",
             {
-              fontFamily: FONT.serif,
+              fontFamily: ctx.heading(FONT.serif),
               fontSize: size,
               lineHeight: 1.04,
               color: "#1A1714",
@@ -549,7 +644,7 @@ function quote(ctx: Ctx): AdNode {
                 el(
                   "div",
                   {
-                    fontFamily: FONT.sans,
+                    fontFamily: ctx.body,
                     fontWeight: 400,
                     fontSize: 30,
                     lineHeight: 1.35,
@@ -564,7 +659,7 @@ function quote(ctx: Ctx): AdNode {
       el(
         "div",
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
-        pill(ctx.copy.cta, "#1A1714", 32),
+        pill(ctx.copy.cta, "#1A1714", 32, ctx.body),
       ),
     ],
   );
@@ -579,6 +674,8 @@ function split(ctx: Ctx): AdNode {
     max: 96,
     min: 52,
     glyph: 0.56,
+    measure: ctx.fit,
+    tracking: -0.01,
   });
   const label = (text: string, side: "left" | "right") =>
     el(
@@ -592,7 +689,7 @@ function split(ctx: Ctx): AdNode {
         borderRadius: 999,
         background: side === "left" ? "rgba(17,17,17,0.72)" : "#FFFFFF",
         color: side === "left" ? "#FFFFFF" : "#111111",
-        fontFamily: FONT.sans,
+        fontFamily: ctx.body,
         fontWeight: 700,
         fontSize: 28,
         letterSpacing: 2,
@@ -633,11 +730,11 @@ function split(ctx: Ctx): AdNode {
         el(
           "div",
           {
-            fontFamily: FONT.display,
+            fontFamily: ctx.heading(FONT.display),
             fontWeight: 800,
             fontSize: size,
-            lineHeight: 1,
-            letterSpacing: -size * 0.03,
+            lineHeight: ctx.fit ? 1.04 : 1,
+            letterSpacing: -size * (ctx.fit ? 0.01 : 0.03),
             color: "#FFFFFF",
             textAlign: "center",
           },
@@ -649,7 +746,7 @@ function split(ctx: Ctx): AdNode {
       el(
         "div",
         { position: "absolute", right: ctx.pad, bottom: ctx.bottom, display: "flex" },
-        pill(ctx.copy.cta, ctx.accent, 32),
+        pill(ctx.copy.cta, ctx.accent, 32, ctx.body),
       ),
     ],
   );
@@ -677,6 +774,18 @@ export function buildAdLayout(input: AdLayoutInput): {
   const story = input.aspect === "9:16";
   const top = story ? Math.round(height * 0.12) : pad;
   const bottom = story ? Math.round(height * 0.17) : pad;
-  const ctx: Ctx = { ...input, width, height, pad, top, bottom, accent };
+  const brandHeading = input.fonts?.heading;
+  const ctx: Ctx = {
+    ...input,
+    width,
+    height,
+    pad,
+    top,
+    bottom,
+    accent,
+    heading: (layoutFont) => brandHeading ?? layoutFont,
+    body: input.fonts?.body ?? FONT.sans,
+    fit: brandHeading ? input.measure : undefined,
+  };
   return { width, height, tree: LAYOUTS[input.layout](ctx) };
 }
