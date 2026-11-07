@@ -36,6 +36,7 @@ Practical notes from driving it with the in-app browser:
 
 - The chat box is a ProseMirror editor. Fill it with `el.focus(); document.execCommand('selectAll'); document.execCommand('insertText', false, msg)`, then click `button[aria-label="Send message"]`. Enter doesn't send.
 - If the browser pane is hidden, Lovable won't render its chat box at all; ask the user to show the pane.
+- **Test on `https://preview--replixai.lovable.app`.** The `id-preview--0a083220-….lovable.app` link kept serving an old build for 20+ minutes after imports on 2026-11-08.
 - **After an import, wait for the preview to rebuild** (1–3 minutes) before testing. The first ad test after the designed-ads import still ran the old code. To check, fetch the page's JS chunks and look for a string from the new code.
 
 ## 4. Testing on the preview
@@ -75,7 +76,7 @@ Practical notes from driving it with the in-app browser:
 - **Steps 1-5 are written, tested and imported into Lovable** (`08ab361` page and editor, `c5f7a2e` products and composer, `8f7bd4a` fonts in ads, `082582f` logo in ads; migration `20261107140000_v2_brand_fonts.sql` applied). 134 tests pass. Every visual piece was checked locally in sample mode, and the ad rendering with real Google fonts and test logos in the browser.
 - **Step 6 live test done** (2026-11-08, preview, test account): brand made by hand with an SVG logo, light version, Playfair headings and an uploaded Caveat font; 11 ads across all themes at 1:1 and 9:16 composed with the brand fonts and logo (and without it when off); Recent and Assets show the composed ads; the Free upgrade prompt works. Results in section 6 of the brand plan.
 - **Fixed from it** (`54a99a4`): tall hook and quote ads put the logo on the product; it now sits at the top. Confirmed live on a 9:16 Testimonials ad. Imported into Lovable with the Free-fonts and Assets change.
-- **Decided 2026-11-08:** Free brands use Google Fonts only (uploads on paid plans); no Replix mark on ads. **Assets is the history:** it lists every finished generation (last 100 jobs), and the result page says "In your Assets" instead of a Save button.
+- **Decided 2026-11-08:** Free brands use Google Fonts only (uploads on paid plans); no Replix mark on ads. **Assets is the history:** it lists every finished generation (last 100 jobs), and the result page says "In your Assets" instead of a Save button. Confirmed live (49 ads and 11 photos listed).
 - **Still untested live:** two brands and switching (needs Pro, or a test plan change), an opaque JPG logo, promoting a new default when the default is deleted. The test brand "Soniq Audio" and 13 test ads are still on the test account.
 - **Step 7** (Shopify store to brand) is written and tested (migration `20261108120000_v2_store_brands.sql`, notes in section 6 of the brand plan). Not tested live: it needs an account with 2+ brands (Pro) and a connected Shopify store.
 - Photo Studio has no brand pill on purpose (the photo pipeline doesn't read the brand). Open questions are in section 7 of the brand plan.
