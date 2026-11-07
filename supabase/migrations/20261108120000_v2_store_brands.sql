@@ -3,7 +3,8 @@
 -- New v2 table only. shopify_installations (tokens, service role only) is not touched.
 
 CREATE TABLE public.store_brands (
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- The owner (auth user id). No foreign key to auth.users: Lovable Cloud doesn't allow it here.
+  user_id UUID NOT NULL,
   -- The store's myshopify domain, lower case, as the Shopify integration reports it.
   shop_domain TEXT NOT NULL CHECK (char_length(shop_domain) BETWEEN 1 AND 255),
   -- NULL means "use the default brand" (the user chose it, so they aren't asked again).
