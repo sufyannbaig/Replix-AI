@@ -57,17 +57,31 @@ A layout is data plus one render function (`src/lib/v2/ad-layouts.ts`, pure, uni
 
 ## 4. Where the render runs
 
-**Preferred: on the server**, with satori (layout to SVG) and resvg-wasm (SVG to PNG), right after the image call in `runJob`. Nothing changes on the client and every download is the finished ad.
+**Spike result (2026-11-07): render in the browser.**
 
-**Risk:** bundle size and CPU limits in Lovable's hosting. resvg-wasm is about 1.5 MB, and a render takes roughly 100–300 ms of CPU. Step 1 is a spike that proves it builds and runs on the Lovable preview and the published host.
+The plan was to render on the server with satori (layout to SVG) and resvg-wasm (SVG to PNG). Measured locally with satori 0.12 and resvg-wasm 2.6:
 
-**Fallback if the spike fails:** render the same satori layout in the browser, draw it to a canvas, and upload the PNG through a small server function that checks the job belongs to the user. The layouts and tests stay the same; only the place the render runs moves.
+- **satori** takes 30–340 ms per ad. That's fine.
+- **resvg** takes 0.8–2.4 s per 1080×1080 ad and about 3.3 s per 1080×1920. Most of that is drawing the large gradients; the photo itself costs little. A drop shadow on the poster card pushed it to 13.7 s, so the layouts use no blurs.
+
+That is too much CPU to count on in Lovable's Workers hosting, whose limits we can't see, and the dev preview runs on Node, so it can't show the problem. A browser draws the same satori SVG on a canvas almost instantly.
+
+**So:**
+
+1. The server stores the clean photo (`{n}-photo.png`) and puts `{ layout, composed: false }` in the output's `copy`.
+2. The result page builds the SVG with `buildAdLayout` and satori, draws it to a canvas, and uploads the PNG through a server function that checks the job belongs to the user. That function sets `image_path` to `{n}.png` and `composed: true`.
+3. Any view that meets an uncomposed ad (Assets, a reopened result) composes it the same way. Until then it shows the clean photo.
+
+Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
 
 ## 5. Steps
 
-1. **Spike (half a day):** satori + resvg render one hard-coded layout over an existing output on the Lovable preview. Measure the bundle size and render time, then pick server or browser.
-2. **Approve the look before building it:** mock all five A layouts over real clean photos from the test batch in 1:1 and 9:16, and Sufyan signs off on the type, colour and spacing.
-3. **Layout engine:** `ad-layouts.ts`, with text fitting, the aspect variants and scrim and contrast rules. Tests cover that headlines of 1–6 words fit every aspect ratio, that the safe margins hold, and that the colour fallbacks work.
+1. **Spike: done.** The render runs in the browser (section 4).
+2. **Approve the look: mockups made, waiting on Sufyan.** Seven mockups (all five layouts in 1:1, plus Hook and Editorial in 9:16) over 8 new text-free photos made with Photo Studio notes. Lessons from them:
+   - The photo model doesn't reliably leave empty space, even when told to. The Poster therefore shows the whole photo as a framed card on the brand colour, and the Quote puts the text on a solid cream panel beside a crop of the photo. Neither depends on the photo following the brief.
+   - 9:16 needs story safe zones: text stays below the top 12% and above the bottom 17%.
+   - Small products still come back with redrawn labels ("200ml", "250ml"). The hero-size rule has to be part of the photo prompt for ads.
+3. **Layout engine: first version done.** `src/lib/v2/ad-layouts.ts` (pure) and `ad-layouts.test.ts` (25 tests: every layout × every aspect gives the right size, the exact copy and finite styles; label rules; colour fallbacks).
 4. **Prompts:** the creative-direction call returns `layout`, `scene` and `accent`; the photo prompt for ads has no text and leaves the text zone empty. The layout reference images are no longer sent, since they carried text.
 5. **Wire into `runJob`:** render, then store both files, then save the layout in `copy`. If a render fails, save the clean photo with a plain fallback layout rather than failing the job.
 6. **Test batch:** 2 products × 5 themes × 2 aspect ratios, checked against a list: no stray text, the label is correct, the type sits on the grid, contrast holds and the photo is composed for the text zone. Then import into Lovable and run the same batch on the preview.
