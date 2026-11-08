@@ -26,12 +26,12 @@ export function AuthLayout({
         <Link
           to="/"
           aria-label="Replix AI home"
-          className="flex h-[37px] items-center gap-[9.87px] self-start"
+          className="flex h-[37px] items-center gap-[6.1px] self-start"
         >
           <img src={logoMark} alt="" className="size-[37px] rounded-[5.5px] object-cover" />
           <span
             aria-hidden
-            className="v2-icon h-[9.98px] w-[95.16px] text-[#162544] night:text-v2-ink"
+            className="v2-icon mt-[4.9px] h-[31.8px] w-[139.3px] self-start text-[#162544] night:text-v2-ink"
             style={{
               maskImage: `url("${logoWordmark}")`,
               WebkitMaskImage: `url("${logoWordmark}")`,

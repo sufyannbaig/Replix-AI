@@ -196,13 +196,13 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         to="/dashboard"
         onClick={onNavigate}
-        className="ml-[38.19px] mt-[51.36px] flex h-[39.9px] items-center gap-[10.63px]"
+        className="ml-[38.19px] mt-[51.36px] flex h-[39.9px] items-center gap-[6.6px]"
         aria-label="Replix AI home"
       >
         <img src={logoMark} alt="" className="size-[39.9px] rounded-[6px] object-cover" />
         <span
           aria-hidden
-          className="v2-icon h-[10.76px] w-[102.62px] text-[#162544] night:text-v2-ink"
+          className="v2-icon mt-[5.3px] h-[34.3px] w-[150.2px] self-start text-[#162544] night:text-v2-ink"
           style={{ maskImage: `url("${logoWordmark}")`, WebkitMaskImage: `url("${logoWordmark}")` }}
         />
       </Link>

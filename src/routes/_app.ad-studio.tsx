@@ -95,9 +95,8 @@ function AdStudioPage() {
                       className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                     />
                   </span>
-                  <span className="flex flex-col gap-1.5 px-[14px] pb-6 pt-[15px]">
+                  <span className="px-[14px] py-[14px]">
                     <span className="type-label text-black night:text-v2-ink">{t.name}</span>
-                    <span className="type-subtitle text-v2-muted">{t.description}</span>
                   </span>
                 </button>
               );
