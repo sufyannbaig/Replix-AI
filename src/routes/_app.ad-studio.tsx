@@ -87,7 +87,8 @@ function AdStudioPage() {
                       : "border-transparent hover:border-v2-border",
                   )}
                 >
-                  <span className="block aspect-[244/194] overflow-hidden rounded-[12px]">
+                  {/* Square like the theme previews (800×800), so no headline is cropped. */}
+                  <span className="block aspect-square overflow-hidden rounded-[12px]">
                     <img
                       src={t.imageUrl}
                       alt=""
