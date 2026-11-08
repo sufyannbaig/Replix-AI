@@ -540,6 +540,17 @@ function pill(text: string, bg: string, size: number, font: string = FONT.sans) 
   );
 }
 
+/** A pill with a thin dark outline, for spots where its fill may match the background. */
+function outlined(node: AdNode): AdNode {
+  return {
+    ...node,
+    props: {
+      ...node.props,
+      style: { ...node.props.style, border: "2px solid rgba(17,17,17,0.16)" },
+    },
+  };
+}
+
 /** Problem → Fix: a big question top-left on calm space, the scene does the rest. */
 function hook(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
@@ -1506,11 +1517,13 @@ function stamp(ctx: Ctx): AdNode {
           ),
         ),
       ),
-      /* The product is centred and often fills the lower middle, so the CTA takes a corner. */
+      /* The product is centred and often fills the lower middle, so the CTA takes a corner.
+         White with a thin outline: the studio set is often the accent colour itself (live,
+         a blue pill vanished on a blue set), and the outline keeps it visible on white sets. */
       el(
         "div",
         { position: "absolute", left: ctx.pad, bottom: ctx.bottom, display: "flex" },
-        pill(ctx.copy.cta, ctx.accent, 34, ctx.body),
+        outlined(pill(ctx.copy.cta, "#FFFFFF", 34, ctx.body)),
       ),
       ...logoMark(ctx, "photo", { left: ctx.pad, top: ctx.top }),
     ],

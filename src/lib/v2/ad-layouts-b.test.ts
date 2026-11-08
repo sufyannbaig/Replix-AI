@@ -161,6 +161,10 @@ describe("B layouts", () => {
     const cta = kids[2];
     ok(texts(cta).includes(copy.cta));
     strictEqual(cta.props.style?.left, Math.round(1080 * 0.065));
+    /* White with an outline, so it shows on a set in the accent colour (live, 2026-11-08). */
+    const p = cta.props.children as AdNode;
+    strictEqual(p.props.style?.background, "#FFFFFF");
+    ok(String(p.props.style?.border).includes("solid"));
   });
 
   test("tall Caption lifts the photo so the bar covers less of the product", () => {
