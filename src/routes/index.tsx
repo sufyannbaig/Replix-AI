@@ -10,13 +10,13 @@ export const Route = createFileRoute("/")({
   component: ReplixLandingPage,
   head: () => ({
     meta: [
-      { title: "Replix AI | Turn a product photo into Shopify ads" },
+      { title: "Replix AI | Turn any product photo into scroll-stopping ads" },
       {
         name: "description",
         content:
           "Upload a product photo and Replix AI turns it into polished, scroll-stopping ad creatives. Try 10 free ads. No credit card required.",
       },
-      { property: "og:title", content: "Replix AI | Turn a product photo into Shopify ads" },
+      { property: "og:title", content: "Replix AI | Turn any product photo into scroll-stopping ads" },
       {
         property: "og:description",
         content: "Upload a product photo and Replix AI turns it into polished, scroll-stopping ad creatives. Try 10 free ads. No credit card required.",
@@ -72,9 +72,9 @@ const faqFilters = [
 ];
 
 const faqItems = [
-  { question: "How Do I Get Started With Replix Ai ?", answer: "Sign up free, connect Shopify, choose a product, and create your first ad. Get 10 free AI ad generations—no card required." },
-  { question: "Do I Need a Shopify Store ?", answer: "Replix works best with Shopify-connected stores for one-click product sync." },
-  { question: "Do I Need a Shopify Store", answer: "Replix works best with Shopify-connected stores for one-click product sync." },
+  { question: "How Do I Get Started With Replix Ai ?", answer: "Sign up free, upload a product photo or paste a product link, and create your first ad. Get 10 free AI ad generations—no card required." },
+  { question: "Do I Need a Shopify Store ?", answer: "No. Upload a photo of any product or paste a link to its page. If you sell on Shopify, you can also connect your store to import every product in one click." },
+  { question: "Do I Need a Shopify Store", answer: "No. Upload a photo of any product or paste a link to its page. If you sell on Shopify, you can also connect your store to import every product in one click." },
   { question: "What Ad Styles Are Available", answer: "Choose from 10+ creative styles, tailored to your brand and product category." },
   { question: "What Ad Styles Are Available", answer: "Choose from 10+ creative styles, tailored to your brand and product category." },
 ];
@@ -116,7 +116,7 @@ function ReplixLandingPage() {
       </div>
     </div>
 
-    <h1 className="hero-title">Your next Shopify ad could be ready <span className="grad-text">in 36 seconds</span></h1>
+    <h1 className="hero-title">Your next product ad could be ready <span className="grad-text">in 36 seconds</span></h1>
 
     <div className="hero-sub-wrap">
       <p className="hero-sub">Upload a product photo and Replix AI turns it into polished, scroll-stopping ad creatives. Create more concepts, explore more angles, and find what works without starting from scratch every time.</p>
@@ -146,7 +146,7 @@ function ReplixLandingPage() {
       <span className="stat-divider"></span>
       <div className="stat"><span className="stat-num">10</span><span className="stat-label">Creative Styles</span></div>
       <span className="stat-divider"></span>
-      <div className="stat"><span className="stat-num">100%</span><span className="stat-label">Shopify-Native</span></div>
+      <div className="stat"><span className="stat-num">0</span><span className="stat-label">Design Skills Needed</span></div>
     </div>
   </div>
 </section>
@@ -164,27 +164,27 @@ function ReplixLandingPage() {
         <div className="compare-plan-name">Replix AI</div>
         <div className="compare-cell compare-cell--strong" data-label="Speed To Market">60 Seconds</div>
         <div className="compare-cell compare-cell--strong" data-label="Cost Per Ad">$0.30</div>
-        <div className="compare-cell compare-check" data-label="Shopify Integration"><img src={replixAssets.check_icon_svg} alt="Yes" /></div>
+        <div className="compare-cell compare-check" data-label="Product Import"><img src={replixAssets.check_icon_svg} alt="Yes" /></div>
         <div className="compare-cell compare-cell--strong" data-label="Copy Writing Hook">AI Sales-Optimized</div>
       </div>
       <div className="compare-col">
         <div className="compare-plan-name">Freelancers</div>
         <div className="compare-cell" data-label="Speed To Market">2-5 Days</div>
         <div className="compare-cell" data-label="Cost Per Ad">$150-$500</div>
-        <div className="compare-cell" data-label="Shopify Integration">Mannual Export</div>
+        <div className="compare-cell" data-label="Product Import">Manual Upload</div>
         <div className="compare-cell" data-label="Copy Writing Hook">Hit Or Miss</div>
       </div>
       <div className="compare-col">
         <div className="compare-plan-name">Canva/Manual</div>
         <div className="compare-cell" data-label="Speed To Market">2-4 Hours</div>
         <div className="compare-cell" data-label="Cost Per Ad">Your Time (Expensive)</div>
-        <div className="compare-cell" data-label="Shopify Integration">None</div>
+        <div className="compare-cell" data-label="Product Import">None</div>
         <div className="compare-cell" data-label="Copy Writing Hook">Genetic Templates</div>
       </div>
       <div className="compare-rows">
         <div className="compare-row-label">Speed To Market</div>
         <div className="compare-row-label">Cost Per Ad</div>
-        <div className="compare-row-label">Shopify Integration</div>
+        <div className="compare-row-label">Product Import</div>
         <div className="compare-row-label">Copy Writing Hook</div>
       </div>
     </div>
@@ -196,17 +196,17 @@ function ReplixLandingPage() {
   <div className="container">
     <div className="section-head">
       <h2>3 Simple Steps to Automated <span className="muted">Marketing</span></h2>
-      <p>Sync your store, choose your brand style, and let AI generate high-converting campaigns instantly.</p>
+      <p>Add your product, choose your brand style, and let AI generate high-converting campaigns instantly.</p>
     </div>
 
     <div className="steps-row">
       <div className="step-card">
         <div className="step-visual step-visual--blue">
-          <img className="step-graphic" src={connectStoreGraphic.url} alt="Shopify store connected to Replix" loading="lazy" />
+          <img className="step-graphic" src={connectStoreGraphic.url} alt="Product added to Replix" loading="lazy" />
         </div>
         <div className="step-body">
-          <h3>Connect Your Store</h3>
-          <p>Instant 1-click store sync to automatically import all your products and media assets.</p>
+          <h3>Add Your Product</h3>
+          <p>Upload a photo or paste a product link. On Shopify? Connect your store to import everything in one click.</p>
         </div>
       </div>
 
@@ -296,7 +296,7 @@ function ReplixLandingPage() {
       <div className="price-head">
         <div>
           <div className="price-name">Starter</div>
-          <div className="price-desc">For small Shopify brands</div>
+          <div className="price-desc">For small brands and solo sellers</div>
         </div>
         <img src={replixAssets.pricing_icon_starter_svg} alt="" className="price-icon" />
       </div>
@@ -320,7 +320,7 @@ function ReplixLandingPage() {
         <div className="price-head">
           <div>
             <div className="price-name">Pro</div>
-            <div className="price-desc">For growing Shopify brands</div>
+            <div className="price-desc">For growing brands</div>
           </div>
           <img src={replixAssets.pricing_icon_pro_svg} alt="" className="price-icon" />
         </div>

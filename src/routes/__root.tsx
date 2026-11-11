@@ -82,24 +82,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Replix AI — AI ad creatives for Shopify" },
+      { title: "Replix AI — AI ad creatives for any product" },
       {
         name: "description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
       },
       { property: "og:site_name", content: "Replix AI" },
-      { property: "og:title", content: "Replix AI — AI ad creatives for Shopify" },
-      { name: "twitter:title", content: "Replix AI — AI ad creatives for Shopify" },
+      { property: "og:title", content: "Replix AI — AI ad creatives for any product" },
+      { name: "twitter:title", content: "Replix AI — AI ad creatives for any product" },
       {
         property: "og:description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
       },
       {
         name: "twitter:description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
