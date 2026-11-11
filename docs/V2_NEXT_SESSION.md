@@ -60,6 +60,16 @@ Practical notes from driving it with the in-app browser:
    - `useGenerationJob` in `api.ts` composes each new ad on the result page.
    - The live test passed: 5 themes × 1:1 and 9:16, all composed. Two layout bugs were found and fixed (`f7e994b`), and the preview now serves that fix.
 
+## 5b. Live site copy change (2026-11-11)
+
+The live site (replixai.co.uk) is still v1. Its landing page copy no longer assumes Shopify (same wording as `1627869` on `v2`). How it was done, in case it's needed again:
+
+1. Bookmarked the latest v2 message in Lovable, then reverted the project to the published v1 version ("Fixed login redirects & copy", Oct 12).
+2. Asked Lovable for 16 exact text replacements in `src/routes/index.tsx` and `src/routes/__root.tsx` on that v1 code, checked the preview, then published. Lovable's own tooling also bumped `@lovable.dev/vite-tanstack-config` to 2.26.5 (the version `v2` already uses) and regenerated `previewAuthStorage.ts` and the Supabase types.
+3. Reverted back to the v2 message "Imported and verified all seven files" (Nov 9, 3:09 AM) and re-imported `index.tsx` and `__root.tsx` from `1627869`. The preview is v2 again with the new copy.
+
+**The Lovable project holds v2 again, so publishing now would ship v2.** Don't publish until v2 is meant to go live.
+
 ## 6. What's left, in a sensible order
 
 **Ad Studio**
