@@ -62,6 +62,15 @@ function trackLead() {
   } catch {}
 }
 
+// A generic "product photo" icon (24 x 24) that replaces the Shopify logo in the hero and step 1.
+const photoGlyph = (
+  <>
+    <rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="#12213D" strokeWidth="1.8" />
+    <circle cx="9" cy="9.5" r="1.9" fill="#E8A93B" />
+    <path d="M4 18l5.2-5.2a1.5 1.5 0 0 1 2.1 0L14 15.5l1.8-1.8a1.5 1.5 0 0 1 2.1 0L21 16.8" fill="none" stroke="#12213D" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
 const faqFilters = [
   { label: "All", icon: null },
   { label: "Getting Started", icon: replixAssets.faq_filter_getting_started_svg },
@@ -109,7 +118,7 @@ function ReplixLandingPage() {
   <div className="container hero-inner">
     <div className="hero-decor" aria-hidden="true">
       <div className="float-card float-card-a">
-        <img src={replixAssets.float_card_1_inner_svg} alt="" />
+        <svg viewBox="0 0 24 24" width="100%" height="100%">{photoGlyph}</svg>
       </div>
       <div className="float-card float-card-b">
         <img src={replixAssets.float_card_1_jpg} alt="" />
@@ -202,7 +211,13 @@ function ReplixLandingPage() {
     <div className="steps-row">
       <div className="step-card">
         <div className="step-visual step-visual--blue">
-          <img className="step-graphic" src={connectStoreGraphic.url} alt="Product added to Replix" loading="lazy" />
+          <svg className="step-graphic" viewBox="0 0 344 340" preserveAspectRatio="xMidYMin slice" role="img" aria-label="Product added to Replix">
+            <image href={connectStoreGraphic.url} width="344" height="340" />
+            <rect x="117" y="100" width="36" height="38" fill="#fff" />
+            <svg x="121" y="105" width="28" height="28" viewBox="0 0 24 24">
+              <g transform="rotate(2 12 12)">{photoGlyph}</g>
+            </svg>
+          </svg>
         </div>
         <div className="step-body">
           <h3>Add Your Product</h3>
