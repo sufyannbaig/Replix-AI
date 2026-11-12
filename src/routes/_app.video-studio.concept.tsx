@@ -8,6 +8,7 @@ import { SectionTitle } from "@/v2/components/primitives";
 import { LibraryPicker } from "@/v2/components/studio/LibraryPicker";
 import { ComposerBar, missingHint } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import type { UploadedImage } from "@/v2/components/studio/UploadCard";
 import { videoGenerationCost } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
@@ -228,7 +229,17 @@ function ConceptPage() {
         </>
       }
     >
-      <div className="mt-[50px] flex flex-col gap-10 pb-[250px] sm:pb-[160px] xl:flex-row xl:items-start xl:gap-[62px]">
+      <div className="mt-10">
+        <StudioSteps
+          steps={[
+            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
+            { label: "Write your concept", done: !!concept.trim() },
+            { label: "Add a character and scene", done: !!character && !!scene },
+            { label: "Generate", done: false },
+          ]}
+        />
+      </div>
+      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px] xl:flex-row xl:items-start xl:gap-[62px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[60px] xl:max-w-[686px]">
           <StoryField
             title="Concept"

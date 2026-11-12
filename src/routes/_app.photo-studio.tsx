@@ -9,6 +9,7 @@ import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
 import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import {
   addPiece,
   EMPTY_SELECTION,
@@ -315,6 +316,22 @@ function PhotoStudioPage() {
           modes={MODES}
           value={mode}
           onChange={(next) => navigate({ search: next === "templates" ? {} : { mode: next } })}
+        />
+
+        <StudioSteps
+          steps={[
+            {
+              label:
+                mode === "templates"
+                  ? "Pick a template"
+                  : mode === "piece"
+                    ? "Choose a scene and extras"
+                    : "Upload your scene",
+              done: !!style,
+            },
+            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
+            { label: "Generate", done: false },
+          ]}
         />
 
         {mode === "templates" ? (

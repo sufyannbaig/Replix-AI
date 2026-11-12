@@ -15,6 +15,7 @@ import {
   TemplateChip,
 } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import {
   StackArt,
   UploadCard,
@@ -190,6 +191,16 @@ function ShortsPage() {
           modes={MODES}
           value={mode}
           onChange={(next) => navigate({ search: next === "templates" ? {} : { mode: next } })}
+        />
+
+        <StudioSteps
+          steps={[
+            mode === "templates"
+              ? { label: "Pick a template", done: !!template }
+              : { label: "Upload your scene", done: !!scene },
+            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
+            { label: "Generate", done: false },
+          ]}
         />
 
         {mode === "templates" ? (

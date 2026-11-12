@@ -7,6 +7,7 @@ import { SectionTitle } from "@/v2/components/primitives";
 import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
 import { StudioBrandChip, useStudioBrand } from "@/v2/components/brand/BrandMenus";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import { adGenerationCost, useAdThemes, useProductInsights } from "@/v2/data/api";
 import type { AdTheme, AspectRatio, Product } from "@/v2/data/types";
 import plusJoin from "@/assets/v2/icons/plus-join.svg";
@@ -35,6 +36,14 @@ function AdStudioPage() {
   return (
     <AppShell title="Ad Studio" subtitle="Turn one product into ready-to-run ad creatives">
       <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
+        <StudioSteps
+          steps={[
+            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
+            { label: "Pick a creative theme", done: !!theme },
+            { label: "Generate", done: false },
+          ]}
+        />
+
         <section className="relative grid gap-5 lg:grid-cols-[454fr_512fr] lg:gap-[74px]">
           {product ? (
             <ProductCard

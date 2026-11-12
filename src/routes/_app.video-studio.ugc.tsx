@@ -16,6 +16,7 @@ import {
   TemplateChip,
 } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
+import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import {
   StackArt,
   UploadCard,
@@ -217,6 +218,31 @@ function UgcPage() {
           modes={MODES}
           value={mode}
           onChange={(next) => navigate({ search: next === "templates" ? {} : { mode: next } })}
+        />
+
+        <StudioSteps
+          steps={
+            mode === "templates"
+              ? [
+                  { label: "Pick a template", done: !!template },
+                  {
+                    label: "Add your product",
+                    done: !!product,
+                    onClick: () => setPickerOpen(true),
+                  },
+                  { label: "Generate", done: false },
+                ]
+              : [
+                  { label: "Upload a scene and character", done: !!scene && !!character },
+                  {
+                    label: "Add your product",
+                    done: !!product,
+                    onClick: () => setPickerOpen(true),
+                  },
+                  { label: "Write the script", done: !!script.trim() },
+                  { label: "Generate", done: false },
+                ]
+          }
         />
 
         {mode === "templates" ? (
