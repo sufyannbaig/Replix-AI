@@ -72,6 +72,10 @@ On 2026-11-12 the same steps put the Shopify logo swap live: a product photo ico
 
 **The Lovable project holds v2 again, so publishing now would ship v2.** Don't publish until v2 is meant to go live.
 
+## 5c. Studio steps (2026-11-12)
+
+Every studio mode shows a numbered "what to do next" line (`src/v2/components/studio/StudioSteps.tsx`, commit `5d41585`), from Ben's call: he couldn't tell what to do first. Done steps get a tick, the next step is highlighted, and "Add your product" opens the product picker. Imported into Lovable and checked on the preview (Photo, Ad, Concept, UGC custom at phone width).
+
 ## 6. What's left, in a sensible order
 
 **Ad Studio**
