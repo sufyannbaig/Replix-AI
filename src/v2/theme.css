@@ -1,0 +1,234 @@
+/*
+ * Replix 2.0 design tokens.
+ * Both themes come straight from the Figma "Experimentation." page; dark values are from
+ * its "Dark Theme" section (614:93651).
+ * Theme is selected with <html data-theme="light|dark"> (set before paint in __root).
+ */
+
+/* Variant for the 2.0 dark theme (the legacy `dark:` variant keys off a .dark class). */
+/* A subtree marked data-theme="light" (the Home promo banner) stays light in dark mode. */
+@custom-variant night (&:where(:is([data-theme="dark"], [data-theme="dark"] *):not([data-theme="light"], [data-theme="light"] *)));
+
+@theme inline {
+  --color-v2-canvas: var(--v2-canvas);
+  --color-v2-surface: var(--v2-surface);
+  --color-v2-surface-2: var(--v2-surface-2);
+  --color-v2-panel: var(--v2-panel);
+  --color-v2-composer: var(--v2-composer);
+  --color-v2-chip: var(--v2-chip);
+  --color-v2-ink: var(--v2-ink);
+  --color-v2-ink-70: var(--v2-ink-70);
+  --color-v2-ink-60: var(--v2-ink-60);
+  --color-v2-muted: var(--v2-muted);
+  --color-v2-subtle: var(--v2-subtle);
+  --color-v2-icon: var(--v2-icon);
+  --color-v2-line: var(--v2-line);
+  --color-v2-border: var(--v2-border);
+  --color-v2-nav-active: var(--v2-nav-active);
+  --color-v2-active: var(--v2-active);
+  --color-v2-selected: var(--v2-selected);
+  --color-v2-blue: var(--v2-blue);
+  --color-v2-pill: var(--v2-pill);
+  --color-v2-pill-ink: var(--v2-pill-ink);
+  --color-v2-pill-muted: var(--v2-pill-muted);
+  --color-v2-cream: var(--v2-cream);
+  --color-v2-pro: var(--v2-pro);
+  --color-v2-pro-ink: var(--v2-pro-ink);
+
+  --font-archivo: "Archivo", system-ui, sans-serif;
+  /* Figma "auto" line height for Archivo (browsers render "normal" much taller). */
+  --leading-archivo: 1.088;
+  --font-inter-tight: "Inter Tight", "Inter", system-ui, sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+:root,
+[data-theme="light"] {
+  --v2-canvas: #f5f5f5;
+  --v2-dot: #f3f3f3;
+  --v2-surface: #ffffff;
+  --v2-surface-2: #fafafa;
+  --v2-panel: #ffffff;
+  --v2-composer: #ffffff;
+  --v2-chip: #f5f5f5;
+  --v2-ink: #12213d;
+  --v2-ink-70: rgb(18 33 61 / 0.7);
+  --v2-ink-60: rgb(18 33 61 / 0.6);
+  --v2-muted: #737373;
+  --v2-subtle: #a9a9a9;
+  --v2-icon: #000000;
+  --v2-line: rgb(0 0 0 / 0.17);
+  --v2-border: rgb(0 0 0 / 0.19);
+  --v2-nav-active: #f2f7ff;
+  --v2-active: #1f55ae;
+  --v2-selected: #5d81c4;
+  --v2-blue: #375daa;
+  --v2-pill: #0c2b60;
+  --v2-pill-ink: #ffffff;
+  --v2-pill-muted: rgb(12 43 96 / 0.6);
+  --v2-cream: #fff6e7;
+  --v2-pro: #f3ffc1;
+  --v2-pro-ink: #12213d;
+  --v2-promo-from: rgb(255 235 201);
+  --v2-promo-to: rgb(219 252 201);
+  --v2-shadow-card: 0 0 13.4px 0 rgb(0 0 0 / 0.04);
+  --v2-highlight-from: #a6d27e;
+  --v2-highlight-to: #f6e5c8;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --v2-canvas: #000000;
+  --v2-dot: rgb(217 217 217 / 0.04);
+  --v2-surface: #161616;
+  --v2-surface-2: #2c2c2c;
+  --v2-panel: #111111;
+  --v2-composer: #4e4e4e;
+  --v2-chip: #605e5e;
+  --v2-ink: #ffffff;
+  --v2-ink-70: rgb(255 255 255 / 0.8);
+  --v2-ink-60: rgb(255 255 255 / 0.6);
+  --v2-muted: rgb(255 255 255 / 0.8);
+  --v2-subtle: rgb(255 255 255 / 0.5);
+  --v2-icon: #ffffff;
+  --v2-line: rgb(255 255 255 / 0.21);
+  --v2-border: rgb(255 255 255 / 0.26);
+  --v2-nav-active: rgb(255 255 255 / 0.3);
+  --v2-active: rgb(255 255 255 / 0.3);
+  --v2-selected: #d0ffb6;
+  --v2-blue: #7c95c9;
+  --v2-pill: rgb(255 255 255 / 0.3);
+  --v2-pill-ink: #ffffff;
+  --v2-pill-muted: rgb(255 255 255 / 0.6);
+  --v2-cream: rgb(255 255 255 / 0.2);
+  --v2-pro: #f3ffc1;
+  --v2-pro-ink: #12213d;
+  --v2-promo-from: rgb(255 235 201);
+  --v2-promo-to: rgb(219 252 201);
+  --v2-shadow-card: 0 0 13.4px 0 rgb(0 0 0 / 0.3);
+  --v2-highlight-from: #d0ffb6;
+  --v2-highlight-to: #ffebc9;
+}
+
+/* Canvas behind every 2.0 app screen: 14x12.46 dots on a 34 x 30.26 grid. */
+@utility v2-canvas {
+  background-color: var(--v2-canvas);
+  background-image: radial-gradient(7px 6.23px at 7px 6.23px, var(--v2-dot) 98%, transparent 100%);
+  background-size: 34px 30.258px;
+}
+
+/* Primary pill fill. Figma uses a banded radial gradient; this reproduces its stops. */
+@utility v2-brand-fill {
+  background-image: linear-gradient(
+    112deg,
+    #375daa 0%,
+    #274177 26.2%,
+    #1e335e 39.3%,
+    #162544 52.4%,
+    #1e335e 64.3%,
+    #274177 76.2%,
+    #375daa 100%
+  );
+}
+
+@utility v2-promo-fill {
+  background-image: linear-gradient(
+    167.44deg,
+    var(--v2-promo-from) 20.834%,
+    var(--v2-promo-to) 79.166%
+  );
+}
+
+/* Icons are the exact Figma SVGs used as masks, so they take the current text colour. */
+@utility v2-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+/* Selected card stroke on Help (topic card, open FAQ): 1px green → cream gradient. */
+@utility v2-highlight-stroke {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--v2-surface), var(--v2-surface)) padding-box,
+    linear-gradient(80deg, var(--v2-highlight-from), var(--v2-highlight-to)) border-box;
+}
+
+/* Loading sweep on the result screen while a generation runs. */
+@utility v2-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--v2-blue) 10%, transparent) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: v2-shimmer 1.6s linear infinite;
+}
+
+@keyframes v2-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+/*
+ * Replix 2.0 type scale. Use these for every heading and paragraph on signed-in screens
+ * instead of hand-picked sizes; colour stays a separate class (text-v2-ink, -ink-70...).
+ *   type-page-title     28 / 34px  page H1 and empty-state heroes
+ *   type-section-title  22 / 26px  section H2, plan names, promo banners
+ *   type-card-title     20px       panel and card titles
+ *   type-label          16px       small headings inside panels
+ *   type-subtitle       14px       the line under a title, and body text
+ *   type-caption        12px       hints, meta, fine print
+ */
+@utility type-page-title {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.04em;
+  @media (width >= 40rem) {
+    font-size: 34px;
+  }
+}
+@utility type-section-title {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.02em;
+  @media (width >= 40rem) {
+    font-size: 26px;
+  }
+}
+@utility type-card-title {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.02em;
+}
+@utility type-label {
+  font-family: var(--font-archivo);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: var(--leading-archivo);
+  letter-spacing: -0.02em;
+}
+@utility type-subtitle {
+  font-family: var(--font-inter-tight);
+  font-size: 14px;
+  line-height: 1.41;
+}
+@utility type-caption {
+  font-family: var(--font-inter-tight);
+  font-size: 12px;
+  line-height: 1.41;
+}

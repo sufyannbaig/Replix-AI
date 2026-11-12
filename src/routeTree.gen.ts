@@ -17,14 +17,24 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AppAdStudioRouteImport } from './routes/_app.ad-studio'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
+import { Route as AppAssetsRouteImport } from './routes/_app.assets'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
+import { Route as AppBrandKitRouteImport } from './routes/_app.brand-kit'
 import { Route as AppCollectionsRouteImport } from './routes/_app.collections'
+import { Route as AppConnectRouteImport } from './routes/_app.connect'
 import { Route as AppCreateRouteImport } from './routes/_app.create'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppGalleryRouteImport } from './routes/_app.gallery'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
+import { Route as AppLibraryRouteImport } from './routes/_app.library'
+import { Route as AppPhotoStudioRouteImport } from './routes/_app.photo-studio'
 import { Route as AppPricingRouteImport } from './routes/_app.pricing'
+import { Route as AppProductsRouteImport } from './routes/_app.products'
+import { Route as AppReferRouteImport } from './routes/_app.refer'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppUpgradeRouteImport } from './routes/_app.upgrade'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as InstallSelectPlanRouteImport } from './routes/install.select-plan'
@@ -36,6 +46,11 @@ import { Route as AppCollectionsCollectionIdRouteImport } from './routes/_app.co
 import { Route as AppGenerateIndexRouteImport } from './routes/_app.generate.index'
 import { Route as AppGenerateProductIdRouteImport } from './routes/_app.generate.$productId'
 import { Route as AppGenerateExternalRouteImport } from './routes/_app.generate.external'
+import { Route as AppGenerationsJobIdRouteImport } from './routes/_app.generations.$jobId'
+import { Route as AppVideoStudioIndexRouteImport } from './routes/_app.video-studio.index'
+import { Route as AppVideoStudioConceptRouteImport } from './routes/_app.video-studio.concept'
+import { Route as AppVideoStudioShortsRouteImport } from './routes/_app.video-studio.shorts'
+import { Route as AppVideoStudioUgcRouteImport } from './routes/_app.video-studio.ugc'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicHooksWeeklyDigestRouteImport } from './routes/api/public/hooks/weekly-digest'
 import { Route as ApiPublicShopifyCallbackRouteImport } from './routes/api/public/shopify/callback'
@@ -92,9 +107,19 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAdStudioRoute = AppAdStudioRouteImport.update({
+  id: '/ad-studio',
+  path: '/ad-studio',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssetsRoute = AppAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBillingRoute = AppBillingRouteImport.update({
@@ -102,9 +127,19 @@ const AppBillingRoute = AppBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBrandKitRoute = AppBrandKitRouteImport.update({
+  id: '/brand-kit',
+  path: '/brand-kit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCollectionsRoute = AppCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConnectRoute = AppConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCreateRoute = AppCreateRouteImport.update({
@@ -127,9 +162,39 @@ const AppHelpRoute = AppHelpRouteImport.update({
   path: '/help',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLibraryRoute = AppLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPhotoStudioRoute = AppPhotoStudioRouteImport.update({
+  id: '/photo-studio',
+  path: '/photo-studio',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingRoute = AppPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProductsRoute = AppProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReferRoute = AppReferRouteImport.update({
+  id: '/refer',
+  path: '/refer',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUpgradeRoute = AppUpgradeRouteImport.update({
+  id: '/upgrade',
+  path: '/upgrade',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -186,6 +251,31 @@ const AppGenerateProductIdRoute = AppGenerateProductIdRouteImport.update({
 const AppGenerateExternalRoute = AppGenerateExternalRouteImport.update({
   id: '/generate/external',
   path: '/generate/external',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGenerationsJobIdRoute = AppGenerationsJobIdRouteImport.update({
+  id: '/generations/$jobId',
+  path: '/generations/$jobId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVideoStudioIndexRoute = AppVideoStudioIndexRouteImport.update({
+  id: '/video-studio/',
+  path: '/video-studio/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVideoStudioConceptRoute = AppVideoStudioConceptRouteImport.update({
+  id: '/video-studio/concept',
+  path: '/video-studio/concept',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVideoStudioShortsRoute = AppVideoStudioShortsRouteImport.update({
+  id: '/video-studio/shorts',
+  path: '/video-studio/shorts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVideoStudioUgcRoute = AppVideoStudioUgcRouteImport.update({
+  id: '/video-studio/ugc',
+  path: '/video-studio/ugc',
   getParentRoute: () => AppRoute,
 } as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
@@ -288,14 +378,24 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/ad-studio': typeof AppAdStudioRoute
   '/analytics': typeof AppAnalyticsRoute
+  '/assets': typeof AppAssetsRoute
   '/billing': typeof AppBillingRoute
+  '/brand-kit': typeof AppBrandKitRoute
   '/collections': typeof AppCollectionsRouteWithChildren
+  '/connect': typeof AppConnectRoute
   '/create': typeof AppCreateRoute
   '/dashboard': typeof AppDashboardRoute
   '/gallery': typeof AppGalleryRoute
   '/help': typeof AppHelpRoute
+  '/library': typeof AppLibraryRoute
+  '/photo-studio': typeof AppPhotoStudioRoute
   '/pricing': typeof AppPricingRoute
+  '/products': typeof AppProductsRoute
+  '/refer': typeof AppReferRoute
+  '/settings': typeof AppSettingsRoute
+  '/upgrade': typeof AppUpgradeRoute
   '/api/health': typeof ApiHealthRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/install/select-plan': typeof InstallSelectPlanRoute
@@ -305,9 +405,14 @@ export interface FileRoutesByFullPath {
   '/collections/$collectionId': typeof AppCollectionsCollectionIdRoute
   '/generate/$productId': typeof AppGenerateProductIdRoute
   '/generate/external': typeof AppGenerateExternalRoute
+  '/generations/$jobId': typeof AppGenerationsJobIdRoute
+  '/video-studio/concept': typeof AppVideoStudioConceptRoute
+  '/video-studio/shorts': typeof AppVideoStudioShortsRoute
+  '/video-studio/ugc': typeof AppVideoStudioUgcRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/campaigns/': typeof AppCampaignsIndexRoute
   '/generate/': typeof AppGenerateIndexRoute
+  '/video-studio/': typeof AppVideoStudioIndexRoute
   '/api/public/hooks/weekly-digest': typeof ApiPublicHooksWeeklyDigestRoute
   '/api/public/shopify/callback': typeof ApiPublicShopifyCallbackRoute
   '/api/public/shopify/install': typeof ApiPublicShopifyInstallRoute
@@ -332,14 +437,24 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/ad-studio': typeof AppAdStudioRoute
   '/analytics': typeof AppAnalyticsRoute
+  '/assets': typeof AppAssetsRoute
   '/billing': typeof AppBillingRoute
+  '/brand-kit': typeof AppBrandKitRoute
   '/collections': typeof AppCollectionsRouteWithChildren
+  '/connect': typeof AppConnectRoute
   '/create': typeof AppCreateRoute
   '/dashboard': typeof AppDashboardRoute
   '/gallery': typeof AppGalleryRoute
   '/help': typeof AppHelpRoute
+  '/library': typeof AppLibraryRoute
+  '/photo-studio': typeof AppPhotoStudioRoute
   '/pricing': typeof AppPricingRoute
+  '/products': typeof AppProductsRoute
+  '/refer': typeof AppReferRoute
+  '/settings': typeof AppSettingsRoute
+  '/upgrade': typeof AppUpgradeRoute
   '/api/health': typeof ApiHealthRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/install/select-plan': typeof InstallSelectPlanRoute
@@ -349,9 +464,14 @@ export interface FileRoutesByTo {
   '/collections/$collectionId': typeof AppCollectionsCollectionIdRoute
   '/generate/$productId': typeof AppGenerateProductIdRoute
   '/generate/external': typeof AppGenerateExternalRoute
+  '/generations/$jobId': typeof AppGenerationsJobIdRoute
+  '/video-studio/concept': typeof AppVideoStudioConceptRoute
+  '/video-studio/shorts': typeof AppVideoStudioShortsRoute
+  '/video-studio/ugc': typeof AppVideoStudioUgcRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/campaigns': typeof AppCampaignsIndexRoute
   '/generate': typeof AppGenerateIndexRoute
+  '/video-studio': typeof AppVideoStudioIndexRoute
   '/api/public/hooks/weekly-digest': typeof ApiPublicHooksWeeklyDigestRoute
   '/api/public/shopify/callback': typeof ApiPublicShopifyCallbackRoute
   '/api/public/shopify/install': typeof ApiPublicShopifyInstallRoute
@@ -378,14 +498,24 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/_app/ad-studio': typeof AppAdStudioRoute
   '/_app/analytics': typeof AppAnalyticsRoute
+  '/_app/assets': typeof AppAssetsRoute
   '/_app/billing': typeof AppBillingRoute
+  '/_app/brand-kit': typeof AppBrandKitRoute
   '/_app/collections': typeof AppCollectionsRouteWithChildren
+  '/_app/connect': typeof AppConnectRoute
   '/_app/create': typeof AppCreateRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/gallery': typeof AppGalleryRoute
   '/_app/help': typeof AppHelpRoute
+  '/_app/library': typeof AppLibraryRoute
+  '/_app/photo-studio': typeof AppPhotoStudioRoute
   '/_app/pricing': typeof AppPricingRoute
+  '/_app/products': typeof AppProductsRoute
+  '/_app/refer': typeof AppReferRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/upgrade': typeof AppUpgradeRoute
   '/api/health': typeof ApiHealthRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/install/select-plan': typeof InstallSelectPlanRoute
@@ -395,9 +525,14 @@ export interface FileRoutesById {
   '/_app/collections/$collectionId': typeof AppCollectionsCollectionIdRoute
   '/_app/generate/$productId': typeof AppGenerateProductIdRoute
   '/_app/generate/external': typeof AppGenerateExternalRoute
+  '/_app/generations/$jobId': typeof AppGenerationsJobIdRoute
+  '/_app/video-studio/concept': typeof AppVideoStudioConceptRoute
+  '/_app/video-studio/shorts': typeof AppVideoStudioShortsRoute
+  '/_app/video-studio/ugc': typeof AppVideoStudioUgcRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_app/campaigns/': typeof AppCampaignsIndexRoute
   '/_app/generate/': typeof AppGenerateIndexRoute
+  '/_app/video-studio/': typeof AppVideoStudioIndexRoute
   '/api/public/hooks/weekly-digest': typeof ApiPublicHooksWeeklyDigestRoute
   '/api/public/shopify/callback': typeof ApiPublicShopifyCallbackRoute
   '/api/public/shopify/install': typeof ApiPublicShopifyInstallRoute
@@ -424,14 +559,24 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/terms'
+    | '/ad-studio'
     | '/analytics'
+    | '/assets'
     | '/billing'
+    | '/brand-kit'
     | '/collections'
+    | '/connect'
     | '/create'
     | '/dashboard'
     | '/gallery'
     | '/help'
+    | '/library'
+    | '/photo-studio'
     | '/pricing'
+    | '/products'
+    | '/refer'
+    | '/settings'
+    | '/upgrade'
     | '/api/health'
     | '/email/unsubscribe'
     | '/install/select-plan'
@@ -441,9 +586,14 @@ export interface FileRouteTypes {
     | '/collections/$collectionId'
     | '/generate/$productId'
     | '/generate/external'
+    | '/generations/$jobId'
+    | '/video-studio/concept'
+    | '/video-studio/shorts'
+    | '/video-studio/ugc'
     | '/lovable/email/suppression'
     | '/campaigns/'
     | '/generate/'
+    | '/video-studio/'
     | '/api/public/hooks/weekly-digest'
     | '/api/public/shopify/callback'
     | '/api/public/shopify/install'
@@ -468,14 +618,24 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/terms'
+    | '/ad-studio'
     | '/analytics'
+    | '/assets'
     | '/billing'
+    | '/brand-kit'
     | '/collections'
+    | '/connect'
     | '/create'
     | '/dashboard'
     | '/gallery'
     | '/help'
+    | '/library'
+    | '/photo-studio'
     | '/pricing'
+    | '/products'
+    | '/refer'
+    | '/settings'
+    | '/upgrade'
     | '/api/health'
     | '/email/unsubscribe'
     | '/install/select-plan'
@@ -485,9 +645,14 @@ export interface FileRouteTypes {
     | '/collections/$collectionId'
     | '/generate/$productId'
     | '/generate/external'
+    | '/generations/$jobId'
+    | '/video-studio/concept'
+    | '/video-studio/shorts'
+    | '/video-studio/ugc'
     | '/lovable/email/suppression'
     | '/campaigns'
     | '/generate'
+    | '/video-studio'
     | '/api/public/hooks/weekly-digest'
     | '/api/public/shopify/callback'
     | '/api/public/shopify/install'
@@ -513,14 +678,24 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/terms'
+    | '/_app/ad-studio'
     | '/_app/analytics'
+    | '/_app/assets'
     | '/_app/billing'
+    | '/_app/brand-kit'
     | '/_app/collections'
+    | '/_app/connect'
     | '/_app/create'
     | '/_app/dashboard'
     | '/_app/gallery'
     | '/_app/help'
+    | '/_app/library'
+    | '/_app/photo-studio'
     | '/_app/pricing'
+    | '/_app/products'
+    | '/_app/refer'
+    | '/_app/settings'
+    | '/_app/upgrade'
     | '/api/health'
     | '/email/unsubscribe'
     | '/install/select-plan'
@@ -530,9 +705,14 @@ export interface FileRouteTypes {
     | '/_app/collections/$collectionId'
     | '/_app/generate/$productId'
     | '/_app/generate/external'
+    | '/_app/generations/$jobId'
+    | '/_app/video-studio/concept'
+    | '/_app/video-studio/shorts'
+    | '/_app/video-studio/ugc'
     | '/lovable/email/suppression'
     | '/_app/campaigns/'
     | '/_app/generate/'
+    | '/_app/video-studio/'
     | '/api/public/hooks/weekly-digest'
     | '/api/public/shopify/callback'
     | '/api/public/shopify/install'
@@ -639,11 +819,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/ad-studio': {
+      id: '/_app/ad-studio'
+      path: '/ad-studio'
+      fullPath: '/ad-studio'
+      preLoaderRoute: typeof AppAdStudioRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/analytics': {
       id: '/_app/analytics'
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assets': {
+      id: '/_app/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof AppAssetsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/billing': {
@@ -653,11 +847,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBillingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/brand-kit': {
+      id: '/_app/brand-kit'
+      path: '/brand-kit'
+      fullPath: '/brand-kit'
+      preLoaderRoute: typeof AppBrandKitRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/collections': {
       id: '/_app/collections'
       path: '/collections'
       fullPath: '/collections'
       preLoaderRoute: typeof AppCollectionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/connect': {
+      id: '/_app/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof AppConnectRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/create': {
@@ -688,11 +896,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHelpRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/library': {
+      id: '/_app/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof AppLibraryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/photo-studio': {
+      id: '/_app/photo-studio'
+      path: '/photo-studio'
+      fullPath: '/photo-studio'
+      preLoaderRoute: typeof AppPhotoStudioRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing': {
       id: '/_app/pricing'
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof AppPricingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/products': {
+      id: '/_app/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AppProductsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/refer': {
+      id: '/_app/refer'
+      path: '/refer'
+      fullPath: '/refer'
+      preLoaderRoute: typeof AppReferRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/upgrade': {
+      id: '/_app/upgrade'
+      path: '/upgrade'
+      fullPath: '/upgrade'
+      preLoaderRoute: typeof AppUpgradeRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/health': {
@@ -770,6 +1020,41 @@ declare module '@tanstack/react-router' {
       path: '/generate/external'
       fullPath: '/generate/external'
       preLoaderRoute: typeof AppGenerateExternalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/generations/$jobId': {
+      id: '/_app/generations/$jobId'
+      path: '/generations/$jobId'
+      fullPath: '/generations/$jobId'
+      preLoaderRoute: typeof AppGenerationsJobIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/video-studio/': {
+      id: '/_app/video-studio/'
+      path: '/video-studio'
+      fullPath: '/video-studio/'
+      preLoaderRoute: typeof AppVideoStudioIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/video-studio/concept': {
+      id: '/_app/video-studio/concept'
+      path: '/video-studio/concept'
+      fullPath: '/video-studio/concept'
+      preLoaderRoute: typeof AppVideoStudioConceptRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/video-studio/shorts': {
+      id: '/_app/video-studio/shorts'
+      path: '/video-studio/shorts'
+      fullPath: '/video-studio/shorts'
+      preLoaderRoute: typeof AppVideoStudioShortsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/video-studio/ugc': {
+      id: '/_app/video-studio/ugc'
+      path: '/video-studio/ugc'
+      fullPath: '/video-studio/ugc'
+      preLoaderRoute: typeof AppVideoStudioUgcRouteImport
       parentRoute: typeof AppRoute
     }
     '/lovable/email/suppression': {
@@ -900,37 +1185,67 @@ const AppCollectionsRouteWithChildren = AppCollectionsRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAdStudioRoute: typeof AppAdStudioRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppAssetsRoute: typeof AppAssetsRoute
   AppBillingRoute: typeof AppBillingRoute
+  AppBrandKitRoute: typeof AppBrandKitRoute
   AppCollectionsRoute: typeof AppCollectionsRouteWithChildren
+  AppConnectRoute: typeof AppConnectRoute
   AppCreateRoute: typeof AppCreateRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppGalleryRoute: typeof AppGalleryRoute
   AppHelpRoute: typeof AppHelpRoute
+  AppLibraryRoute: typeof AppLibraryRoute
+  AppPhotoStudioRoute: typeof AppPhotoStudioRoute
   AppPricingRoute: typeof AppPricingRoute
+  AppProductsRoute: typeof AppProductsRoute
+  AppReferRoute: typeof AppReferRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppUpgradeRoute: typeof AppUpgradeRoute
   AppAdsAdIdRoute: typeof AppAdsAdIdRoute
   AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
   AppGenerateProductIdRoute: typeof AppGenerateProductIdRoute
   AppGenerateExternalRoute: typeof AppGenerateExternalRoute
+  AppGenerationsJobIdRoute: typeof AppGenerationsJobIdRoute
+  AppVideoStudioConceptRoute: typeof AppVideoStudioConceptRoute
+  AppVideoStudioShortsRoute: typeof AppVideoStudioShortsRoute
+  AppVideoStudioUgcRoute: typeof AppVideoStudioUgcRoute
   AppCampaignsIndexRoute: typeof AppCampaignsIndexRoute
   AppGenerateIndexRoute: typeof AppGenerateIndexRoute
+  AppVideoStudioIndexRoute: typeof AppVideoStudioIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdStudioRoute: AppAdStudioRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
+  AppAssetsRoute: AppAssetsRoute,
   AppBillingRoute: AppBillingRoute,
+  AppBrandKitRoute: AppBrandKitRoute,
   AppCollectionsRoute: AppCollectionsRouteWithChildren,
+  AppConnectRoute: AppConnectRoute,
   AppCreateRoute: AppCreateRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppGalleryRoute: AppGalleryRoute,
   AppHelpRoute: AppHelpRoute,
+  AppLibraryRoute: AppLibraryRoute,
+  AppPhotoStudioRoute: AppPhotoStudioRoute,
   AppPricingRoute: AppPricingRoute,
+  AppProductsRoute: AppProductsRoute,
+  AppReferRoute: AppReferRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppUpgradeRoute: AppUpgradeRoute,
   AppAdsAdIdRoute: AppAdsAdIdRoute,
   AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
   AppGenerateProductIdRoute: AppGenerateProductIdRoute,
   AppGenerateExternalRoute: AppGenerateExternalRoute,
+  AppGenerationsJobIdRoute: AppGenerationsJobIdRoute,
+  AppVideoStudioConceptRoute: AppVideoStudioConceptRoute,
+  AppVideoStudioShortsRoute: AppVideoStudioShortsRoute,
+  AppVideoStudioUgcRoute: AppVideoStudioUgcRoute,
   AppCampaignsIndexRoute: AppCampaignsIndexRoute,
   AppGenerateIndexRoute: AppGenerateIndexRoute,
+  AppVideoStudioIndexRoute: AppVideoStudioIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
