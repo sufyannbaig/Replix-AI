@@ -68,6 +68,8 @@ The live site (replixai.co.uk) is still v1. Its landing page copy no longer assu
 2. Asked Lovable for 16 exact text replacements in `src/routes/index.tsx` and `src/routes/__root.tsx` on that v1 code, checked the preview, then published. Lovable's own tooling also bumped `@lovable.dev/vite-tanstack-config` to 2.26.5 (the version `v2` already uses) and regenerated `previewAuthStorage.ts` and the Supabase types.
 3. Reverted back to the v2 message "Imported and verified all seven files" (Nov 9, 3:09 AM) and re-imported `index.tsx` and `__root.tsx` from `1627869`. The preview is v2 again with the new copy.
 
+On 2026-11-12 the same steps put the Shopify logo swap live: a product photo icon replaces the Shopify bag in the hero badge and on the step 1 card (`0941226` on `v2`; on v1 it was 3 exact edits by Lovable, since v1's `index.tsx` isn't imported byte-for-byte). The Lovable revert itself takes 3–5 minutes.
+
 **The Lovable project holds v2 again, so publishing now would ship v2.** Don't publish until v2 is meant to go live.
 
 ## 6. What's left, in a sensible order
