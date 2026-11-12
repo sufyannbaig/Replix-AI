@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PillButton } from "@/v2/components/primitives";
+import { StepBar } from "@/v2/components/studio/StudioSteps";
 import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
 import type { PieceKind, PieceOption } from "@/v2/data/types";
 import plusSmall from "@/assets/v2/pieces/plus-small.svg";
@@ -50,49 +51,19 @@ export function addPiece(selection: PieceSelection, piece: PieceOption): PieceSe
   return { ...selection, [piece.kind === "style" ? "pose" : piece.kind]: piece };
 }
 
-const CHEVRON = "polygon(0 0, calc(100% - 27px) 0, 100% 50%, calc(100% - 27px) 100%, 0 100%)";
-
 /**
- * Scene → Props → Character → Pose stepper. Steps up to the current one are navy, the next one
- * is light blue, later ones stay on the white track (Figma 543:134077). Steps are free
+ * Scene → Props → Character → Pose stepper (the shared chevron bar). Steps are free
  * tabs: users can jump back to change a piece.
  */
 function Stepper({ step, onStep }: { step: number; onStep: (index: number) => void }) {
   return (
-    <div
-      className="relative flex h-[71px] overflow-hidden rounded-[14px] bg-v2-surface night:bg-white"
-      role="tablist"
-      aria-label="Shot steps"
-    >
-      {STEPS.map((s, i) => {
-        const tone =
-          i <= step
-            ? "bg-[#162544] text-white"
-            : i === step + 1
-              ? "bg-[#7c95c9] text-white"
-              : "text-black/40";
-        return (
-          <button
-            key={s.kind}
-            type="button"
-            role="tab"
-            aria-selected={i === step}
-            onClick={() => onStep(i)}
-            className={cn(
-              "relative flex flex-1 items-center justify-center type-label",
-              i > 0 && "-ml-[27px] pl-[27px]",
-              tone,
-            )}
-            style={{
-              clipPath: i < STEPS.length - 1 ? CHEVRON : undefined,
-              zIndex: STEPS.length - i,
-            }}
-          >
-            {i + 1}. {s.label}
-          </button>
-        );
-      })}
-    </div>
+    <StepBar
+      tabs
+      label="Shot steps"
+      labels={STEPS.map((s) => s.label)}
+      current={step}
+      onSelect={onStep}
+    />
   );
 }
 

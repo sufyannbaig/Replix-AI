@@ -1,71 +1,99 @@
-import { Check, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type StudioStep = {
+const CHEVRON = "polygon(0 0, calc(100% - 27px) 0, 100% 50%, calc(100% - 27px) 100%, 0 100%)";
+
+/**
+ * The chevron step bar from Build Piece By Piece (Figma 543:134077), shared by every studio.
+ * Steps up to the current one are navy, the next one is light blue, later ones stay on the
+ * white track. A step with a handler is a button; the rest are plain labels.
+ */
+export function StepBar({
+  labels,
+  current,
+  onSelect,
+  clickable = () => true,
+  tabs = false,
+  label,
+}: {
+  labels: readonly string[];
+  current: number;
+  onSelect?: (index: number) => void;
+  clickable?: (index: number) => boolean;
+  /** Render as a tab list (Piece By Piece, where every step is a free tab). */
+  tabs?: boolean;
   label: string;
-  /** Ticked once the user has done it. The last step (Generate) is never done. */
+}) {
+  return (
+    <div
+      className="relative flex h-[71px] overflow-hidden rounded-[14px] bg-v2-surface night:bg-white"
+      role={tabs ? "tablist" : "list"}
+      aria-label={label}
+    >
+      {labels.map((text, i) => {
+        const tone =
+          i <= current
+            ? "bg-[#162544] text-white"
+            : i === current + 1
+              ? "bg-[#7c95c9] text-white"
+              : "text-black/40";
+        const className = cn(
+          "relative flex min-w-0 flex-1 items-center justify-center px-1 text-center type-label max-sm:text-sm max-sm:leading-tight",
+          i > 0 && "-ml-[27px] pl-[27px]",
+          tone,
+        );
+        const style = {
+          clipPath: i < labels.length - 1 ? CHEVRON : undefined,
+          zIndex: labels.length - i,
+        };
+        const content = `${i + 1}. ${text}`;
+        return onSelect && clickable(i) ? (
+          <button
+            key={text}
+            type="button"
+            role={tabs ? "tab" : undefined}
+            aria-selected={tabs ? i === current : undefined}
+            aria-current={!tabs && i === current ? "step" : undefined}
+            onClick={() => onSelect(i)}
+            className={className}
+            style={style}
+          >
+            {content}
+          </button>
+        ) : (
+          <div
+            key={text}
+            role={tabs ? "tab" : "listitem"}
+            aria-current={i === current ? "step" : undefined}
+            className={className}
+            style={style}
+          >
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export type StudioStep = {
+  /** Short, like the Piece By Piece steps: "Template", "Product". */
+  label: string;
+  /** Done once the user has made that choice. The last step (Generate) is never done. */
   done: boolean;
   /** Optional shortcut, e.g. open the product picker. */
   onClick?: () => void;
 };
 
-/**
- * Numbered "what to do next" line shown in every studio, so a new user can see the
- * order at a glance: done steps get a tick, the first open step is highlighted.
- */
+/** "What to do next" in a studio: the current step is the first one not done yet. */
 export function StudioSteps({ steps }: { steps: StudioStep[] }) {
-  const current = steps.findIndex((s) => !s.done);
+  const first = steps.findIndex((s) => !s.done);
   return (
-    <ol aria-label="Steps" className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
-      {steps.map((step, i) => {
-        const isCurrent = i === current;
-        const body = (
-          <>
-            <span
-              aria-hidden
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full font-archivo text-xs font-medium",
-                step.done
-                  ? "bg-v2-ink text-v2-surface"
-                  : isCurrent
-                    ? "bg-v2-pill text-v2-pill-ink"
-                    : "border border-v2-border text-v2-muted",
-              )}
-            >
-              {step.done ? <Check className="size-3.5" strokeWidth={2.5} /> : i + 1}
-            </span>
-            <span>{step.label}</span>
-            {step.done ? <span className="sr-only">(done)</span> : null}
-          </>
-        );
-        const className = cn(
-          "flex items-center gap-2 rounded-full py-1 pl-1 pr-3 font-inter-tight text-sm",
-          isCurrent
-            ? "bg-v2-surface text-v2-ink shadow-[var(--v2-shadow-card)]"
-            : step.done
-              ? "text-v2-ink"
-              : "text-v2-muted",
-        );
-        return (
-          <li key={step.label} className="flex items-center gap-1.5">
-            {i > 0 ? <ChevronRight aria-hidden className="size-3.5 text-v2-muted" /> : null}
-            {step.onClick ? (
-              <button
-                type="button"
-                onClick={step.onClick}
-                aria-current={isCurrent ? "step" : undefined}
-                className={cn(className, "hover:underline")}
-              >
-                {body}
-              </button>
-            ) : (
-              <span aria-current={isCurrent ? "step" : undefined} className={className}>
-                {body}
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <StepBar
+      label="Steps"
+      labels={steps.map((s) => s.label)}
+      current={first === -1 ? steps.length - 1 : first}
+      onSelect={(i) => steps[i].onClick?.()}
+      clickable={(i) => !!steps[i].onClick}
+    />
   );
 }

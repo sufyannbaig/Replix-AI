@@ -232,9 +232,9 @@ function ConceptPage() {
       <div className="mt-10">
         <StudioSteps
           steps={[
-            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
-            { label: "Write your concept", done: !!concept.trim() },
-            { label: "Add a character and scene", done: !!character && !!scene },
+            { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
+            { label: "Concept", done: !!concept.trim() },
+            { label: "Cast & scene", done: !!character && !!scene },
             { label: "Generate", done: false },
           ]}
         />

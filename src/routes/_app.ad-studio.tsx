@@ -38,8 +38,8 @@ function AdStudioPage() {
       <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
         <StudioSteps
           steps={[
-            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
-            { label: "Pick a creative theme", done: !!theme },
+            { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
+            { label: "Theme", done: !!theme },
             { label: "Generate", done: false },
           ]}
         />

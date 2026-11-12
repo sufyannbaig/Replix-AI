@@ -196,9 +196,9 @@ function ShortsPage() {
         <StudioSteps
           steps={[
             mode === "templates"
-              ? { label: "Pick a template", done: !!template }
-              : { label: "Upload your scene", done: !!scene },
-            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
+              ? { label: "Template", done: !!template }
+              : { label: "Your scene", done: !!scene },
+            { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
             { label: "Generate", done: false },
           ]}
         />

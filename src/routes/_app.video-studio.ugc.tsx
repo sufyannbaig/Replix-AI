@@ -224,22 +224,14 @@ function UgcPage() {
           steps={
             mode === "templates"
               ? [
-                  { label: "Pick a template", done: !!template },
-                  {
-                    label: "Add your product",
-                    done: !!product,
-                    onClick: () => setPickerOpen(true),
-                  },
+                  { label: "Template", done: !!template },
+                  { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
                   { label: "Generate", done: false },
                 ]
               : [
-                  { label: "Upload a scene and character", done: !!scene && !!character },
-                  {
-                    label: "Add your product",
-                    done: !!product,
-                    onClick: () => setPickerOpen(true),
-                  },
-                  { label: "Write the script", done: !!script.trim() },
+                  { label: "Scene & cast", done: !!scene && !!character },
+                  { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
+                  { label: "Script", done: !!script.trim() },
                   { label: "Generate", done: false },
                 ]
           }

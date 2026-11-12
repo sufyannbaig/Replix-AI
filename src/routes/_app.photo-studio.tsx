@@ -318,21 +318,16 @@ function PhotoStudioPage() {
           onChange={(next) => navigate({ search: next === "templates" ? {} : { mode: next } })}
         />
 
-        <StudioSteps
-          steps={[
-            {
-              label:
-                mode === "templates"
-                  ? "Pick a template"
-                  : mode === "piece"
-                    ? "Choose a scene and extras"
-                    : "Upload your scene",
-              done: !!style,
-            },
-            { label: "Add your product", done: !!product, onClick: () => setPickerOpen(true) },
-            { label: "Generate", done: false },
-          ]}
-        />
+        {/* Piece By Piece has its own step bar (Scene → Props → Character → Pose). */}
+        {mode === "piece" ? null : (
+          <StudioSteps
+            steps={[
+              { label: mode === "templates" ? "Template" : "Your scene", done: !!style },
+              { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
+              { label: "Generate", done: false },
+            ]}
+          />
+        )}
 
         {mode === "templates" ? (
           <div className="flex flex-col gap-[30px]">
