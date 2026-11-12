@@ -74,7 +74,7 @@ On 2026-11-12 the same steps put the Shopify logo swap live: a product photo ico
 
 ## 5c. Studio steps (2026-11-12)
 
-Every studio mode shows a numbered "what to do next" line (`src/v2/components/studio/StudioSteps.tsx`, commit `5d41585`), from Ben's call: he couldn't tell what to do first. Done steps get a tick, the next step is highlighted, and "Add your product" opens the product picker. Imported into Lovable and checked on the preview (Photo, Ad, Concept, UGC custom at phone width).
+Every studio mode shows the Build Piece By Piece chevron bar as its steps (`StepBar` in `src/v2/components/studio/StudioSteps.tsx`, commit `8c7fda1`), from Ben's call: he couldn't tell what to do first. Sufyan asked for exactly that bar, not a new style. Piece By Piece uses the same `StepBar` and keeps only its own steps. Labels stay short ("1. Template › 2. Product › 3. Generate"); "Product" opens the product picker. Imported into Lovable and checked on the preview (Photo templates and piece, UGC custom at phone width).
 
 ## 6. What's left, in a sensible order
 
