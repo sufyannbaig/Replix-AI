@@ -25,10 +25,10 @@ import {
 import { photoGenerationCost, usePhotoTemplates, usePiece } from "@/v2/data/api";
 import { photoInputs } from "@/v2/data/inputs";
 import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
-import mocha from "@/assets/v2/catalog/photo/weekend-flat-lay.webp";
-import sodaHand from "@/assets/v2/catalog/photo/hand-hero.webp";
+import mocha from "@/assets/v2/catalog/photo/two-tone-set.webp";
+import sodaHand from "@/assets/v2/catalog/photo/hold-out.webp";
 import sodaCherry from "@/assets/v2/catalog/product/acme-charge.webp";
-import truffle from "@/assets/v2/catalog/photo/linen-studio.webp";
+import truffle from "@/assets/v2/catalog/photo/terrazzo-pedestal.webp";
 import modeScene from "@/assets/v2/studio/mode-scene.svg";
 import modeText from "@/assets/v2/studio/mode-text.svg";
 import modePalette from "@/assets/v2/studio/mode-palette.svg";
@@ -466,8 +466,8 @@ function TemplateCard({
       aria-pressed={selected}
       aria-label={`${template.name}${template.isPro ? " (Pro)" : ""}`}
       className={cn(
-        /* Delivered template art is 4:3; keep the card the same shape so nothing is cropped. */
-        "group relative aspect-[4/3] overflow-hidden rounded-[12px] text-left outline-none",
+        /* Template art is 4:5 portrait; keep the card the same shape so nothing is cropped. */
+        "group relative aspect-[4/5] overflow-hidden rounded-[12px] text-left outline-none",
         selected && "ring-[1.7px] ring-[#124498] ring-offset-0",
       )}
     >

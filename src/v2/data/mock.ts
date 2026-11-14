@@ -91,7 +91,7 @@ export function catalogImage(folder: string, slug: string): string {
 }
 
 /**
- * The `catalog` storage bucket path ("photo/linen-studio.webp") of a bundled catalog image
+ * The `catalog` storage bucket path ("photo/splash-burst.webp") of a bundled catalog image
  * URL, or null. The generation server reads art from that bucket instead of fetching its own
  * site, which Lovable's preview host blocks.
  */
@@ -100,14 +100,41 @@ export function catalogPathForUrl(url: string): string | null {
   return key ? key.slice(key.indexOf("/catalog/") + "/catalog/".length) : null;
 }
 
-/* Names, categories and Pro flags in this catalog follow the Replix Library Playbook. */
+/*
+ * Photo templates from the Figma "Experimentation." page (node 299:46), 4:5 portrait,
+ * exported at 800x1000. They replaced the first six Drive templates. Free ones cover each
+ * filter; the rest are Pro. Same ids, names, categories and Pro flags as the `templates` rows.
+ */
 const PHOTO_TEMPLATE_META: [string, string, PhotoTemplateCategory[], boolean][] = [
-  ["linen-studio", "Linen Studio", ["studio", "without-model"], false],
-  ["clean-white", "Clean White", ["studio", "without-model"], false],
-  ["morning-kitchen", "Morning Kitchen", ["lifestyle", "without-model"], false],
-  ["hand-hero", "Hand Hero", ["with-model"], true],
-  ["weekend-flat-lay", "Weekend Flat Lay", ["flat-lay", "without-model"], false],
-  ["golden-hour-model", "Golden Hour Model", ["with-model"], true],
+  ["splash-burst", "Splash Burst", ["studio", "without-model"], false],
+  ["hold-out", "Hold Out", ["with-model"], false],
+  ["terrazzo-pedestal", "Terrazzo Pedestal", ["studio", "without-model"], false],
+  ["linen-morning", "Linen Morning", ["lifestyle", "without-model"], false],
+  ["soft-studio", "Soft Studio", ["studio", "without-model"], false],
+  ["morning-routine", "Morning Routine", ["with-model", "lifestyle"], false],
+  ["tone-on-tone", "Tone on Tone", ["studio", "without-model"], false],
+  ["ingredient-spread", "Ingredient Spread", ["flat-lay", "without-model"], false],
+  ["two-tone-set", "Two-Tone Set", ["flat-lay", "without-model"], false],
+  ["desk-setup", "Desk Setup", ["lifestyle", "without-model"], false],
+  ["blind-shadows", "Blind Shadows", ["lifestyle", "without-model"], false],
+  ["palm-shadow", "Palm Shadow", ["lifestyle", "without-model"], false],
+  ["fruit-burst", "Fruit Burst", ["studio", "without-model"], true],
+  ["golden-skin", "Golden Skin", ["with-model"], true],
+  ["monolith", "Monolith", ["studio", "without-model"], true],
+  ["sky-high", "Sky High", ["with-model", "lifestyle"], true],
+  ["power-burst", "Power Burst", ["studio", "without-model"], true],
+  ["flash-sip", "Flash Sip", ["with-model"], true],
+  ["black-water", "Black Water", ["studio", "without-model"], true],
+  ["morning-commute", "Morning Commute", ["with-model", "lifestyle"], true],
+  ["levitation", "Levitation", ["studio", "without-model"], true],
+  ["track-day", "Track Day", ["with-model", "lifestyle"], true],
+  ["ice-crush", "Ice Crush", ["studio", "without-model"], true],
+  ["tennis-club", "Tennis Club", ["with-model", "lifestyle"], true],
+  ["spotlight-noir", "Spotlight Noir", ["studio", "without-model"], true],
+  ["studio-stride", "Studio Stride", ["with-model", "studio"], true],
+  ["satin-wave", "Satin Wave", ["studio", "without-model"], true],
+  ["mirror-floor", "Mirror Floor", ["studio", "without-model"], true],
+  ["trail-dawn", "Trail Dawn", ["lifestyle", "without-model"], true],
 ];
 
 export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
@@ -363,30 +390,30 @@ function feedCard(kind: FeedKind, slug: string): CommunityCreation {
     return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 1, title: t?.name ?? slug };
   }
   const t = photoTemplates.find((x) => x.id === `pt_${slug}`);
-  return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 4 / 3, title: t?.name ?? slug };
+  return { id, kind, imageUrl: t?.imageUrl ?? "", aspect: 4 / 5, title: t?.name ?? slug };
 }
 
 /* Community feed: every finished template, mixed so the formats sit side by side. */
 export const communityCreations: CommunityCreation[] = (
   [
     ["ugc", "honest-review"],
-    ["photoshoot", "golden-hour-model"],
+    ["photoshoot", "golden-skin"],
     ["ad", "bold-offer"],
     ["product-short", "dramatic-light"],
-    ["photoshoot", "hand-hero"],
+    ["photoshoot", "splash-burst"],
     ["ad", "testimonial"],
     ["ugc", "the-reveal"],
     ["product-short", "floating"],
-    ["photoshoot", "linen-studio"],
+    ["photoshoot", "monolith"],
     ["ugc", "morning-routine"],
     ["product-short", "splash"],
-    ["photoshoot", "weekend-flat-lay"],
+    ["photoshoot", "two-tone-set"],
     ["ugc", "first-unboxing"],
     ["ad", "before-after"],
     ["product-short", "morning-light"],
-    ["photoshoot", "clean-white"],
+    ["photoshoot", "levitation"],
     ["ad", "lifestyle"],
-    ["photoshoot", "morning-kitchen"],
+    ["photoshoot", "linen-morning"],
     ["ugc", "try-on-check"],
     ["ad", "problem-fix"],
     ["ugc", "gym-quick-take"],

@@ -76,6 +76,12 @@ On 2026-11-12 the same steps put the Shopify logo swap live: a product photo ico
 
 Every studio mode shows the Build Piece By Piece chevron bar as its steps (`StepBar` in `src/v2/components/studio/StudioSteps.tsx`, commit `8c7fda1`), from Ben's call: he couldn't tell what to do first. Sufyan asked for exactly that bar, not a new style. Piece By Piece uses the same `StepBar` and keeps only its own steps. Labels stay short ("1. Template › 2. Product › 3. Generate"); "Product" opens the product picker. Imported into Lovable and checked on the preview (Photo templates and piece, UGC custom at phone width).
 
+## 5d. New Photo Studio templates and Bold offer fixes (2026-11-15)
+
+**Photo templates.** Sufyan's 29 new templates (Figma file "WEBSITE - KURA REVOLVES AROUND YOU", page "Experimentation.", node 299:46) replace the first six, which weren't aesthetic. They are 4:5 portrait, so the template cards are 4:5 now. The art is in `src/assets/v2/catalog/photo/<slug>.webp` (800x1000) and the list is `PHOTO_TEMPLATE_META` in `mock.ts`: 12 free, 17 Pro. The square "hf_…" images on that page are not templates. **Two steps aren't done in code:** the migration `20261115120000_v2_photo_templates_figma.sql` (adds the 29 rows, turns off the old six) must run, and the 29 webp files must be uploaded to the `catalog` bucket at `photo/<slug>.webp`. Until both are done, a new template fails with "That template isn't available any more."
+
+**Bold offer, after the first live test (3 ads on Acme Charge).** The dynamic photos are much better. The Poster now sets its type on the photo's own backdrop colour (`photoBackdrop`), not the brand colour (a black field over a blue set looked pasted on). Its CTA sits under the copy, not at the bottom over the product. The Stamp is smaller and its photo brief keeps the product left of centre (the badge clipped a centred can). Commit `b8fdd99`; not yet re-tested live.
+
 ## 6. What's left, in a sensible order
 
 **Ad Studio**
