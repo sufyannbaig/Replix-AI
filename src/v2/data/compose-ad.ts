@@ -8,6 +8,7 @@ import {
   FONT,
   buildAdLayout,
   photoAccent,
+  photoBackdrop,
   readLogoPixels,
   usableAccent,
   type AdLogo,
@@ -253,6 +254,24 @@ async function adColors(design: AdDesign, photo: Blob) {
   return design.accent ? [usableAccent(design.accent)] : undefined;
 }
 
+/** The photo's plain top-edge colour, for the Poster's type field (null when busy). */
+async function adBackdrop(photo: Blob) {
+  try {
+    const bitmap = await createImageBitmap(photo, { resizeWidth: 48, resizeHeight: 48 });
+    const canvas = document.createElement("canvas");
+    canvas.width = 48;
+    canvas.height = 48;
+    const g = canvas.getContext("2d");
+    if (!g) throw new Error("No canvas");
+    g.drawImage(bitmap, 0, 0, 48, 48);
+    bitmap.close();
+    return photoBackdrop(g.getImageData(0, 0, 48, 48).data, 48, 48);
+  } catch (error) {
+    console.warn("[v2 ads] photo backdrop skipped", error);
+    return null;
+  }
+}
+
 /** Compose one ad. Rejects if anything fails; the caller keeps showing the photo then. */
 export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blob> {
   const [{ default: satori }, fonts, { blob: photoBlob, dataUrl: photo }, brand, logo] =
@@ -263,7 +282,10 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       design.fonts ? brandFonts(design).catch(() => null) : Promise.resolve(null),
       loadLogo(design),
     ]);
-  const colors = await adColors(design, photoBlob);
+  const [colors, backdrop] = await Promise.all([
+    adColors(design, photoBlob),
+    design.layout === "poster" ? adBackdrop(photoBlob) : Promise.resolve(null),
+  ]);
   const render = async (withBrand: boolean) => {
     const { width, height, tree } = buildAdLayout({
       layout: design.layout,
@@ -272,6 +294,7 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       copy: design.copy,
       colors,
       labels: design.labels,
+      ...(backdrop ? { backdrop } : {}),
       ...(logo ? { logo } : {}),
       ...(withBrand && brand ? { fonts: brand.names, measure: brand.measure } : {}),
     });

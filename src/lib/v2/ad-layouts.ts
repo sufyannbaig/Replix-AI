@@ -47,6 +47,11 @@ export type AdLayoutInput = {
   measure?: (text: string, size: number) => number;
   /** The brand logo, already analysed by the renderer (see AdLogo). */
   logo?: AdLogo;
+  /**
+   * The plain colour along the photo's top edge (photoBackdrop), when it has one. The Poster
+   * sets its type on this so the colour field and the photo read as one picture.
+   */
+  backdrop?: string;
 };
 
 /** A logo image ready to draw: PNG data URL plus what the renderer learnt about it. */
@@ -98,7 +103,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   quote:
     "A person in a warm, real setting holding the product close to camera on the right side of the frame, label to camera. The product is big: at least 40% of the frame height, vertically centred, never small or in the background. The left half is soft, out of focus and calm.",
   poster:
-    "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp and centred in the lower 60% of the frame, filling about 55% of the frame height. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top 40% of the frame is that plain backdrop colour, with only a little of the motion reaching into it; the product never reaches into it. Never a product standing still on a plain grey or white set.",
+    "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp and centred in the lower 55% of the frame, filling about 50% of the frame height. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top 45% of the frame is that plain backdrop colour, with only a little of the motion reaching into it; the product never reaches into it. Never a product standing still on a plain grey or white set.",
   editorial:
     "Candid lifestyle moment with the product held close to camera, label facing it and at least a quarter of the frame height, kept in the upper 55% of the frame. The bottom 30% (45% on a vertical frame) is calm and slightly darker, with nothing important in it.",
   caption:
@@ -107,7 +112,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
     "One vertical photo split across the middle into two stacked halves of the same place: the top half shows the problem in dim, cool light; the bottom half shows it bright and warm with the product, large and clear. Keep the top 20% calm on both.",
   note: "A person in a warm, real setting holding the product close to camera, label to camera, at least 40% of the frame height, on the right side of the frame (in the lower half on a vertical frame). The left half (the top half on a vertical frame) is soft, out of focus and calm, like a table, wall or window, so a paper note can sit there.",
   stamp:
-    "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp and centred, filling about 55% of the frame height. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right and bottom left corners are plain backdrop with nothing in them. Never a product standing still on a plain grey or white set.",
+    "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp, filling about 50% of the frame height, standing left of centre with its middle about 40% from the left edge and slightly low in the frame. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right quarter of the frame and the bottom left corner are plain backdrop with nothing in them, not even the product's edge. Never a product standing still on a plain grey or white set.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -256,6 +261,32 @@ export function photoAccent(
   }
   const w = weight[pick];
   return usableAccent(rgbToHex(sum[pick][0] / w, sum[pick][1] / w, sum[pick][2] / w));
+}
+
+/**
+ * The photo's plain backdrop colour along its top edge (RGBA pixels, any small size): the
+ * average of the top 10% of rows. Null when that band is busy (a scene, not one colour), so
+ * the caller keeps its accent.
+ */
+export function photoBackdrop(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string | null {
+  const rows = Math.max(2, Math.round(height * 0.1));
+  const px: number[][] = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i + 3] >= 128) px.push([data[i], data[i + 1], data[i + 2]]);
+    }
+  }
+  if (!px.length) return null;
+  const mean = [0, 1, 2].map((c) => px.reduce((t, p) => t + p[c], 0) / px.length);
+  const spread =
+    px.reduce((t, p) => t + Math.hypot(p[0] - mean[0], p[1] - mean[1], p[2] - mean[2]), 0) /
+    px.length;
+  return spread > 38 ? null : rgbToHex(mean[0], mean[1], mean[2]);
 }
 
 /** First usable colour from the brand/accent list, else the fallback. */
@@ -650,12 +681,14 @@ export function posterFade(accent: string, solidTo: number, height: number) {
   };
 }
 
+/** Extra space above the Poster CTA, which sits in the colour field under the copy. */
+const POSTER_CTA_GAP = 10;
+
 /** Bold offer: huge condensed type on the accent colour, which fades into a full-bleed photo. */
 function poster(ctx: Ctx): AdNode {
   /* The logo sits top centre; everything else moves down by its height. */
   const logoRoom = ctx.logo ? logoHeight(ctx) + 20 : 0;
   const textTop = ctx.top + logoRoom;
-  let field = textTop + ctx.height * (ctx.height > ctx.width ? 0.2 : 0.3);
   const textW = ctx.width - ctx.pad * 2;
   const words = ctx.copy.headline.toUpperCase();
   /* Anton is condensed by design; a brand font is usually wider, so it gets a lower cap and
@@ -667,16 +700,26 @@ function poster(ctx: Ctx): AdNode {
     glyph: 0.52,
     measure: ctx.fit,
   });
-  if (ctx.fit) {
-    /* A brand headline can take three lines: start the photo card below the real text. */
-    const lines = measuredLines(words, textW, size, ctx.fit);
-    const sub = ctx.copy.subline ? 18 + 34 * 1.3 : 0;
-    field = Math.max(field, textTop + lines * size * 0.98 + sub + 28);
-  }
-  const ink = inkOn(ctx.accent);
-  /* The photo fills the frame (no pasted-in card). The accent colour is solid behind the
-     type and fades into the photo just below it, so type and photo read as one picture. */
-  const fade = posterFade(ctx.accent, field, ctx.height);
+  /* The colour stays solid down past the last line of text (headline, subline and CTA). */
+  const lines = measuredLines(
+    words,
+    textW,
+    size,
+    ctx.fit ?? ((t: string, s: number) => t.length * s * 0.52),
+  );
+  const subLines = ctx.copy.subline
+    ? Math.max(1, Math.ceil((ctx.copy.subline.length * 34 * 0.5) / textW))
+    : 0;
+  const sub = subLines ? 18 + subLines * 34 * 1.3 : 0;
+  const cta = 18 + POSTER_CTA_GAP + 34 + 2 * Math.round(34 * 0.62);
+  const field = textTop + lines * size * (ctx.fit ? 0.98 : 0.9) + sub + cta + 28;
+  /* The photo's own backdrop colour when it has a plain one, so the type field and the photo
+     read as one picture (live, a black brand colour over a blue set looked pasted on). */
+  const wash = ctx.backdrop ?? ctx.accent;
+  const ink = inkOn(wash);
+  /* The photo fills the frame. The colour is solid behind the type and fades into the photo
+     just below it. */
+  const fade = posterFade(wash, field, ctx.height);
   return el(
     "div",
     {
@@ -684,7 +727,7 @@ function poster(ctx: Ctx): AdNode {
       position: "relative",
       width: ctx.width,
       height: ctx.height,
-      background: ctx.accent,
+      background: wash,
     },
     [
       el(
@@ -743,19 +786,14 @@ function poster(ctx: Ctx): AdNode {
                 ),
               ]
             : []),
+          /* Under the copy, never down on the product (live, a bottom CTA covered the can's
+             name on a tall frame). */
+          el(
+            "div",
+            { display: "flex", marginTop: POSTER_CTA_GAP },
+            pill(ctx.copy.cta, ink, 34, ctx.body),
+          ),
         ],
-      ),
-      el(
-        "div",
-        {
-          position: "absolute",
-          left: 0,
-          bottom: ctx.bottom,
-          width: ctx.width,
-          display: "flex",
-          justifyContent: "center",
-        },
-        outlined(pill(ctx.copy.cta, "#FFFFFF", 34, ctx.body)),
       ),
       ...(ctx.logo
         ? [
@@ -1429,7 +1467,8 @@ function note(ctx: Ctx): AdNode {
 /** Bold offer B: the product centred, headline and subline in a round badge like a stamp. */
 function stamp(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
-  const d = Math.round(Math.min(ctx.width, ctx.height) * (tall ? 0.46 : 0.4));
+  /* Smaller than it was: live, a bigger badge clipped the top of a centred product. */
+  const d = Math.round(Math.min(ctx.width, ctx.height) * (tall ? 0.42 : 0.36));
   const words = ctx.copy.headline.toUpperCase();
   /* The subline shares the badge, so the headline gets a little less room when there is one. */
   const room = ctx.copy.subline ? 0.84 : 1;
