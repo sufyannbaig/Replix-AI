@@ -126,7 +126,21 @@ export type ProductInsights = {
   adAngles: string[];
 };
 
-export type AdThemeId = "problem-fix" | "before-after" | "testimonial" | "bold-offer" | "lifestyle";
+/** v1's ten themes; problem-fix, bold-offer and lifestyle are retired v2 themes old jobs use. */
+export type AdThemeId =
+  | "showcase"
+  | "bold-claim"
+  | "feature-benefit"
+  | "headline"
+  | "offer-sale"
+  | "problem-solution"
+  | "before-after"
+  | "stats"
+  | "testimonial"
+  | "us-vs-them"
+  | "problem-fix"
+  | "bold-offer"
+  | "lifestyle";
 
 export type AdTheme = {
   id: AdThemeId;
@@ -303,6 +317,8 @@ export type AdDesign = {
   layout: import("@/lib/v2/ad-layouts").AdLayoutId;
   aspect: AspectRatio;
   copy: { headline: string; subline: string; cta: string };
+  /** The Banner's type voice for this product (see AdLayoutInput.typeStyle). */
+  typeStyle?: "bold" | "condensed" | "elegant";
   /** Brand colours. Older ads also carry the accent here. */
   colors?: string[];
   /**

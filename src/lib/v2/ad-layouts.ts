@@ -18,6 +18,7 @@ export const AD_LAYOUT_IDS = [
   "note",
   "stamp",
   "magazine",
+  "banner",
 ] as const;
 
 export type AdLayoutId = (typeof AD_LAYOUT_IDS)[number];
@@ -52,6 +53,11 @@ export type AdLayoutInput = {
    * sets its type on this so the colour field and the photo read as one picture.
    */
   backdrop?: string;
+  /**
+   * The Banner's type voice, picked per product: heavy grotesk capitals, tall condensed
+   * capitals or an elegant serif. Default "bold".
+   */
+  typeStyle?: "bold" | "condensed" | "elegant";
 };
 
 /** A logo image ready to draw: PNG data URL plus what the renderer learnt about it. */
@@ -113,6 +119,8 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   note: "A person in a warm, real setting holding the product close to camera, label to camera, at least 40% of the frame height, on the right side of the frame (in the lower half on a vertical frame). The left half (the top half on a vertical frame) is soft, out of focus and calm, like a table, wall or window, so a paper note can sit there.",
   stamp:
     "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp, filling about 50% of the frame height, standing left of centre with its middle about 40% from the left edge and slightly low in the frame. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right quarter of the frame and the bottom left corner are plain backdrop with nothing in them, not even the product's edge. Never a product standing still on a plain grey or white set.",
+  banner:
+    "Studio-grade commercial photography in the scene described, like a premium paid-social ad. The whole product is sharp, large and the clear hero, filling about half of the frame height, in the upper and middle part of the frame with its base no lower than 62% of the frame height. The bottom 35% of the frame is calm and slightly darker (a plain surface, soft shadow or out-of-focus background) with nothing important in it, because the headline goes there.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -268,6 +276,20 @@ export function photoAccent(
  * average of the top 10% of rows. Null when that band is busy (a scene, not one colour), so
  * the caller keeps its accent.
  */
+/**
+ * The brand colours that are real colours: no near-black, near-white or grey, which would
+ * turn the Banner's band and button into a plain neutral (and every brand would look alike).
+ */
+export function chromaticColors(colors: string[]) {
+  return colors.filter((hex) => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return false;
+    const hi = Math.max(rgb.r, rgb.g, rgb.b);
+    const lo = Math.min(rgb.r, rgb.g, rgb.b);
+    return hi - lo >= 40 && hi >= 50 && lo <= 225;
+  });
+}
+
 export function photoBackdrop(
   data: Uint8ClampedArray,
   width: number,
@@ -1575,6 +1597,154 @@ function stamp(ctx: Ctx): AdNode {
   );
 }
 
+/** Mix a colour toward black (t < 1) or white (`toWhite`). */
+function shade(hex: string, t: number, toWhite = false) {
+  const rgb = hexToRgb(hex) ?? { r: 17, g: 17, b: 17 };
+  const m = (v: number) => (toWhite ? v + (255 - v) * t : v * t);
+  return rgbToHex(m(rgb.r), m(rgb.g), m(rgb.b));
+}
+
+const BANNER_TYPE = {
+  bold: { face: FONT.display, weight: 800, glyph: 0.66, upper: true, track: -1, lh: 0.98 },
+  condensed: { face: FONT.condensed, weight: 400, glyph: 0.46, upper: true, track: 1, lh: 0.95 },
+  elegant: { face: FONT.serif, weight: 400, glyph: 0.42, upper: false, track: 0, lh: 1.02 },
+} as const;
+
+/**
+ * Banner: v1's clear order (big headline, short line, button, all at the bottom) with type
+ * that follows the product instead of one look for everything. The band is a deep shade of
+ * the product's own colour, the button is that colour (or a light tint when it would sink
+ * into the band), and the type voice changes with `typeStyle`. Set by code, so the words
+ * are always spelled exactly.
+ */
+function banner(ctx: Ctx): AdNode {
+  const tall = ctx.height > ctx.width;
+  const type = BANNER_TYPE[ctx.typeStyle ?? "bold"];
+  const textW = ctx.width - ctx.pad * 2;
+  const words = type.upper ? ctx.copy.headline.toUpperCase() : ctx.copy.headline;
+  const measure = ctx.fit ?? ((t: string, s: number) => t.length * s * type.glyph);
+  let size = fitHeadline(words, textW, {
+    maxLines: tall ? 3 : 2,
+    max: Math.round(ctx.width * (tall ? 0.14 : 0.11)),
+    min: 56,
+    glyph: type.glyph,
+    measure: ctx.fit,
+  });
+  /* Never more than a quarter of the frame: the photo stays the hero. */
+  while (
+    size > 56 &&
+    measuredLines(words, textW, size, measure) * size * type.lh > ctx.height * 0.25
+  )
+    size -= 4;
+  const band = shade(ctx.accent, 0.16);
+  const rgb = hexToRgb(band)!;
+  const cta = contrast(ctx.accent, band) >= 3 ? ctx.accent : shade(ctx.accent, 0.55, true);
+  const sub = ctx.copy.subline ?? "";
+  const subSize = Math.round(ctx.width * (type.upper ? 0.028 : 0.034));
+  const ctaSize = Math.round(ctx.width * 0.03);
+  const lines = measuredLines(words, textW, size, measure);
+  const block =
+    lines * size * type.lh +
+    (sub ? 16 + subSize * 1.3 * Math.max(1, Math.ceil((sub.length * subSize * 0.6) / textW)) : 0) +
+    28 +
+    ctaSize +
+    2 * Math.round(ctaSize * 0.62);
+  const bandTop = Math.max(0, ctx.height - ctx.bottom - block - ctx.height * 0.16);
+  const c = (a: number) => `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
+  /* Elegant gets a quiet outlined button; the others a solid one in the product colour. */
+  const button: Record<string, string> =
+    ctx.typeStyle === "elegant"
+      ? {
+          background: "transparent",
+          color: "#FFFFFF",
+          border: `2px solid ${shade(cta, 0.6, true)}`,
+        }
+      : { background: cta, color: inkOn(cta) };
+  return el(
+    "div",
+    {
+      display: "flex",
+      position: "relative",
+      width: ctx.width,
+      height: ctx.height,
+      background: band,
+    },
+    [
+      photoLayer(ctx),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        top: bandTop,
+        width: ctx.width,
+        height: ctx.height - bandTop,
+        backgroundImage: `linear-gradient(180deg, ${c(0)} 0%, ${c(0.7)} 36%, ${c(0.93)} 68%, ${c(0.97)} 100%)`,
+      }),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: ctx.pad,
+          bottom: ctx.bottom,
+          width: textW,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        },
+        [
+          el(
+            "div",
+            {
+              fontFamily: ctx.heading(type.face),
+              fontWeight: ctx.fit ? 800 : type.weight,
+              fontSize: size,
+              lineHeight: type.lh,
+              letterSpacing: type.track,
+              color: "#FFFFFF",
+              textAlign: "center",
+            },
+            words,
+          ),
+          ...(sub
+            ? [
+                el(
+                  "div",
+                  {
+                    marginTop: 16,
+                    fontFamily: ctx.body,
+                    fontWeight: 500,
+                    fontSize: subSize,
+                    letterSpacing: type.upper ? 1.5 : 0,
+                    ...(type.upper ? { textTransform: "uppercase" } : {}),
+                    color: "rgba(255,255,255,0.88)",
+                    textAlign: "center",
+                  },
+                  sub,
+                ),
+              ]
+            : []),
+          el(
+            "div",
+            {
+              display: "flex",
+              marginTop: 28,
+              padding: `${Math.round(ctaSize * 0.62)}px ${Math.round(ctaSize * 1.4)}px`,
+              borderRadius: 999,
+              ...button,
+              fontFamily: ctx.body,
+              fontWeight: 700,
+              fontSize: ctaSize,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            },
+            ctx.copy.cta,
+          ),
+        ],
+      ),
+      ...logoMark(ctx, "photo", { left: ctx.pad, top: ctx.top }),
+    ],
+  );
+}
+
 /** Lifestyle B: a masthead-style headline at the top with a thin rule, subline and CTA text. */
 function magazine(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
@@ -1691,25 +1861,41 @@ const LAYOUTS: Record<AdLayoutId, (ctx: Ctx) => AdNode> = {
   note,
   stamp,
   magazine,
+  banner,
 };
 
-/** Default layout for each Ad Studio theme. */
-export const THEME_LAYOUT: Record<string, AdLayoutId> = {
-  "problem-fix": "hook",
-  "before-after": "split",
-  testimonial: "quote",
-  "bold-offer": "poster",
-  lifestyle: "editorial",
-};
+/**
+ * The Ad Studio themes (v1's ten, brought back 2026-11-15). They all use the Banner: the
+ * concept lives in the copy and the scene, and the type adapts to each product.
+ */
+export const AD_THEME_IDS = [
+  "showcase",
+  "bold-claim",
+  "feature-benefit",
+  "headline",
+  "offer-sale",
+  "problem-solution",
+  "before-after",
+  "stats",
+  "testimonial",
+  "us-vs-them",
+] as const;
 
-/** Each theme's layouts: A first, then B. */
+/**
+ * Each theme's layouts: A first, then B. The retired v2 themes (problem-fix, bold-offer,
+ * lifestyle) keep theirs so old jobs still read; their ads already store their layout.
+ */
 export const THEME_LAYOUTS: Record<string, AdLayoutId[]> = {
+  ...Object.fromEntries(AD_THEME_IDS.map((id) => [id, ["banner"] as AdLayoutId[]])),
   "problem-fix": ["hook", "caption"],
-  "before-after": ["split", "stacked"],
-  testimonial: ["quote", "note"],
   "bold-offer": ["poster", "stamp"],
   lifestyle: ["editorial", "magazine"],
 };
+
+/** Default layout for each Ad Studio theme. */
+export const THEME_LAYOUT: Record<string, AdLayoutId> = Object.fromEntries(
+  Object.entries(THEME_LAYOUTS).map(([id, list]) => [id, list[0]]),
+);
 
 /** Layouts that only work on some frames (Stacked needs a tall one). */
 export const LAYOUT_ASPECTS: Partial<Record<AdLayoutId, AspectRatio[]>> = {
@@ -1726,7 +1912,7 @@ export function layoutsFor(
   count: number,
   seed: number,
 ): AdLayoutId[] {
-  const all = (themeId && THEME_LAYOUTS[themeId]) || THEME_LAYOUTS["problem-fix"];
+  const all: AdLayoutId[] = (themeId && THEME_LAYOUTS[themeId]) || ["banner"];
   const usable = all.filter((l) => LAYOUT_ASPECTS[l]?.includes(aspect) ?? true);
   const list = usable.length ? usable : [all[0]];
   const start = Math.abs(Math.floor(seed)) % list.length;

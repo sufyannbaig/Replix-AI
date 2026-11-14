@@ -111,26 +111,70 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
     .trim();
 }
 
-/** Ad theme recipes: the story each theme tells and how the frame is laid out. */
+/**
+ * Ad theme recipes: the story each theme tells and how the photo is set. The ten themes are
+ * v1's (src/data/studio.ts on main), brought back on 2026-11-15; problem-fix, bold-offer and
+ * lifestyle are the retired v2 themes, kept so old jobs still read.
+ */
 export const AD_THEME_RECIPES: Record<
   string,
   { story: string; layout: string; /** Extra words the layout may show. */ labels?: string[] }
 > = {
+  showcase: {
+    story:
+      "Hero shot with one clear benefit: the product is the star, the headline says why it's worth having.",
+    layout:
+      "The product large and beautifully lit in a setting that suits it, like a premium campaign.",
+  },
+  "bold-claim": {
+    story:
+      "One confident statement, nothing else. The headline is a short, bold claim the details back up.",
+    layout: "The product in a striking, simple set with strong light and colour; no clutter.",
+  },
+  "feature-benefit": {
+    story:
+      "What it does, why it matters: the headline turns one real feature into the benefit the customer feels.",
+    layout: "The product shown so that feature is visible or implied, close and detailed.",
+  },
+  headline: {
+    story:
+      "Typography-led scroll stopper: a big, surprising headline does the work, the photo supports it.",
+    layout: "A calm, graphic set with the product clear and simple, so the big headline can lead.",
+  },
+  "offer-sale": {
+    story:
+      "Deal-led urgency. Use an offer, price or discount only if the brief or the customer note gives one; otherwise give a true reason to buy now (it's new, it's the season for it) and never invent a deal.",
+    layout: "Bright, energetic set with bold colour, the product large and front and centre.",
+  },
+  "problem-solution": {
+    story:
+      "Name the pain, then solve it: the headline names a real problem the customer has, the subline shows the product fixes it.",
+    layout: "The product as the confident answer, in the place where that problem happens.",
+  },
+  "before-after": {
+    story:
+      "Show the transformation: the headline contrasts life before and after the product, in words.",
+    layout: "The 'after' moment: the product in use and the result looking great.",
+  },
+  stats: {
+    story:
+      "One number that proves the point. Use a number only if it's in the brief (size, time, count, ingredient amount); otherwise lead with one hard, specific fact. Never invent statistics, ratings or percentages.",
+    layout: "Clean, confident set with the product sharp and clear, like a spec-led campaign.",
+  },
+  testimonial: {
+    story:
+      "A short customer quote: the headline reads like something a real customer would say, in quotation marks. No invented names, star counts or statistics.",
+    layout: "A warm, human, everyday set with the product in real use.",
+  },
+  "us-vs-them": {
+    story:
+      "Why you beat the alternative: the headline contrasts the product with the ordinary option, without naming or attacking any real brand.",
+    layout: "The product looking clearly premium and better made, in a crisp set.",
+  },
   "problem-fix": {
     story: "Name the customer's pain in the headline, show the product as the fix.",
     layout:
       "Split energy: the problem shown as a photo (a person, moment or mess, no words) on one side or in the background, the product bright and confident as the answer.",
-  },
-  "before-after": {
-    story: "Side-by-side proof of the difference the product makes.",
-    layout:
-      "Two clear halves (before / after) with a crisp divider; the product sits on the 'after' side. Small 'Before' and 'After' labels.",
-    labels: ["Before", "After"],
-  },
-  testimonial: {
-    story: "A short, believable customer voice. No invented names, star counts or statistics.",
-    layout:
-      "Product with a large quote-style headline in quotation marks, like a review card; warm, human set.",
   },
   "bold-offer": {
     story: "A punchy value or offer message that stops the scroll.",
@@ -144,6 +188,10 @@ export const AD_THEME_RECIPES: Record<
   },
 };
 
+/** How the Banner sets the type: picked by the copywriter for each product. */
+export const AD_TYPE_STYLES = ["bold", "condensed", "elegant"] as const;
+export type AdTypeStyle = (typeof AD_TYPE_STYLES)[number];
+
 export type AdCopy = {
   headline: string;
   subline: string;
@@ -152,6 +200,8 @@ export type AdCopy = {
   scene?: string;
   /** One colour from the product photo, as #RRGGBB, for the type layer. */
   accent?: string;
+  /** How the Banner sets the type for this product. */
+  typeStyle?: AdTypeStyle;
 };
 
 export type AdCopyBrief = {
@@ -190,8 +240,8 @@ export function adCopyMessages(brief: AdCopyBrief) {
 ${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
 ${compositionText(brief)}
-Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle.
-Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "ads":[{"headline": max 6 words, "subline": max 10 words, "cta": 2-3 words like "Shop now", "scene": one or two sentences of photo direction for this ad (who, where, what moment, light) that fits the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB}]}. Every ad must be about that product.`;
+Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle on the theme.
+Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "type": how the headline should be set for this product, one of "bold" (everyday, tech, food, drinks, home goods), "condensed" (sport, fitness, energy, gaming, streetwear) or "elegant" (beauty, skincare, fragrance, jewellery, fashion, interiors), "ads":[{"headline": 3-6 punchy words that stop the scroll, "subline": optional, at most 7 words, "cta": 2-3 words like "Shop now", "scene": one vivid art-direction sentence for this ad's photo: setting, surface, props, lighting and colour palette, fitting the theme and the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB}]}. Every ad must be about that product.`;
   return [
     {
       role: "system",
@@ -262,6 +312,8 @@ export function adPhotoPrompt(
 
 /** Parse and sanitise the copy model's reply, padding to `count` with safe defaults. */
 export function parseAdCopy(raw: unknown, count: number, productName: string): AdCopy[] {
+  const type = (raw as { type?: unknown })?.type;
+  const typeStyle = AD_TYPE_STYLES.find((t) => t === type);
   const ads = Array.isArray((raw as { ads?: unknown })?.ads)
     ? ((raw as { ads: unknown[] }).ads as Partial<AdCopy>[])
     : [];
@@ -283,9 +335,15 @@ export function parseAdCopy(raw: unknown, count: number, productName: string): A
     if (scene) copy.scene = scene;
     const accent = safe(a.accent, 7);
     if (/^#[0-9a-f]{6}$/i.test(accent)) copy.accent = accent.toUpperCase();
+    if (typeStyle) copy.typeStyle = typeStyle;
     return copy;
   });
   while (out.length < count)
-    out.push({ headline: productName.slice(0, 60), subline: "", cta: "Shop now" });
+    out.push({
+      headline: productName.slice(0, 60),
+      subline: "",
+      cta: "Shop now",
+      ...(typeStyle ? { typeStyle } : {}),
+    });
   return out;
 }

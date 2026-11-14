@@ -416,6 +416,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
          finished photo when there are no brand colours. */
       colors: (brand.colors ?? []).slice(0, 5),
       ...(c.accent ? { accent: c.accent } : {}),
+      ...(c.typeStyle ? { typeStyle: c.typeStyle } : {}),
       ...(labels ? { labels } : {}),
       ...(fonts ? { fonts } : {}),
       ...(logo ? { logo } : {}),

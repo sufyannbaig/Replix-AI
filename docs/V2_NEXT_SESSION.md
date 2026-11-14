@@ -82,6 +82,10 @@ Every studio mode shows the Build Piece By Piece chevron bar as its steps (`Step
 
 **Bold offer, after the first live test (3 ads on Acme Charge).** The dynamic photos are much better. The Poster now sets its type on the photo's own backdrop colour (`photoBackdrop`), not the brand colour (a black field over a blue set looked pasted on). Its CTA sits under the copy, not at the bottom over the product. The Stamp is smaller and its photo brief keeps the product left of centre (the badge clipped a centred can). Commit `b8fdd99`; not yet re-tested live.
 
+## 5e. Ad Studio: v1 themes with adaptive type (2026-11-15)
+
+v1's ten ad themes and v1-style copy replace v2's five themes. Each ad uses the new Banner layout, and its type style (bold, condensed or elegant) and colour are chosen per product. Details are in `V2_AD_DESIGN_PLAN.md` step 7. **Migration `20261115130000_v2_ad_themes_v1.sql` must run**, or every new theme fails with "That template isn't available any more." It isn't tested live yet, and the hosted preview was still serving an old build.
+
 ## 6. What's left, in a sensible order
 
 **Ad Studio**

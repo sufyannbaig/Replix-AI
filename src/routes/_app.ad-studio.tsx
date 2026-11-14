@@ -76,7 +76,7 @@ function AdStudioPage() {
         <section className="flex flex-col gap-[30px]">
           <SectionTitle>Creative theme · pick one</SectionTitle>
           <div
-            className="grid grid-cols-2 gap-[22px] md:grid-cols-3 xl:grid-cols-4"
+            className="grid grid-cols-2 gap-[22px] md:grid-cols-3 xl:grid-cols-5"
             role="radiogroup"
             aria-label="Creative theme"
           >

@@ -21,11 +21,16 @@ import type {
   UgcStyle,
   UgcTemplate,
 } from "./types";
-import themeBeforeAfter from "@/assets/v2/catalog/ad/before-after.webp";
-import themeBoldOffer from "@/assets/v2/catalog/ad/bold-offer.webp";
-import themeLifestyle from "@/assets/v2/catalog/ad/lifestyle.webp";
-import themeProblemFix from "@/assets/v2/catalog/ad/problem-fix.webp";
-import themeTestimonial from "@/assets/v2/catalog/ad/testimonial.webp";
+import themeBeforeAfter from "@/assets/v2/catalog/ad-theme/before-after.webp";
+import themeBoldClaim from "@/assets/v2/catalog/ad-theme/bold-claim.webp";
+import themeFeatureBenefit from "@/assets/v2/catalog/ad-theme/feature-benefit.webp";
+import themeHeadline from "@/assets/v2/catalog/ad-theme/headline.webp";
+import themeOfferSale from "@/assets/v2/catalog/ad-theme/offer-sale.webp";
+import themeProblemSolution from "@/assets/v2/catalog/ad-theme/problem-solution.webp";
+import themeShowcase from "@/assets/v2/catalog/ad-theme/showcase.webp";
+import themeStats from "@/assets/v2/catalog/ad-theme/stats.webp";
+import themeTestimonial from "@/assets/v2/catalog/ad-theme/testimonial.webp";
+import themeUsVsThem from "@/assets/v2/catalog/ad-theme/us-vs-them.webp";
 import acmeBuds from "@/assets/v2/catalog/product/acme-buds.webp";
 import acmeCharge from "@/assets/v2/catalog/product/acme-charge.webp";
 import acmeSerum from "@/assets/v2/catalog/product/acme-glow-serum.webp";
@@ -285,36 +290,67 @@ export const sampleInsights: ProductInsights = {
   adAngles: ["Everyday upgrade", "Real results", "Quality you can see", "Gift"],
 };
 
+/* v1's ten ad themes (src/data/studio.ts on main), brought back on 2026-11-15. */
 export const adThemes: AdTheme[] = [
   {
-    id: "problem-fix",
-    name: "Problem → Fix",
-    description: "Name the pain, then show the product solving it",
-    imageUrl: themeProblemFix,
+    id: "showcase",
+    name: "Product Showcase",
+    description: "Hero shot with one clear benefit",
+    imageUrl: themeShowcase,
+  },
+  {
+    id: "bold-claim",
+    name: "Bold Claim",
+    description: "One confident statement, nothing else",
+    imageUrl: themeBoldClaim,
+  },
+  {
+    id: "feature-benefit",
+    name: "Feature → Benefit",
+    description: "What it does, why it matters",
+    imageUrl: themeFeatureBenefit,
+  },
+  {
+    id: "headline",
+    name: "Big Headline",
+    description: "Typography-led scroll stopper",
+    imageUrl: themeHeadline,
+  },
+  {
+    id: "offer-sale",
+    name: "Offer / Sale",
+    description: "Deal-led urgency creative",
+    imageUrl: themeOfferSale,
+  },
+  {
+    id: "problem-solution",
+    name: "Problem → Solution",
+    description: "Name the pain, then solve it",
+    imageUrl: themeProblemSolution,
   },
   {
     id: "before-after",
     name: "Before / After",
-    description: "Side-by-side proof of the difference it makes",
+    description: "Show the transformation",
     imageUrl: themeBeforeAfter,
   },
   {
+    id: "stats",
+    name: "Stat Led",
+    description: "One number that proves the point",
+    imageUrl: themeStats,
+  },
+  {
     id: "testimonial",
-    name: "Testimonials",
-    description: "Real-feeling customer quotes around the product",
+    name: "Testimonial",
+    description: "A short customer quote",
     imageUrl: themeTestimonial,
   },
   {
-    id: "bold-offer",
-    name: "Bold offer",
-    description: "Big type, one clear deal, impossible to scroll past",
-    imageUrl: themeBoldOffer,
-  },
-  {
-    id: "lifestyle",
-    name: "Lifestyle",
-    description: "The product in a real moment of everyday use",
-    imageUrl: themeLifestyle,
+    id: "us-vs-them",
+    name: "Us vs Them",
+    description: "Why you beat the alternative",
+    imageUrl: themeUsVsThem,
   },
 ];
 
@@ -398,7 +434,7 @@ export const communityCreations: CommunityCreation[] = (
   [
     ["ugc", "honest-review"],
     ["photoshoot", "golden-skin"],
-    ["ad", "bold-offer"],
+    ["ad", "offer-sale"],
     ["product-short", "dramatic-light"],
     ["photoshoot", "splash-burst"],
     ["ad", "testimonial"],
@@ -412,10 +448,10 @@ export const communityCreations: CommunityCreation[] = (
     ["ad", "before-after"],
     ["product-short", "morning-light"],
     ["photoshoot", "levitation"],
-    ["ad", "lifestyle"],
+    ["ad", "showcase"],
     ["photoshoot", "linen-morning"],
     ["ugc", "try-on-check"],
-    ["ad", "problem-fix"],
+    ["ad", "problem-solution"],
     ["ugc", "gym-quick-take"],
     ["product-short", "360-spin"],
     ["product-short", "studio-turn"],

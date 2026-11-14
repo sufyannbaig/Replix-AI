@@ -133,6 +133,8 @@ export type OutputCopy = {
   colors?: string[];
   /** The copywriter's product colour; the browser refines it from the photo. */
   accent?: string;
+  /** How the Banner sets the type (bold, condensed or elegant), picked per product. */
+  typeStyle?: "bold" | "condensed" | "elegant";
   labels?: string[];
   /** The brand fonts the ad uses; `files` are storage paths of uploaded fonts. */
   fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };

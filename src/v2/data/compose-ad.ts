@@ -7,6 +7,7 @@
 import {
   FONT,
   buildAdLayout,
+  chromaticColors,
   photoAccent,
   photoBackdrop,
   readLogoPixels,
@@ -236,7 +237,9 @@ async function inlinePhoto(url: string) {
  * the fallback.
  */
 async function adColors(design: AdDesign, photo: Blob) {
-  if (design.colors?.length) return design.colors;
+  /* The Banner's band and button come from a real brand colour, else the product's own. */
+  const brand = design.layout === "banner" ? chromaticColors(design.colors ?? []) : design.colors;
+  if (brand?.length) return brand;
   try {
     const bitmap = await createImageBitmap(photo, { resizeWidth: 48, resizeHeight: 48 });
     const canvas = document.createElement("canvas");
@@ -294,6 +297,7 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       copy: design.copy,
       colors,
       labels: design.labels,
+      ...(design.typeStyle ? { typeStyle: design.typeStyle } : {}),
       ...(backdrop ? { backdrop } : {}),
       ...(logo ? { logo } : {}),
       ...(withBrand && brand ? { fonts: brand.names, measure: brand.measure } : {}),

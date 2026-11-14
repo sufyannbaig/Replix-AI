@@ -2,6 +2,7 @@
 import { describe, test } from "node:test";
 import { ok, strictEqual } from "node:assert";
 import {
+  AD_THEME_IDS,
   AD_LAYOUT_IDS,
   AD_SIZES,
   LAYOUT_ASPECTS,
@@ -141,7 +142,7 @@ describe("buildAdLayout", () => {
   });
 
   test("every theme maps to a layout", () => {
-    for (const id of ["problem-fix", "before-after", "testimonial", "bold-offer", "lifestyle"]) {
+    for (const id of [...AD_THEME_IDS, "problem-fix", "bold-offer", "lifestyle"]) {
       ok(LAYOUTS.includes(THEME_LAYOUT[id]));
     }
   });

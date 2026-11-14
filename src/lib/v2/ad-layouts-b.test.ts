@@ -4,6 +4,7 @@
 import { describe, test } from "node:test";
 import { ok, strictEqual, deepStrictEqual } from "node:assert";
 import {
+  AD_THEME_IDS,
   AD_LAYOUT_IDS,
   LAYOUT_PHOTO_BRIEF,
   THEME_LAYOUT,
@@ -17,7 +18,8 @@ import {
 } from "./ad-layouts.ts";
 import { adCopyMessages } from "./recipes.ts";
 
-const THEMES = ["problem-fix", "before-after", "testimonial", "bold-offer", "lifestyle"];
+/** The retired v2 themes keep their A / B layouts for old jobs. */
+const THEMES = ["problem-fix", "bold-offer", "lifestyle"];
 
 function texts(node: AdNode, out: string[] = []) {
   const c = node.props.children;
@@ -56,23 +58,22 @@ describe("theme layouts", () => {
   });
 
   test("a batch takes turns between A and B from the seed", () => {
-    deepStrictEqual(layoutsFor("testimonial", "1:1", 4, 0), ["quote", "note", "quote", "note"]);
-    deepStrictEqual(layoutsFor("testimonial", "1:1", 2, 1), ["note", "quote"]);
+    deepStrictEqual(layoutsFor("problem-fix", "1:1", 4, 0), ["hook", "caption", "hook", "caption"]);
+    deepStrictEqual(layoutsFor("problem-fix", "1:1", 2, 1), ["caption", "hook"]);
     deepStrictEqual(layoutsFor("lifestyle", "9:16", 1, 7), ["magazine"]);
   });
 
-  test("Stacked only on tall frames; square and wide Before / After stay Split", () => {
-    for (const aspect of ["1:1", "16:9"] as const) {
-      deepStrictEqual(layoutsFor("before-after", aspect, 3, 1), ["split", "split", "split"]);
-    }
-    for (const aspect of ["4:5", "9:16"] as const) {
-      deepStrictEqual(layoutsFor("before-after", aspect, 2, 0), ["split", "stacked"]);
+  test("v1's ten themes all use the Banner, on every frame", () => {
+    for (const id of AD_THEME_IDS) {
+      for (const aspect of ["1:1", "4:5", "9:16", "16:9"] as const) {
+        deepStrictEqual(layoutsFor(id, aspect, 2, 1), ["banner", "banner"], `${id} ${aspect}`);
+      }
     }
   });
 
-  test("no theme falls back to Problem → Fix layouts; bad seeds still work", () => {
-    deepStrictEqual(layoutsFor(null, "1:1", 2, 0), ["hook", "caption"]);
-    deepStrictEqual(layoutsFor("unknown", "1:1", 1, -3), ["caption"]);
+  test("no theme falls back to the Banner; bad seeds still work", () => {
+    deepStrictEqual(layoutsFor(null, "1:1", 2, 0), ["banner", "banner"]);
+    deepStrictEqual(layoutsFor("unknown", "1:1", 1, -3), ["banner"]);
     strictEqual(layoutsFor("bold-offer", "1:1", 0, 0).length, 0);
   });
 });
