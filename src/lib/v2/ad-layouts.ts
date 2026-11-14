@@ -98,7 +98,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   quote:
     "A person in a warm, real setting holding the product close to camera on the right side of the frame, label to camera. The product is big: at least 40% of the frame height, vertically centred, never small or in the background. The left half is soft, out of focus and calm.",
   poster:
-    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 70% of the frame height, with only a little space around it. Never a small product in a big empty set.",
+    "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp and centred in the lower 60% of the frame, filling about 55% of the frame height. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top 40% of the frame is that plain backdrop colour, with only a little of the motion reaching into it; the product never reaches into it. Never a product standing still on a plain grey or white set.",
   editorial:
     "Candid lifestyle moment with the product held close to camera, label facing it and at least a quarter of the frame height, kept in the upper 55% of the frame. The bottom 30% (45% on a vertical frame) is calm and slightly darker, with nothing important in it.",
   caption:
@@ -107,7 +107,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
     "One vertical photo split across the middle into two stacked halves of the same place: the top half shows the problem in dim, cool light; the bottom half shows it bright and warm with the product, large and clear. Keep the top 20% calm on both.",
   note: "A person in a warm, real setting holding the product close to camera, label to camera, at least 40% of the frame height, on the right side of the frame (in the lower half on a vertical frame). The left half (the top half on a vertical frame) is soft, out of focus and calm, like a table, wall or window, so a paper note can sit there.",
   stamp:
-    "Studio hero shot on a plain seamless background in a colour that suits the product. The whole product is in frame and centred, filling about 55% of the frame height. The top right and bottom left corners are plain background with nothing in them.",
+    "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp and centred, filling about 55% of the frame height. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right and bottom left corners are plain backdrop with nothing in them. Never a product standing still on a plain grey or white set.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -635,7 +635,22 @@ function hook(ctx: Ctx): AdNode {
   );
 }
 
-/** Bold offer: a solid colour field with huge condensed type, the product photo below it. */
+/**
+ * The Poster's colour wash: solid accent down to just under the type (`solidTo`), then a fade
+ * to clear over the next 14% of the frame. Exported for tests.
+ */
+export function posterFade(accent: string, solidTo: number, height: number) {
+  const rgb = hexToRgb(accent) ?? { r: 17, g: 17, b: 17 };
+  const c = (a: number) => `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
+  const total = Math.min(height, Math.round(solidTo + height * 0.14));
+  const stop = Math.round((solidTo / total) * 100);
+  return {
+    height: total,
+    gradient: `linear-gradient(180deg, ${c(1)} 0%, ${c(1)} ${stop}%, ${c(0.6)} ${Math.round((stop + 100) / 2)}%, ${c(0)} 100%)`,
+  };
+}
+
+/** Bold offer: huge condensed type on the accent colour, which fades into a full-bleed photo. */
 function poster(ctx: Ctx): AdNode {
   /* The logo sits top centre; everything else moves down by its height. */
   const logoRoom = ctx.logo ? logoHeight(ctx) + 20 : 0;
@@ -659,14 +674,9 @@ function poster(ctx: Ctx): AdNode {
     field = Math.max(field, textTop + lines * size * 0.98 + sub + 28);
   }
   const ink = inkOn(ctx.accent);
-  /* The whole photo sits as a framed card under the type, so nothing in it gets covered. */
-  const scale = Math.min(
-    (ctx.height - field - ctx.bottom) / ctx.height,
-    (ctx.width - ctx.pad * 2) / ctx.width,
-  );
-  const cardW = Math.round(ctx.width * scale);
-  const cardH = Math.round(ctx.height * scale);
-  const cardTop = ctx.height - cardH - ctx.bottom;
+  /* The photo fills the frame (no pasted-in card). The accent colour is solid behind the
+     type and fades into the photo just below it, so type and photo read as one picture. */
+  const fade = posterFade(ctx.accent, field, ctx.height);
   return el(
     "div",
     {
@@ -678,23 +688,19 @@ function poster(ctx: Ctx): AdNode {
     },
     [
       el(
-        "div",
-        {
-          position: "absolute",
-          left: (ctx.width - cardW) / 2,
-          top: cardTop,
-          width: cardW,
-          height: cardH,
-          display: "flex",
-          borderRadius: 28,
-          overflow: "hidden",
-        },
-        el("img", { width: cardW, height: cardH, objectFit: "cover" }, undefined, {
-          src: ctx.photo,
-          width: cardW,
-          height: cardH,
-        }),
+        "img",
+        { position: "absolute", left: 0, top: 0, width: ctx.width, height: ctx.height },
+        undefined,
+        { src: ctx.photo, width: ctx.width, height: ctx.height },
       ),
+      el("div", {
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: ctx.width,
+        height: fade.height,
+        backgroundImage: fade.gradient,
+      }),
       el(
         "div",
         {
@@ -744,12 +750,12 @@ function poster(ctx: Ctx): AdNode {
         {
           position: "absolute",
           left: 0,
-          top: cardTop + cardH - 44,
+          bottom: ctx.bottom,
           width: ctx.width,
           display: "flex",
           justifyContent: "center",
         },
-        pill(ctx.copy.cta, "#FFFFFF", 34, ctx.body),
+        outlined(pill(ctx.copy.cta, "#FFFFFF", 34, ctx.body)),
       ),
       ...(ctx.logo
         ? [

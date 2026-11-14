@@ -178,9 +178,9 @@ describe("layouts with brand fonts", () => {
   });
 });
 
-describe("poster card clears a three-line brand headline", () => {
+describe("poster colour wash stays solid behind a three-line brand headline", () => {
   for (const aspect of ASPECTS) {
-    test(`${aspect}: the photo card starts below the headline and subline`, () => {
+    test(`${aspect}: the wash is solid down past the headline and subline`, () => {
       const { tree } = buildAdLayout({
         layout: "poster",
         aspect,
@@ -190,12 +190,16 @@ describe("poster card clears a three-line brand headline", () => {
         measure: WIDE,
       });
       const kids = tree.props.children as AdNode[];
-      const card = kids[0].props.style as Record<string, number>;
-      const text = kids[1].props.style as Record<string, number>;
+      strictEqual(kids[0].type, "img", "full-bleed photo first");
+      const wash = kids[1].props.style as Record<string, number | string>;
+      const text = kids[2].props.style as Record<string, number>;
       const head = headline(tree, copy.headline)!;
       const n = measuredLines(copy.headline.toUpperCase(), text.width, head.size!, WIDE);
       const textBottom = text.top + n * head.size! * 0.98 + 18 + 34 * 1.3;
-      ok(card.top >= textBottom, `card top ${card.top} >= text bottom ${Math.round(textBottom)}`);
+      /* The second colour stop is where the solid part ends. */
+      const stop = Number([...String(wash.backgroundImage).matchAll(/ (\d+)%/g)][1][1]);
+      const solidTo = ((wash.height as number) * stop) / 100;
+      ok(solidTo >= textBottom - 2, `solid to ${Math.round(solidTo)} >= ${Math.round(textBottom)}`);
     });
   }
 });

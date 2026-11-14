@@ -110,6 +110,10 @@ Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
      - **Still open:** on a Stamp 1:1 with a blue studio set the accent-coloured CTA pill vanished into the background. Fixed in code: Stamp's CTA is now a white pill with a thin dark outline (test added). Not yet seen live. The image model also still makes the Stamp product larger than the brief asks.
      - The temporary "Plain Test" brand was deleted after the runs.
      - Still seen: the model makes the Stamp product larger than the brief asks.
+   - **Bold offer looked like a template (Ben, call of 2026-11-11), code 2026-11-15:** the Poster showed a still product on a plain grey studio set, framed as a rounded card on the accent colour, so it read as "product pasted on a background". Changes:
+     - Poster and Stamp photo briefs now ask for a dynamic hero shot: energy that fits the product (its liquid splashing, ingredients flying, powder, a burst of light), dramatic colour light, one rich backdrop colour, never a still product on a plain set. The Poster brief keeps the top 40% as plain backdrop.
+     - Poster layout: the card is gone. The photo fills the frame; the accent is solid behind the type and fades into the photo over the next 14% of the frame (`posterFade`). The CTA is a white outlined pill at the bottom safe line.
+     - Checked in a local render (1:1 and 9:16, the type sits on solid colour, the fade is smooth over a plain image). Tests updated; 235 pass. Live test pending.
 8. **Phase 3, Edit text:** on the result screen, change the headline, subline, CTA or layout and re-render from `{n}-photo.png` for free. This is the editable overlay the backend plan listed as later.
 
 ## 6. What doesn't change

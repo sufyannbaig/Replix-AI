@@ -214,7 +214,8 @@ describe("logo placement", () => {
         logo,
       });
       const kids = tree.props.children as AdNode[];
-      return (kids[1].props.style as Record<string, number>).top;
+      /* photo, colour wash, then the text block */
+      return (kids[2].props.style as Record<string, number>).top;
     };
     ok(top(WORDMARK) > top(undefined));
   });
