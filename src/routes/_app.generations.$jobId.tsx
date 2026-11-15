@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   Download,
+  Eye,
   Play,
   RefreshCw,
   TriangleAlert,
@@ -12,7 +13,9 @@ import {
 } from "lucide-react";
 import { EditPhotoDialog } from "@/v2/components/studio/EditPhotoDialog";
 import { toast } from "sonner";
-import { useGenerationJob } from "@/v2/data/api";
+import { useBrandKits, useGenerationJob } from "@/v2/data/api";
+import { ChannelPreviewDialog } from "@/v2/components/studio/ChannelPreview";
+import { brandLogo } from "@/v2/data/types";
 import type {
   AspectRatio,
   GenerationJob,
@@ -118,6 +121,11 @@ function Result({ job }: { job: GenerationJob }) {
   /* Fix after: real Photo Studio photos only (sample results have no stored photo). */
   const [editing, setEditing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  /* Ads: see the ad in Facebook, Instagram, Stories, Reddit, X and LinkedIn feeds. */
+  const [previewing, setPreviewing] = useState(false);
+  const { data: kits = [] } = useBrandKits();
+  const kit = kits.find((k) => k.id === request.brandKitId) ?? kits[0];
+  const canPreview = request.kind === "ad" && !!selected;
   const canEdit = request.studio === "photo" && !!selected && /^[0-9a-f-]{36}$/i.test(selected.id);
 
   /* Announce completion only when it happens here, not when reopening a finished result. */
@@ -240,6 +248,15 @@ function Result({ job }: { job: GenerationJob }) {
                   Open
                 </Link>
               </div>
+              {canPreview ? (
+                <PillButton
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setPreviewing(true)}
+                >
+                  <Eye className="size-4" /> Preview on Facebook, Instagram…
+                </PillButton>
+              ) : null}
               {canEdit ? (
                 <PillButton variant="outline" className="w-full" onClick={() => setEditing(true)}>
                   <Wand2 className="size-4" /> Edit this photo
@@ -267,6 +284,28 @@ function Result({ job }: { job: GenerationJob }) {
           <Details job={job} />
         </aside>
       </div>
+      {canPreview && selected ? (
+        <ChannelPreviewDialog
+          key={selected.id}
+          open={previewing}
+          onOpenChange={setPreviewing}
+          image={selected.imageUrl}
+          aspect={request.aspect}
+          post={
+            selected.post ?? {
+              primary: "",
+              headline: request.product.name,
+              description: "",
+              cta: "Shop now",
+            }
+          }
+          brand={{
+            name: kit?.name || request.product.name,
+            logo: kit ? brandLogo(kit) : null,
+            website: kit?.website,
+          }}
+        />
+      ) : null}
       {canEdit && selected ? (
         <EditPhotoDialog
           key={selected.id}

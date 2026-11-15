@@ -189,7 +189,9 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
     activeGroup ? { [activeGroup]: true } : {},
   );
-  const isOpen = (id: string) => open[id] ?? id === activeGroup;
+  /* Create (the studios) is open by default so its items show straight away; the other
+     groups start closed unless the current page is in them. */
+  const isOpen = (id: string) => open[id] ?? (id === activeGroup || id === "create");
 
   return (
     <div className="flex min-h-full flex-col pb-10">

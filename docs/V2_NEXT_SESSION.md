@@ -138,6 +138,8 @@ Research (competitors plus one live test) found the label already comes out righ
 - **Post copy for each ad:** the copy call also writes Meta's primary text (hook in the first 125 characters, up to 2 emoji, 2-3 hashtags), headline (40 characters) and description (30). Stored in `generation_outputs.copy.post` (a JSON field, no migration) and shown on the result page as "Post copy" with copy buttons. Older ads have none.
 - **Downloads fixed:** the images are on the storage domain, where browsers ignore `download` and open the picture, so "Download all" did nothing useful. Each file is now fetched and saved from a blob, one after another.
 - **Ad Studio icon:** a plain ad square (headline lines and a button), `ad-square.svg`.
+- **Preview in the feed** (`ChannelPreview.tsx`): on an ad's result page, "Preview on Facebook, Instagram…" opens mock-ups of the ad in a Facebook feed, Instagram feed, Stories & Reels, Reddit, X and LinkedIn, with the post copy, the brand kit's name, logo and website, and a note when the ad's shape gets cropped or letterboxed there. Nothing is posted. v1 had Instagram and Facebook only.
+- **Sidebar:** the Create group (the studios) is open by default; the other groups start closed unless the current page is in them.
 - **Brand Kit (question, not changed):** today it feeds Ad Studio only: logo on the ad (when one is uploaded and "logo on"), brand colours for the panel and button, brand fonts, and the tone of voice in the copy. It isn't used in Photo Studio.
 
 ## 6. What's left, in a sensible order
