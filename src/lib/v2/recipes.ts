@@ -5,7 +5,7 @@
  * brief, set, light, camera, composition, then hard rules, then the variation.
  */
 import type { AspectRatio } from "@/v2/data/types";
-import { labelLine } from "./photo-check.ts";
+import { labelLine, sizeLine } from "./photo-check.ts";
 import {
   PERSON_RULES,
   poseFraming,
@@ -62,7 +62,7 @@ export function describeRefs(refs: PromptRef[]) {
     product: (n) =>
       `the PRODUCT ("${n}"). Reproduce it exactly: same shape, proportions, colours, materials, cap, label layout, logo and every word printed on it. Never redesign, retype, translate or add text to it.`,
     template: (n) =>
-      `the TEMPLATE shot "${n}". Recreate its set, surfaces, props, lighting, colour grade, camera angle and composition, with the PRODUCT in place of whatever product it shows.`,
+      `the TEMPLATE shot "${n}". Recreate its set, surfaces, props, people, lighting, colour grade, camera angle and composition, with the PRODUCT in place of whatever product it shows. The PRODUCT keeps its own real-world size, not the size of the product it replaces: rescale it (and how hands hold it) so it is true to life.`,
     scene: (n) => `the SCENE "${n}". Use this location, surfaces and mood as the set.`,
     prop: (n) => `a PROP ("${n}"). Place it naturally in the set, secondary to the product.`,
     character: (n) =>
@@ -79,7 +79,8 @@ export function describeRefs(refs: PromptRef[]) {
 
 const PHOTO_RULES = [
   "Photorealistic commercial product photography, natural physics, believable shadows and reflections.",
-  "The product is the hero: in sharp focus, fully visible, not cropped, correct scale for the set.",
+  "The product is the hero through focus, light and placement, never by being oversized: sharp, fully visible, not cropped, and at its true real-world size next to hands, people and objects.",
+  "The product belongs in the photo: lit by the same light as the set (direction, colour, softness), with real contact shadows, reflections, matching colour grade, grain and depth of field. It must never look cut out and pasted in.",
   "No added text, captions, watermarks, logos, borders or frames.",
   "Hands and faces anatomically correct if present.",
 ];
@@ -94,6 +95,8 @@ export type PhotoBrief = {
   note?: string | null;
   /** The words printed on the product, read from its photo (photo-check.ts). */
   label?: string[];
+  /** What the product is and its real-world size, read from the same photo. */
+  size?: string;
   /** Piece By Piece / Build It Yourself camera step. */
   shot?: ShotSettings;
 };
@@ -114,13 +117,14 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
     "",
     "MASTER SHOT",
     `- Brief: a scroll-stopping photo of ${product.name}${product.description ? ` (${clip(product.description, 240)})` : ""}.`,
-    `- Set: ${recipe?.set ?? (fromTemplate ? "as in the TEMPLATE." : "the SCENE, styled with the props provided.")}`,
+    `- Set: ${recipe?.set ?? (fromTemplate ? "as in the TEMPLATE." : brief.refs.some((r) => r.role === "prop") ? "the SCENE, styled with the props provided." : "the SCENE, styled with one or two small, tasteful props that suit this product and this place (never another product or brand), kept secondary to the product.")}`,
     `- Light: ${recipe?.light ?? shotLight(brief.shot) ?? scene?.light ?? (fromTemplate ? "match the TEMPLATE's light direction, softness and colour temperature." : "soft directional key light matching the SCENE, gentle fill, clean natural shadows.")}`,
     `- Camera: ${recipe?.camera ?? scene?.camera ?? "85mm product lens look, shallow depth of field on the background, product tack sharp."}`,
     `- Composition: ${ASPECT_TEXT[brief.aspect]}, product placed by the rule of thirds or centred as the set suggests, nothing important near the edges.`,
     framing ? `- Framing: ${framing}` : "",
     ...(fromTemplate ? [] : shotLines(brief.shot)),
     labelLine(brief.label ?? []),
+    sizeLine(brief.size),
     recipe?.notes ? `- Notes: ${recipe.notes}` : "",
     "",
     "RULES",
@@ -236,6 +240,7 @@ export const AD_THEME_RECIPES: Record<
     story:
       "Why you beat the alternative: the headline contrasts the product with the ordinary option, without naming or attacking any real brand.",
     layout: "The product looking clearly premium and better made, in a crisp set.",
+    labels: ["The usual", "Ours"],
   },
   "problem-fix": {
     story: "Name the customer's pain in the headline, show the product as the fix.",
@@ -276,10 +281,22 @@ export function quoteHeadline(headline: string) {
 export const AD_TYPE_STYLES = ["bold", "condensed", "elegant"] as const;
 export type AdTypeStyle = (typeof AD_TYPE_STYLES)[number];
 
+/** The words that go with the ad when it's posted (Meta's Ads Manager fields). */
+export type AdPost = {
+  /** Primary text: the caption above the ad, hook first. */
+  primary: string;
+  /** Headline under the ad, beside the button. */
+  headline: string;
+  /** Description under the headline. */
+  description: string;
+};
+
 export type AdCopy = {
   headline: string;
   subline: string;
   cta: string;
+  /** The post copy for Meta, Instagram and TikTok. */
+  post?: AdPost;
   /** Photo direction for this ad (who, where, moment, light), when the copywriter gave one. */
   scene?: string;
   /** One colour from the product photo, as #RRGGBB, for the type layer. */
@@ -342,12 +359,12 @@ ${
 `
     : ""
 }Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle on the theme.
-Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "type": how the headline should be set for this product, one of "bold" (everyday, tech, food, drinks, home goods), "condensed" (sport, fitness, energy, gaming, streetwear) or "elegant" (beauty, skincare, fragrance, jewellery, fashion, interiors), "ads":[{"headline": 3-6 punchy words that stop the scroll, "subline": optional, at most 7 words, "cta": 2-3 words like "Shop now", "scene": one vivid art-direction sentence for this ad's photo: setting, surface, props, lighting and colour palette, fitting the theme and the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB}]}. Every ad must be about that product.`;
+Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "type": how the headline should be set for this product, one of "bold" (everyday, tech, food, drinks, home goods), "condensed" (sport, fitness, energy, gaming, streetwear) or "elegant" (beauty, skincare, fragrance, jewellery, fashion, interiors), "ads":[{"headline": 3-6 punchy words that stop the scroll, "subline": optional, at most 7 words, "cta": 2-3 words like "Shop now", "scene": one vivid art-direction sentence for this ad's photo: setting, surface, props, lighting and colour palette, fitting the theme and the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB, "post": the words that go with this ad when it is posted on Facebook and Instagram: {"primary": the primary text, 2-4 short lines separated by \\n, the hook in the first 125 characters, at most 2 emoji, ending with 2-3 relevant hashtags, "headline": the headline shown under the ad, at most 40 characters, "description": at most 30 characters}}]}. Every ad must be about that product.`;
   return [
     {
       role: "system",
       content:
-        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji, no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees or claims that aren't in the brief. Reply with JSON only.",
+        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji (except up to 2 in the post's primary text), no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees or claims that aren't in the brief. Reply with JSON only.",
     },
     {
       role: "user",
@@ -413,6 +430,26 @@ export function adPhotoPrompt(
     .trim();
 }
 
+/** The post copy from one ad of the reply; undefined without a usable primary text. */
+export function parsePost(raw: unknown): AdPost | undefined {
+  const r = raw as { primary?: unknown; headline?: unknown; description?: unknown } | null;
+  const line = (s: unknown, max: number) =>
+    typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  const primary =
+    typeof r?.primary === "string"
+      ? r.primary
+          .replace(/\\n/g, "\n")
+          .split(/\r?\n/)
+          .map((l) => l.replace(/[ \t]+/g, " ").trim())
+          .filter(Boolean)
+          .slice(0, 6)
+          .join("\n")
+          .slice(0, 600)
+      : "";
+  if (!primary) return undefined;
+  return { primary, headline: line(r?.headline, 60), description: line(r?.description, 60) };
+}
+
 /** Parse and sanitise the copy model's reply, padding to `count` with safe defaults. */
 export function parseAdCopy(raw: unknown, count: number, productName: string): AdCopy[] {
   const type = (raw as { type?: unknown })?.type;
@@ -434,6 +471,8 @@ export function parseAdCopy(raw: unknown, count: number, productName: string): A
       subline: safe(a.subline, 90),
       cta: safe(a.cta, 24) || "Shop now",
     };
+    const post = parsePost((a as { post?: unknown }).post);
+    if (post) copy.post = post;
     const scene = safe(a.scene, 400);
     if (scene) copy.scene = scene;
     const accent = safe(a.accent, 7);

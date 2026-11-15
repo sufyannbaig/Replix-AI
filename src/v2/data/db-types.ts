@@ -140,6 +140,8 @@ export type OutputCopy = {
   fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
   /** The brand logo the ad draws: storage paths or https links. */
   logo?: { main: string; light?: string };
+  /** The words posted with the ad (primary text, headline, description). */
+  post?: { primary: string; headline: string; description: string };
   photo?: string;
   composed?: boolean;
 };

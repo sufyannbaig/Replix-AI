@@ -350,6 +350,8 @@ export type GenerationOutput = {
    * browser composes the finished ad from this (src/v2/data/compose-ad.ts).
    */
   design?: AdDesign;
+  /** Ads: the words to post with it (Meta's primary text, headline, description, button). */
+  post?: { primary: string; headline: string; description: string; cta: string };
 };
 
 export type AdDesign = {

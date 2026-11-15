@@ -296,7 +296,14 @@ export function PieceByPiece({
       return;
     }
     const slot = piece.kind === "style" ? "pose" : piece.kind;
-    onChange({ ...selection, [slot]: isSelected(piece) ? null : piece });
+    const picking = !isSelected(piece);
+    onChange({ ...selection, [slot]: picking ? piece : null });
+    /* Scene, model and pose take one pick each: move on to the next step, after a beat so
+       the pick is seen. */
+    if (picking && step < STEPS.length - 1) {
+      const from = step;
+      window.setTimeout(() => onStep(from + 1), 350);
+    }
   };
 
   const addUpload = (file: File) =>
@@ -347,6 +354,18 @@ export function PieceByPiece({
         ) : null}
         <Stepper step={step} onStep={onStep} />
         {current.kind === "shot" ? shotPanel : null}
+        {current.kind === "prop" && !selection.props.length ? (
+          <p className="-mt-3 font-inter-tight text-sm text-v2-muted">
+            Optional. Skip this and we add a few small props that suit your product.{" "}
+            <button
+              type="button"
+              onClick={() => onStep(step + 1)}
+              className="text-v2-ink underline underline-offset-2"
+            >
+              Skip props
+            </button>
+          </p>
+        ) : null}
         {current.kind === "style" && !selection.character ? (
           <p className="-mt-3 font-inter-tight text-sm text-v2-muted">
             Poses apply when your shot has a character.{" "}

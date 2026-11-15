@@ -4,7 +4,8 @@ import home from "@/assets/v2/icons/home.svg";
 import assets from "@/assets/v2/icons/assets.svg";
 import photoStudio from "@/assets/v2/icons/photo-studio.svg";
 import videoStudio from "@/assets/v2/icons/ad-studio.svg";
-import adStudio from "@/assets/v2/icons/video-studio.svg";
+/* Ad Studio: a plain ad square (headline lines and a button), simpler than the Figma glyph. */
+import adStudio from "@/assets/v2/icons/ad-square.svg";
 import brandKit from "@/assets/v2/icons/brand-kit.svg";
 import products from "@/assets/v2/icons/products.svg";
 import chevron from "@/assets/v2/icons/chevron.svg";

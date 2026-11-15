@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, Check, Download, Play, RefreshCw, TriangleAlert, Wand2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Download,
+  Play,
+  RefreshCw,
+  TriangleAlert,
+  Wand2,
+} from "lucide-react";
 import { EditPhotoDialog } from "@/v2/components/studio/EditPhotoDialog";
 import { toast } from "sonner";
 import { useGenerationJob } from "@/v2/data/api";
@@ -108,6 +117,7 @@ function Result({ job }: { job: GenerationJob }) {
   const selected = job.outputs.find((o) => o.id === selectedId) ?? job.outputs[0];
   /* Fix after: real Photo Studio photos only (sample results have no stored photo). */
   const [editing, setEditing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const canEdit = request.studio === "photo" && !!selected && /^[0-9a-f-]{36}$/i.test(selected.id);
 
   /* Announce completion only when it happens here, not when reopening a finished result. */
@@ -194,16 +204,28 @@ function Result({ job }: { job: GenerationJob }) {
         <aside className="flex flex-col gap-4">
           {status === "done" && selected ? (
             <section className="flex flex-col gap-3 rounded-[18px] bg-v2-surface p-5">
-              <PillButton onClick={() => downloadOutput(job, selected)} className="w-full">
+              <PillButton
+                onClick={() => void downloadOutput(job, selected)}
+                disabled={downloading}
+                className="w-full"
+              >
                 <Download className="size-4" /> Download
               </PillButton>
-              {request.count > 1 ? (
+              {job.outputs.length > 1 ? (
                 <button
                   type="button"
-                  onClick={() => job.outputs.forEach((o) => downloadOutput(job, o))}
-                  className="font-archivo text-sm text-v2-ink-70 hover:text-v2-ink"
+                  disabled={downloading}
+                  onClick={async () => {
+                    setDownloading(true);
+                    try {
+                      for (const o of job.outputs) await downloadOutput(job, o);
+                    } finally {
+                      setDownloading(false);
+                    }
+                  }}
+                  className="font-archivo text-sm text-v2-ink-70 hover:text-v2-ink disabled:opacity-60"
                 >
-                  Download all {request.count}
+                  {downloading ? "Downloading…" : `Download all ${job.outputs.length}`}
                 </button>
               ) : null}
               {/* Every finished generation is listed in Assets (there's no separate history page). */}
@@ -241,6 +263,7 @@ function Result({ job }: { job: GenerationJob }) {
             </section>
           ) : null}
 
+          {status === "done" && selected?.post ? <PostCopy post={selected.post} /> : null}
           <Details job={job} />
         </aside>
       </div>
@@ -450,21 +473,109 @@ function NotFound() {
   );
 }
 
-function downloadOutput(job: GenerationJob, output: GenerationOutput) {
+/** The words to post with an ad (Meta's Ads Manager fields), each one copyable. */
+function PostCopy({ post }: { post: NonNullable<GenerationOutput["post"]> }) {
+  const fields: [string, string][] = [
+    ["Primary text", post.primary],
+    ["Headline", post.headline],
+    ["Description", post.description],
+    ["Button", post.cta],
+  ];
+  const copy = async (label: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error("Couldn't copy. Select the text and copy it instead.");
+    }
+  };
+  return (
+    <section className="flex flex-col gap-4 rounded-[18px] bg-v2-surface p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="type-label text-v2-ink">Post copy</h2>
+        <button
+          type="button"
+          onClick={() =>
+            copy(
+              "Post copy",
+              fields
+                .filter(([, t]) => t)
+                .map(([l, t]) => `${l}:\n${t}`)
+                .join("\n\n"),
+            )
+          }
+          className="font-inter-tight text-xs text-v2-blue hover:underline"
+        >
+          Copy all
+        </button>
+      </div>
+      <p className="-mt-2 font-inter-tight text-xs text-v2-muted">
+        Paste these into Meta Ads Manager, Instagram or TikTok with this ad.
+      </p>
+      <dl className="flex flex-col gap-3">
+        {fields
+          .filter(([, text]) => text)
+          .map(([label, text]) => (
+            <div key={label} className="flex flex-col gap-1.5">
+              <dt className="flex items-center justify-between gap-3 font-inter-tight text-xs text-v2-muted">
+                {label}
+                <button
+                  type="button"
+                  aria-label={`Copy ${label.toLowerCase()}`}
+                  onClick={() => copy(label, text)}
+                  className="flex size-6 items-center justify-center rounded-full text-v2-ink-60 hover:bg-v2-canvas hover:text-v2-ink"
+                >
+                  <Copy className="size-3.5" />
+                </button>
+              </dt>
+              <dd className="whitespace-pre-line rounded-[10px] bg-v2-canvas px-3 py-2.5 font-inter-tight text-sm leading-[1.45] text-v2-ink">
+                {text}
+              </dd>
+            </div>
+          ))}
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * Save one result as a file. The images live on the storage domain, where the browser
+ * ignores `download` and opens the picture instead, so the file is fetched first and saved
+ * from a local blob.
+ */
+async function downloadOutput(job: GenerationJob, output: GenerationOutput) {
   if (job.request.kind === "video" && !output.videoUrl) {
     toast.info("Video downloads start working once video generation is connected.");
     return;
   }
   const index = job.outputs.indexOf(output) + 1;
-  const ext = output.videoUrl ? "mp4" : (output.imageUrl.split("?")[0].split(".").pop() ?? "png");
   const slug = job.request.product.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  const link = document.createElement("a");
-  link.href = output.videoUrl ?? output.imageUrl;
-  link.download = `replix-${slug}-${index}.${ext.length <= 4 ? ext : "png"}`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  const url = output.videoUrl ?? output.imageUrl;
+  try {
+    const blob = await fetch(url).then((r) => {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.blob();
+    });
+    const ext = blob.type.includes("jpeg")
+      ? "jpg"
+      : blob.type.includes("webp")
+        ? "webp"
+        : blob.type.includes("mp4")
+          ? "mp4"
+          : "png";
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `replix-${slug}-${index}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 10_000);
+  } catch {
+    /* Last resort: open it, so it can be saved from the new tab. */
+    window.open(url, "_blank", "noopener");
+  }
 }

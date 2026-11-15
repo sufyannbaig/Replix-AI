@@ -25,6 +25,7 @@ import {
   labelMessages,
   parseCheck,
   parseLabel,
+  parseSize,
   type CheckResult,
 } from "./photo-check";
 import {
@@ -298,20 +299,26 @@ type Plan = {
   check?: { label: string[]; person: boolean };
 };
 
-/** The words printed on the product; [] when the read fails (it never blocks a job). */
-async function readLabel(productImage: string): Promise<string[]> {
+/**
+ * The words printed on the product and its real-world size, from one read; empty when the
+ * read fails (it never blocks a job).
+ */
+async function readProduct(productImage: string): Promise<{ label: string[]; size: string }> {
   try {
     const raw = await gatewayChat({
       model: TEXT_MODEL,
       response_format: { type: "json_object" },
       messages: labelMessages(productImage),
     });
-    return parseLabel(parseJsonBlock(raw));
+    const parsed = parseJsonBlock(raw);
+    return { label: parseLabel(parsed), size: parseSize(parsed) };
   } catch (error) {
     console.error("[v2 generation] label read failed", error);
-    return [];
+    return { label: [], size: "" };
   }
 }
+
+const readLabel = async (productImage: string) => (await readProduct(productImage)).label;
 
 /** The words on a product, for the camera step's "Text on your product" field. */
 export async function productLabel(
@@ -371,9 +378,10 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
     if (inputs.character) refs.push(await loadUpload(ctx, inputs.character, "character"));
     if (inputs.pose) refs.push(await loadUpload(ctx, inputs.pose, "pose"));
   }
-  /* The words the user confirmed in the camera step, else read from the photo now. */
-  const label =
-    inputs.mode !== "templates" && inputs.label ? inputs.label : await readLabel(product.dataUrl);
+  /* The words the user confirmed in the camera step, else read from the photo now. The
+     same read gives the product's real size, so it isn't drawn oversized. */
+  const read = await readProduct(product.dataUrl);
+  const label = inputs.mode !== "templates" && inputs.label ? inputs.label : read.label;
   const shot = inputs.mode === "templates" ? undefined : inputs.shot;
   const person = refs.some((r) => r.role === "character" || r.role === "pose");
   return Array.from({ length: job.count }, (_, i) => ({
@@ -388,6 +396,7 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
         mode: inputs.mode,
         note: job.note,
         label,
+        size: read.size,
         shot,
       },
       i,
@@ -538,6 +547,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
         headline: themeId === "testimonial" ? quoteHeadline(c.headline) : c.headline,
         subline: c.subline,
         cta: c.cta,
+        ...(c.post ? { post: c.post } : {}),
         layout: layouts[i],
         /* Brand colours only; the accent is kept apart so the browser can refine it from the
            finished photo when there are no brand colours. */

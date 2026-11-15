@@ -1967,7 +1967,20 @@ export const AD_THEME_IDS = [
  * lifestyle) keep theirs so old jobs still read; their ads already store their layout.
  */
 export const THEME_LAYOUTS: Record<string, AdLayoutId[]> = {
-  ...Object.fromEntries(AD_THEME_IDS.map((id) => [id, ["banner"] as AdLayoutId[]])),
+  /*
+   * Each theme has its own look (2026-11-16: with the Banner on all ten, a batch of four
+   * themes came out looking the same). A is the theme's signature layout, B the second.
+   */
+  showcase: ["banner", "editorial"],
+  "bold-claim": ["poster", "banner"],
+  "feature-benefit": ["editorial", "banner"],
+  headline: ["hook", "poster"],
+  "offer-sale": ["stamp", "poster"],
+  "problem-solution": ["caption", "hook"],
+  "before-after": ["split", "stacked"],
+  stats: ["magazine", "hook"],
+  testimonial: ["quote", "note"],
+  "us-vs-them": ["split", "banner"],
   "problem-fix": ["hook", "caption"],
   "bold-offer": ["poster", "stamp"],
   lifestyle: ["editorial", "magazine"],

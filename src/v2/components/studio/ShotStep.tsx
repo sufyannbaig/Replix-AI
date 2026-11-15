@@ -36,6 +36,37 @@ const LIGHTS: { value: ShotLight; label: string }[] = [
   { value: "studio", label: "Studio" },
   { value: "moody", label: "Moody" },
 ];
+/*
+ * One-tap shot types for most sellers; the position, size, angle and light controls sit
+ * under "Fine-tune". Auto is the default shot, which adds nothing to the prompt (the scene
+ * and pose already frame it). Each type keeps the light the user picked.
+ */
+const SHOT_TYPES: { id: string; label: string; shot: Omit<ShotSettings, "light"> }[] = [
+  { id: "auto", label: "Auto", shot: { size: "medium", position: "middle-center", angle: "eye" } },
+  {
+    id: "close",
+    label: "Close-up",
+    shot: { size: "large", position: "middle-center", angle: "eye" },
+  },
+  { id: "hero", label: "Hero", shot: { size: "medium", position: "middle-center", angle: "low" } },
+  {
+    id: "wide",
+    label: "Lifestyle",
+    shot: { size: "small", position: "bottom-center", angle: "eye" },
+  },
+  {
+    id: "flat",
+    label: "Flat lay",
+    shot: { size: "medium", position: "middle-center", angle: "top-down" },
+  },
+];
+
+const shotTypeOf = (shot: ShotSettings) =>
+  SHOT_TYPES.find(
+    (t) =>
+      t.shot.size === shot.size && t.shot.position === shot.position && t.shot.angle === shot.angle,
+  )?.id ?? "custom";
+
 const ROWS: ShotRow[] = ["top", "middle", "bottom"];
 const COLS: ShotColumn[] = ["left", "center", "right"];
 
@@ -166,64 +197,88 @@ export function ShotStep({
       </figure>
 
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap gap-8">
-          <div className="flex flex-col gap-2.5">
-            <span className="type-label text-v2-ink">Position</span>
-            <div
-              role="radiogroup"
-              aria-label="Position"
-              className="grid w-[120px] grid-cols-3 gap-1.5"
-            >
-              {ROWS.flatMap((r) =>
-                COLS.map((c) => {
-                  const value = `${r}-${c}` as ShotSettings["position"];
-                  const active = value === shot.position;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      aria-label={`${r} ${c}`}
-                      onClick={() => onShot({ ...shot, position: value })}
-                      className={cn(
-                        "flex aspect-square items-center justify-center rounded-[8px] transition-colors",
-                        active
-                          ? "bg-v2-pill"
-                          : "bg-v2-canvas hover:bg-v2-nav-active night:bg-v2-surface-2",
-                      )}
-                    >
-                      <span
+        <Choices
+          label="Shot"
+          options={[
+            ...SHOT_TYPES.map((t) => ({ value: t.id, label: t.label })),
+            ...(shotTypeOf(shot) === "custom" ? [{ value: "custom", label: "Custom" }] : []),
+          ]}
+          value={shotTypeOf(shot)}
+          onChange={(id) => {
+            const type = SHOT_TYPES.find((t) => t.id === id);
+            if (type) onShot({ ...type.shot, light: shot.light });
+          }}
+        />
+        <p className="-mt-3 font-inter-tight text-xs text-v2-muted">
+          Auto lets the scene and pose decide. Most shots need nothing else here.
+        </p>
+
+        <details className="flex flex-col [&[open]>summary]:mb-6">
+          <summary className="cursor-pointer list-none font-inter-tight text-sm text-v2-ink-70 hover:text-v2-ink">
+            <span className="underline underline-offset-2">Fine-tune</span> position, size, angle
+            and light
+          </summary>
+          <div className="mb-6 flex flex-wrap gap-8">
+            <div className="flex flex-col gap-2.5">
+              <span className="type-label text-v2-ink">Position</span>
+              <div
+                role="radiogroup"
+                aria-label="Position"
+                className="grid w-[120px] grid-cols-3 gap-1.5"
+              >
+                {ROWS.flatMap((r) =>
+                  COLS.map((c) => {
+                    const value = `${r}-${c}` as ShotSettings["position"];
+                    const active = value === shot.position;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        aria-label={`${r} ${c}`}
+                        onClick={() => onShot({ ...shot, position: value })}
                         className={cn(
-                          "size-2 rounded-full",
-                          active ? "bg-v2-pill-ink" : "bg-v2-ink-60/40",
+                          "flex aspect-square items-center justify-center rounded-[8px] transition-colors",
+                          active
+                            ? "bg-v2-pill"
+                            : "bg-v2-canvas hover:bg-v2-nav-active night:bg-v2-surface-2",
                         )}
-                      />
-                    </button>
-                  );
-                }),
-              )}
+                      >
+                        <span
+                          className={cn(
+                            "size-2 rounded-full",
+                            active ? "bg-v2-pill-ink" : "bg-v2-ink-60/40",
+                          )}
+                        />
+                      </button>
+                    );
+                  }),
+                )}
+              </div>
             </div>
+            <Choices
+              label="Product size"
+              options={SIZES}
+              value={shot.size}
+              onChange={(size) => onShot({ ...shot, size })}
+            />
+          </div>
+          <div className="mb-6">
+            <Choices
+              label="Camera angle"
+              options={ANGLES}
+              value={shot.angle}
+              onChange={(angle) => onShot({ ...shot, angle })}
+            />
           </div>
           <Choices
-            label="Product size"
-            options={SIZES}
-            value={shot.size}
-            onChange={(size) => onShot({ ...shot, size })}
+            label="Light"
+            options={LIGHTS}
+            value={shot.light}
+            onChange={(light) => onShot({ ...shot, light })}
           />
-        </div>
-        <Choices
-          label="Camera angle"
-          options={ANGLES}
-          value={shot.angle}
-          onChange={(angle) => onShot({ ...shot, angle })}
-        />
-        <Choices
-          label="Light"
-          options={LIGHTS}
-          value={shot.light}
-          onChange={(light) => onShot({ ...shot, light })}
-        />
+        </details>
         <label className="flex flex-col gap-2.5">
           <span className="flex items-center justify-between gap-3">
             <span className="type-label text-v2-ink">Text on your product</span>

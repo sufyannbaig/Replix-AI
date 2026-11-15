@@ -21,7 +21,7 @@ export function labelMessages(productImage: string): Message[] {
     {
       role: "system",
       content:
-        'You read packaging. Reply with JSON only: {"lines": ["..."]}. List every word printed on the product itself, line by line from top to bottom, exactly as printed (same spelling and capitals). Skip text that is not on the product (background, watermarks). If nothing is printed or it is unreadable, reply {"lines": []}.',
+        'You read packaging. Reply with JSON only: {"lines": ["..."], "size": "..."}. "lines": every word printed on the product itself, line by line from top to bottom, exactly as printed (same spelling and capitals). Skip text that is not on the product (background, watermarks). If nothing is printed or it is unreadable, give []. "size": what the product is and its real-world size in a few words, judged from its type and any volume or weight printed on it, for example "a 500 ml drinks can, about 17 cm tall, fits in one hand" or "a 30 ml dropper bottle, about 10 cm tall, smaller than a palm".',
     },
     { role: "user", content: [{ type: "text", text: "The product photo:" }, image(productImage)] },
   ];
@@ -36,6 +36,20 @@ export function parseLabel(raw: unknown): string[] {
     .map((l) => l.replace(/\s+/g, " ").replace(/"/g, "'").trim())
     .filter((l) => l.length > 0 && l.length <= 60)
     .slice(0, 8);
+}
+
+/** The product's real-world size from the same reply; "" when unusable. */
+export function parseSize(raw: unknown): string {
+  const size = (raw as { size?: unknown } | null)?.size;
+  if (typeof size !== "string") return "";
+  return size.replace(/\s+/g, " ").replace(/"/g, "'").trim().slice(0, 140);
+}
+
+/** The prompt line that keeps the product at its true size; empty when unknown. */
+export function sizeLine(size: string | undefined): string {
+  return size
+    ? `- True size: the product is ${size}. Show it at exactly that real-world size next to hands, people, furniture and props; never enlarge it to make it the hero.`
+    : "";
 }
 
 /** The prompt line that locks the label words; empty when there are none. */
@@ -56,6 +70,8 @@ export function checkMessages(
       ? `the label words read exactly ${opts.label.map((l) => `"${l}"`).join(" / ")} (small soft-focus blur is fine; misspelled, missing or invented words are not)`
       : "any text on the product matches IMAGE 1 (no invented or garbled words)",
     "the whole product is visible and not cut off by the frame edge",
+    "the product is a believable real-world size next to any hands, people or objects (for example a can never looks bigger than the hand holding it)",
+    "the product looks like part of the photo, lit by the same light with real contact shadows, not cut out and pasted on",
     ...(opts.person
       ? [
           "there is exactly one person; every visible hand and arm is attached to that person's body",

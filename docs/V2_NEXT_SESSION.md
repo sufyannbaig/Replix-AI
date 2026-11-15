@@ -128,6 +128,18 @@ Research (competitors plus one live test) found the label already comes out righ
   - Credits used in testing: 10.
 - **Photo Studio and Ad Studio are done for now.** Next is Video Studio (fal.ai).
 
+## 5h. Fixes from Sufyan's test of the preview (2026-11-16)
+
+- **Oversized product in templates** (Track Day + Acme Charge: the can looked giant in the hand and pasted on). The label read now also returns the product's real size ("a 500 ml drinks can, fits in one hand", `parseSize`), and the photo prompt gets a "True size" line (`sizeLine`). The template ref says the product keeps its own real-world size, not the size of the product it replaces. A new rule asks for the same light, contact shadows, grade and grain so it never looks pasted in. The check fails a photo for an unbelievable size or a pasted-on look, so it is redone once.
+- **Piece By Piece moves on by itself** after a scene, model or pose is picked (props can take several, so they don't).
+- **Camera step simplified:** one row of shot types (Auto, Close-up, Hero, Lifestyle, Flat lay); position, size, angle and light sit under "Fine-tune". Auto adds nothing to the prompt (`shotLines` returns [] for the default shot). The label field stays visible.
+- **Props are optional:** with none picked, the prompt asks for one or two small props that suit the product and place. The props step says so, with "Skip props".
+- **Ad themes look different again.** All ten used the Banner, so a batch of four themes looked the same. Each theme now has its own layout (A, then B), using the layouts already built and live-tested on 2026-11-08: Showcase banner/editorial, Bold claim poster/banner, Feature editorial/banner, Headline hook/poster, Offer stamp/poster, Problem caption/hook, Before / After split/stacked, Stats magazine/hook, Testimonial quote/note, Us vs them split/banner (labels "The usual" / "Ours").
+- **Post copy for each ad:** the copy call also writes Meta's primary text (hook in the first 125 characters, up to 2 emoji, 2-3 hashtags), headline (40 characters) and description (30). Stored in `generation_outputs.copy.post` (a JSON field, no migration) and shown on the result page as "Post copy" with copy buttons. Older ads have none.
+- **Downloads fixed:** the images are on the storage domain, where browsers ignore `download` and open the picture, so "Download all" did nothing useful. Each file is now fetched and saved from a blob, one after another.
+- **Ad Studio icon:** a plain ad square (headline lines and a button), `ad-square.svg`.
+- **Brand Kit (question, not changed):** today it feeds Ad Studio only: logo on the ad (when one is uploaded and "logo on"), brand colours for the panel and button, brand fonts, and the tone of voice in the copy. It isn't used in Photo Studio.
+
 ## 6. What's left, in a sensible order
 
 **Ad Studio**

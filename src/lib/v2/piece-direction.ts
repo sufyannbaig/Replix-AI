@@ -168,7 +168,12 @@ export const LIGHT_TEXT: Record<Exclude<Shot["light"], "scene">, string> = {
 
 /** The prompt lines for the camera step; [] for the defaults the scene already covers. */
 export function shotLines(shot: Shot | undefined): string[] {
-  if (!shot) return [];
+  /* The default (Auto) shot adds nothing: the scene and pose frame it. */
+  if (
+    !shot ||
+    (shot.size === "medium" && shot.position === "middle-center" && shot.angle === "eye")
+  )
+    return [];
   const [row, col] = shot.position.split("-");
   const where =
     shot.position === "middle-center"

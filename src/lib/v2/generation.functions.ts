@@ -230,6 +230,7 @@ function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<
         imageUrl: urls.get(o.image_path ?? "") ?? "",
         savedToAssets: o.saved_to_assets,
         ...(design(o) ? { design: design(o) } : {}),
+        ...(o.copy?.post ? { post: { ...o.copy.post, cta: o.copy.cta } } : {}),
       })),
     error: row.error,
     refunded: row.refunded,

@@ -6,6 +6,7 @@ import { ok, strictEqual, deepStrictEqual } from "node:assert";
 import {
   AD_THEME_IDS,
   AD_LAYOUT_IDS,
+  LAYOUT_ASPECTS,
   LAYOUT_PHOTO_BRIEF,
   THEME_LAYOUT,
   THEME_LAYOUTS,
@@ -63,12 +64,22 @@ describe("theme layouts", () => {
     deepStrictEqual(layoutsFor("lifestyle", "9:16", 1, 7), ["magazine"]);
   });
 
-  test("v1's ten themes all use the Banner, on every frame", () => {
+  test("v1's ten themes each have their own look", () => {
+    const signature = new Set(AD_THEME_IDS.map((id) => THEME_LAYOUT[id]));
+    ok(signature.size >= 8, `only ${signature.size} different layouts`);
     for (const id of AD_THEME_IDS) {
       for (const aspect of ["1:1", "4:5", "9:16", "16:9"] as const) {
-        deepStrictEqual(layoutsFor(id, aspect, 2, 1), ["banner", "banner"], `${id} ${aspect}`);
+        const got = layoutsFor(id, aspect, 2, 1);
+        strictEqual(got.length, 2);
+        ok(
+          got.every((l) => LAYOUT_ASPECTS[l]?.includes(aspect) ?? true),
+          `${id} ${aspect}`,
+        );
       }
     }
+    deepStrictEqual(layoutsFor("before-after", "1:1", 2, 0), ["split", "split"]);
+    deepStrictEqual(layoutsFor("before-after", "9:16", 2, 0), ["split", "stacked"]);
+    strictEqual(THEME_LAYOUT.testimonial, "quote");
   });
 
   test("no theme falls back to the Banner; bad seeds still work", () => {

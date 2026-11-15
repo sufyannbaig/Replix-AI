@@ -125,6 +125,34 @@ describe("v1 themes in the copy", () => {
     ok(text.includes("Hero shot with one clear benefit"));
   });
 
+  test("parseAdCopy keeps the post copy, with its lines", () => {
+    const [ad, bare] = parseAdCopy(
+      {
+        ads: [
+          {
+            headline: "Cold power",
+            cta: "Shop now",
+            post: {
+              /* The model sometimes writes the line breaks as the two characters \n. */
+              primary: "Your 3pm slump, solved.\\nOne can, zero crash.\n#energy #focus",
+              headline: "  Clean energy   that lasts ",
+              description: "Free from sugar",
+            },
+          },
+          { headline: "No post", cta: "Shop now", post: { primary: "  " } },
+        ],
+      },
+      2,
+      "Acme Charge",
+    );
+    deepStrictEqual(ad.post, {
+      primary: "Your 3pm slump, solved.\nOne can, zero crash.\n#energy #focus",
+      headline: "Clean energy that lasts",
+      description: "Free from sugar",
+    });
+    strictEqual(bare.post, undefined);
+  });
+
   test("parseAdCopy keeps a valid type style for every ad and drops a bad one", () => {
     const ads = parseAdCopy(
       { type: "elegant", ads: [{ headline: "Glow, all day", cta: "Shop now" }] },

@@ -2,7 +2,15 @@
 // Piece By Piece Phase 1: label lock, per-scene light, per-pose framing, check and retry.
 import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
-import { checkMessages, fixLine, labelLine, parseCheck, parseLabel } from "./photo-check.ts";
+import {
+  checkMessages,
+  fixLine,
+  labelLine,
+  parseCheck,
+  parseLabel,
+  parseSize,
+  sizeLine,
+} from "./photo-check.ts";
 import {
   PERSON_RULES,
   poseFraming,
@@ -49,6 +57,50 @@ const POSES = [
   "Seated on block",
   "Laptop on stool",
 ];
+
+describe("true size", () => {
+  test("reads the size and puts it in the prompt and the check", () => {
+    strictEqual(parseSize({ lines: [], size: " a 500 ml  can " }), "a 500 ml can");
+    strictEqual(parseSize({ lines: [] }), "");
+    strictEqual(sizeLine(""), "");
+    const p = photoPrompt(
+      {
+        product: { name: "Acme Charge" },
+        refs: [
+          { role: "product", name: "Acme Charge" },
+          { role: "template", name: "Track day" },
+        ],
+        aspect: "1:1",
+        mode: "templates",
+        size: "a 500 ml drinks can, fits in one hand",
+      },
+      0,
+      1,
+    );
+    ok(p.includes("True size: the product is a 500 ml drinks can"));
+    ok(p.includes("own real-world size, not the size of the product it replaces"));
+    ok(p.includes("never look cut out and pasted in"));
+    const check = JSON.stringify(checkMessages("a", "b", { label: [], person: false }));
+    ok(check.includes("believable real-world size"));
+  });
+
+  test("Piece By Piece without props asks for fitting props", () => {
+    const p = photoPrompt(
+      {
+        product: { name: "Serum" },
+        refs: [
+          { role: "product", name: "Serum" },
+          { role: "scene", name: "Marble kitchen" },
+        ],
+        aspect: "1:1",
+        mode: "piece",
+      },
+      0,
+      1,
+    );
+    ok(p.includes("one or two small, tasteful props"));
+  });
+});
 
 describe("label lock", () => {
   test("keeps the printed lines in order and drops junk", () => {
@@ -167,9 +219,13 @@ describe("Phase 2: camera step and edits", () => {
     ok(!p.includes(sceneDirection("Bathroom vanity")!.light));
   });
 
-  test("'Match scene' keeps the scene's own light; centre reads as centred", () => {
+  test("'Match scene' keeps the scene's own light; Auto adds nothing; centre reads as centred", () => {
+    deepStrictEqual(
+      shotLines({ size: "medium", position: "middle-center", angle: "eye", light: "scene" }),
+      [],
+    );
     const lines = shotLines({
-      size: "medium",
+      size: "large",
       position: "middle-center",
       angle: "eye",
       light: "scene",
