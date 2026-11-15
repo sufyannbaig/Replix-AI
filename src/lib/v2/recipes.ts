@@ -188,6 +188,15 @@ export const AD_THEME_RECIPES: Record<
   },
 };
 
+/**
+ * The theme each ad in a batch uses: the picked themes in turn (ad 1 the first theme, ad 2
+ * the second, and round again), so a batch of 4 with 2 themes gives A, B, A, B.
+ */
+export function adThemeOrder(themeIds: (string | null)[], count: number): (string | null)[] {
+  const list = themeIds.length ? themeIds : [null];
+  return Array.from({ length: count }, (_, i) => list[i % list.length]);
+}
+
 /** How the Banner sets the type: picked by the copywriter for each product. */
 export const AD_TYPE_STYLES = ["bold", "condensed", "elegant"] as const;
 export type AdTypeStyle = (typeof AD_TYPE_STYLES)[number];

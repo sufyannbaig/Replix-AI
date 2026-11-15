@@ -22,6 +22,7 @@ import { isSafePublicUrl } from "./page-meta";
 import {
   AD_THEME_RECIPES,
   adCopyMessages,
+  adThemeOrder,
   adPhotoPrompt,
   parseAdCopy,
   photoPrompt,
@@ -352,46 +353,57 @@ function adLogo(logos?: string[]) {
 async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInputs) {
   if (inputs.studio !== "ad") throw new GenerationError("Wrong studio.");
   const product = await loadProduct(ctx, job.product);
-  const theme = inputs.themeId ? adThemes.find((t) => t.id === inputs.themeId) : undefined;
-  if (inputs.themeId) await loadTemplate(ctx, inputs.themeId, "ad");
-  const themeName = theme?.name ?? "Product ad";
+  /* A batch can mix themes: each ad takes the picked themes in turn. */
+  const picked = [...new Set(inputs.themeIds?.length ? inputs.themeIds : [inputs.themeId])];
+  for (const id of picked) if (id) await loadTemplate(ctx, id, "ad");
+  const order = adThemeOrder(picked, job.count);
+  const themeName = (id: string | null) =>
+    (id ? adThemes.find((t) => t.id === id)?.name : undefined) ?? "Product ad";
   const brand = await loadBrand(ctx.userId, {
     brandKitId: job.brandKitId,
     productId: job.product.id,
   });
   /* No theme reference image any more: those carried words the model copied. */
   const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
-  /* Each ad takes one of the theme's layouts (A or B), in turns from a random start. */
-  const layouts: AdLayoutId[] = layoutsFor(
-    inputs.themeId,
-    job.aspect,
-    job.count,
-    Math.floor(Math.random() * 1000),
-  );
-  const labels = inputs.themeId ? AD_THEME_RECIPES[inputs.themeId]?.labels : undefined;
+  const seed = Math.floor(Math.random() * 1000);
+  const layouts: AdLayoutId[] = new Array(job.count);
 
-  const raw = await gatewayChat({
-    model: TEXT_MODEL,
-    response_format: { type: "json_object" },
-    messages: adCopyMessages({
-      product,
-      themeName,
-      themeId: inputs.themeId,
-      brand,
-      count: job.count,
-      note: job.note,
-      layoutBriefs: layouts.map((l) => LAYOUT_PHOTO_BRIEF[l]),
+  /* One copy call per theme, for that theme's ads, run side by side. */
+  const groups = picked.map((id) => ({
+    id,
+    ads: order.flatMap((t, i) => (t === id ? [i] : [])),
+  }));
+  const copies: AdCopy[] = new Array(job.count);
+  let seen: unknown;
+  await Promise.all(
+    groups.map(async ({ id, ads }) => {
+      /* Each ad takes one of the theme's layouts (A or B), in turns from a random start. */
+      const own = layoutsFor(id, job.aspect, ads.length, seed);
+      ads.forEach((ad, k) => (layouts[ad] = own[k]));
+      const raw = await gatewayChat({
+        model: TEXT_MODEL,
+        response_format: { type: "json_object" },
+        messages: adCopyMessages({
+          product,
+          themeName: themeName(id),
+          themeId: id,
+          brand,
+          count: ads.length,
+          note: job.note,
+          layoutBriefs: own.map((l) => LAYOUT_PHOTO_BRIEF[l]),
+        }),
+      });
+      let parsed: unknown = null;
+      try {
+        parsed = parseJsonBlock(raw);
+      } catch {
+        /* fall back to safe default copy */
+      }
+      seen ??= (parsed as { product?: unknown } | null)?.product;
+      parseAdCopy(parsed, ads.length, product.name).forEach((c, k) => (copies[ads[k]] = c));
     }),
-  });
-  let parsed: unknown = null;
-  try {
-    parsed = parseJsonBlock(raw);
-  } catch {
-    /* fall back to safe default copy */
-  }
-  const copies = parseAdCopy(parsed, job.count, product.name);
+  );
   // What the copywriter saw in the photo, so the image model doesn't guess from the name either.
-  const seen = (parsed as { product?: unknown } | null)?.product;
   const described = {
     ...product,
     description:
@@ -405,38 +417,42 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   };
   const fonts = adFonts(brand.fonts, ctx.plan);
   const logo = job.showLogo === false ? undefined : adLogo(brand.logos);
-  return copies.map((c: AdCopy, i): Plan => ({
-    refs,
-    copy: {
-      headline: c.headline,
-      subline: c.subline,
-      cta: c.cta,
-      layout: layouts[i] ?? layouts[0],
-      /* Brand colours only; the accent is kept apart so the browser can refine it from the
-         finished photo when there are no brand colours. */
-      colors: (brand.colors ?? []).slice(0, 5),
-      ...(c.accent ? { accent: c.accent } : {}),
-      ...(c.typeStyle ? { typeStyle: c.typeStyle } : {}),
-      ...(labels ? { labels } : {}),
-      ...(fonts ? { fonts } : {}),
-      ...(logo ? { logo } : {}),
-      composed: false,
-    },
-    prompt: adPhotoPrompt(
-      {
-        product: described,
-        refs,
-        aspect: job.aspect,
-        themeId: inputs.themeId,
-        themeName,
-        layoutBrief: LAYOUT_PHOTO_BRIEF[layouts[i] ?? layouts[0]],
-        scene: c.scene,
-        brand,
+  return copies.map((c: AdCopy, i): Plan => {
+    const themeId = order[i];
+    const labels = themeId ? AD_THEME_RECIPES[themeId]?.labels : undefined;
+    return {
+      refs,
+      copy: {
+        headline: c.headline,
+        subline: c.subline,
+        cta: c.cta,
+        layout: layouts[i],
+        /* Brand colours only; the accent is kept apart so the browser can refine it from the
+           finished photo when there are no brand colours. */
+        colors: (brand.colors ?? []).slice(0, 5),
+        ...(c.accent ? { accent: c.accent } : {}),
+        ...(c.typeStyle ? { typeStyle: c.typeStyle } : {}),
+        ...(labels ? { labels } : {}),
+        ...(fonts ? { fonts } : {}),
+        ...(logo ? { logo } : {}),
+        composed: false,
       },
-      i,
-      job.count,
-    ),
-  }));
+      prompt: adPhotoPrompt(
+        {
+          product: described,
+          refs,
+          aspect: job.aspect,
+          themeId,
+          themeName: themeName(themeId),
+          layoutBrief: LAYOUT_PHOTO_BRIEF[layouts[i]],
+          scene: c.scene,
+          brand,
+        },
+        i,
+        job.count,
+      ),
+    };
+  });
 }
 
 function extension(type: string) {

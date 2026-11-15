@@ -25,9 +25,26 @@ function AdStudioPage() {
   const { generate, pending: generating } = useGenerate();
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [theme, setTheme] = useState<AdTheme | null>(null);
+  /* With more than one ad, several themes can be picked (up to one per ad); the ads take
+     them in turn. */
+  const [picked, setPicked] = useState<AdTheme[]>([]);
+  const theme = picked[0] ?? null;
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
-  const [count, setCount] = useState(1);
+  const [count, setCountRaw] = useState(1);
+  const setCount = (next: number) => {
+    setCountRaw(next);
+    setPicked((list) => list.slice(0, Math.max(1, next)));
+  };
+  const toggleTheme = (t: AdTheme) =>
+    setPicked((list) => {
+      if (count <= 1) return [t];
+      if (list.some((x) => x.id === t.id)) return list.filter((x) => x.id !== t.id);
+      /* Full: the newest pick replaces the oldest. */
+      return [...list, t].slice(-count);
+    });
+  const multi = count > 1;
+  const themeLabel =
+    picked.length > 1 ? `Themes: ${picked.map((t) => t.name).join(", ")}` : `Theme: ${theme?.name}`;
   const [note, setNote] = useState("");
   const insights = useProductInsights(product);
   const { data: themes = [] } = useAdThemes();
@@ -51,7 +68,7 @@ function AdStudioPage() {
               onChange={() => setPickerOpen(true)}
               onDelete={() => {
                 setProduct(null);
-                setTheme(null);
+                setPicked([]);
               }}
             />
           ) : (
@@ -74,21 +91,23 @@ function AdStudioPage() {
         </section>
 
         <section className="flex flex-col gap-[30px]">
-          <SectionTitle>Creative theme · pick one</SectionTitle>
+          <SectionTitle>
+            {multi ? `Creative themes · pick up to ${count}` : "Creative theme · pick one"}
+          </SectionTitle>
           <div
             className="grid grid-cols-2 gap-[22px] md:grid-cols-3 xl:grid-cols-5"
-            role="radiogroup"
-            aria-label="Creative theme"
+            role={multi ? "group" : "radiogroup"}
+            aria-label={multi ? "Creative themes" : "Creative theme"}
           >
             {themes.map((t) => {
-              const active = theme?.id === t.id;
+              const active = picked.some((x) => x.id === t.id);
               return (
                 <button
                   key={t.id}
                   type="button"
-                  role="radio"
+                  role={multi ? "checkbox" : "radio"}
                   aria-checked={active}
-                  onClick={() => setTheme(t)}
+                  onClick={() => toggleTheme(t)}
                   className={cn(
                     "group flex flex-col overflow-hidden rounded-[12px] border-[0.8px] bg-v2-surface text-left transition-colors",
                     active
@@ -121,9 +140,7 @@ function AdStudioPage() {
             onPickProduct={() => setPickerOpen(true)}
             chips={
               <>
-                {theme ? (
-                  <TemplateChip name={`Theme: ${theme.name}`} imageUrl={theme.imageUrl} />
-                ) : null}
+                {theme ? <TemplateChip name={themeLabel} imageUrl={theme.imageUrl} /> : null}
                 <StudioBrandChip brand={brand} />
               </>
             }
@@ -144,11 +161,13 @@ function AdStudioPage() {
               generate({
                 studio: "ad",
                 kind: "ad",
-                inputs: { studio: "ad", themeId: theme?.id ?? null },
+                inputs: {
+                  studio: "ad",
+                  themeId: theme?.id ?? null,
+                  ...(picked.length > 1 ? { themeIds: picked.map((t) => t.id) } : {}),
+                },
                 product: product!,
-                style: theme
-                  ? { label: `Theme: ${theme.name}`, imageUrl: theme.imageUrl }
-                  : undefined,
+                style: theme ? { label: themeLabel, imageUrl: theme.imageUrl } : undefined,
                 aspect,
                 count,
                 note: note.trim() || undefined,
@@ -166,7 +185,7 @@ function AdStudioPage() {
         onOpenChange={setPickerOpen}
         onSelect={(next) => {
           setProduct(next);
-          setTheme(null);
+          setPicked([]);
         }}
         initialSelectedId={product?.id}
       />

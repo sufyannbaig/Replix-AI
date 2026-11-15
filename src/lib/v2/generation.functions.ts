@@ -60,7 +60,11 @@ const Inputs = z.union([
     character: Upload.nullable(),
     pose: Upload.nullable(),
   }),
-  z.object({ studio: z.literal("ad"), themeId: str(60).nullable() }),
+  z.object({
+    studio: z.literal("ad"),
+    themeId: str(60).nullable(),
+    themeIds: z.array(str(60)).max(10).optional(),
+  }),
 ]);
 const Request = z.object({
   studio: z.enum(["photo", "ad"]),

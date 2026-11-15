@@ -4,7 +4,7 @@
 import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { AD_SIZES, FONT, buildAdLayout, chromaticColors, type AdNode } from "./ad-layouts.ts";
-import { AD_THEME_RECIPES, adCopyMessages, parseAdCopy } from "./recipes.ts";
+import { AD_THEME_RECIPES, adCopyMessages, adThemeOrder, parseAdCopy } from "./recipes.ts";
 
 const copy = { headline: "Cold brew, zero wait", subline: "Ready when you are", cta: "Shop now" };
 
@@ -124,5 +124,33 @@ describe("v1 themes in the copy", () => {
       parseAdCopy({ type: "loud", ads: [{ headline: "x" }] }, 1, "S")[0].typeStyle,
       undefined,
     );
+  });
+});
+
+describe("a batch with several themes", () => {
+  test("the ads take the picked themes in turn", () => {
+    deepStrictEqual(adThemeOrder(["showcase", "stats"], 4), [
+      "showcase",
+      "stats",
+      "showcase",
+      "stats",
+    ]);
+    deepStrictEqual(adThemeOrder(["showcase", "stats", "headline"], 3), [
+      "showcase",
+      "stats",
+      "headline",
+    ]);
+    deepStrictEqual(adThemeOrder(["testimonial"], 2), ["testimonial", "testimonial"]);
+    deepStrictEqual(adThemeOrder([], 2), [null, null]);
+  });
+});
+
+describe("banner band", () => {
+  test("the text sits on solid colour, not see-through over the photo", () => {
+    const { tree } = buildAdLayout({ layout: "banner", aspect: "1:1", photo: "data:,", copy });
+    const band = String((tree.props.children as AdNode[])[1].props.style?.backgroundImage);
+    const stops = [...band.matchAll(/rgba\([^)]*,([\d.]+)\) (\d+)%/g)].map((m) => [+m[1], +m[2]]);
+    const solid = stops.find(([a]) => a === 1);
+    ok(solid && solid[1] < 60, band);
   });
 });

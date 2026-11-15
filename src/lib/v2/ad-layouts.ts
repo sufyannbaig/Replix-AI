@@ -120,7 +120,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   stamp:
     "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp, filling about 50% of the frame height, standing left of centre with its middle about 40% from the left edge and slightly low in the frame. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right quarter of the frame and the bottom left corner are plain backdrop with nothing in them, not even the product's edge. Never a product standing still on a plain grey or white set.",
   banner:
-    "Studio-grade commercial photography in the scene described, like a premium paid-social ad. The whole product is sharp, large and the clear hero, filling about half of the frame height, in the upper and middle part of the frame with its base no lower than 62% of the frame height. The bottom 35% of the frame is calm and slightly darker (a plain surface, soft shadow or out-of-focus background) with nothing important in it, because the headline goes there.",
+    "Studio-grade commercial photography in the scene described, like a premium paid-social ad. The whole product is sharp and the clear hero, about 40% of the frame height, standing in the upper-middle of the frame: its top edge around 12% from the top and its base no lower than 58% of the frame height, so the whole product including its label sits in the top 60%. The bottom 35% of the frame is only the surface it stands on or soft out-of-focus background, darker and calm, with nothing important in it, because the headline panel covers it.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -1638,7 +1638,11 @@ function banner(ctx: Ctx): AdNode {
     size -= 4;
   const band = shade(ctx.accent, 0.16);
   const rgb = hexToRgb(band)!;
-  const cta = contrast(ctx.accent, band) >= 3 ? ctx.accent : shade(ctx.accent, 0.55, true);
+  /* The product colour when it stands out on the band, else a lighter step of it. */
+  const cta =
+    [ctx.accent, shade(ctx.accent, 0.25, true), shade(ctx.accent, 0.45, true)].find(
+      (c) => contrast(c, band) >= 3,
+    ) ?? "#FFFFFF";
   const sub = ctx.copy.subline ?? "";
   const subSize = Math.round(ctx.width * (type.upper ? 0.028 : 0.034));
   const ctaSize = Math.round(ctx.width * 0.03);
@@ -1649,7 +1653,12 @@ function banner(ctx: Ctx): AdNode {
     28 +
     ctaSize +
     2 * Math.round(ctaSize * 0.62);
-  const bandTop = Math.max(0, ctx.height - ctx.bottom - block - ctx.height * 0.16);
+  /* Solid colour from just above the text down, so the words never sit over the product's
+     label; a short fade above it blends into the photo (v1's bottom panel, softened). */
+  const fade = ctx.height * 0.14;
+  const solidTop = Math.max(0, ctx.height - ctx.bottom - block - 28);
+  const bandTop = Math.max(0, solidTop - fade);
+  const solidAt = Math.round(((solidTop - bandTop) / Math.max(1, ctx.height - bandTop)) * 100);
   const c = (a: number) => `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
   /* Elegant gets a quiet outlined button; the others a solid one in the product colour. */
   const button: Record<string, string> =
@@ -1677,7 +1686,7 @@ function banner(ctx: Ctx): AdNode {
         top: bandTop,
         width: ctx.width,
         height: ctx.height - bandTop,
-        backgroundImage: `linear-gradient(180deg, ${c(0)} 0%, ${c(0.7)} 36%, ${c(0.93)} 68%, ${c(0.97)} 100%)`,
+        backgroundImage: `linear-gradient(180deg, ${c(0)} 0%, ${c(0.85)} ${Math.round(solidAt * 0.7)}%, ${c(1)} ${solidAt}%, ${c(1)} 100%)`,
       }),
       el(
         "div",

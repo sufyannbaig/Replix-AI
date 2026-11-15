@@ -248,7 +248,13 @@ export type GenerationInputs =
       character: UploadRef | null;
       pose: UploadRef | null;
     }
-  | { studio: "ad"; themeId: AdThemeId | null }
+  | {
+      studio: "ad";
+      /** The first (or only) theme. */
+      themeId: AdThemeId | null;
+      /** When a batch mixes themes: every picked theme, in the order the ads take them. */
+      themeIds?: AdThemeId[];
+    }
   | { studio: "ugc"; mode: "templates"; templateId: string; script: string }
   | {
       studio: "ugc";
