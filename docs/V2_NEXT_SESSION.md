@@ -95,7 +95,7 @@ Research (competitors plus one live test) found the label already comes out righ
 - **Label lock (all Photo Studio modes):** one Gemini text call per job reads the printed words from the product photo, and the prompt quotes them exactly (`photo-check.ts`).
 - **Check and retry:** each photo is compared with the product (shape, colour, label words, and people errors when there is a person). A failed photo is made again once with the problems named; the retry is at our cost. A failing check call never blocks a photo.
 - **Tests:** `photo-check.test.ts`. Costs are in `V2_GENERATION_COSTS.md`.
-- **Still to check live:** one people shot (for example Bathroom vanity, Ayesha K., "Hand holding product close up"). Server logs show `photo failed check, retrying` when a retry runs.
+- **Tested live (imported as 58cb4e0):** the same shot that failed (Bathroom vanity, towel, flowers, Ayesha K., "Hand holding product close up"). Now there is one person with the hands clearly hers, her whole head in frame, all pieces used and the label exact; it took about 30 s, so it most likely passed the check first time. The product sits a little smaller than before. Server logs show `photo failed check, retrying` when a retry runs.
 - **Phase 2 (not started):** product size and position grid, camera angle and light chips, a free mock-up preview before spending credits, fix-after edits (swap a prop, change the pose, brush to fix), saved Looks, and letting users correct the label text.
 
 ## 6. What's left, in a sensible order
