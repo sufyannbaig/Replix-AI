@@ -174,8 +174,12 @@ export function shotLines(shot: Shot | undefined): string[] {
     shot.position === "middle-center"
       ? "centred in the frame"
       : `in the ${row === "middle" ? "middle" : row} ${col === "center" ? "centre" : col} of the frame`;
+  /* Coordinates as well as words: the model follows numbers more closely (a "left" test
+     landed just left of centre with words alone). */
+  const x = { left: 25, center: 50, right: 75 }[col as "left"] ?? 50;
+  const y = { top: 30, middle: 50, bottom: 70 }[row as "top"] ?? 50;
   return [
-    `- Placement: the product sits ${where}, ${SIZE_TEXT[shot.size] ?? SIZE_TEXT.medium}. Keep this placement exactly.`,
+    `- Placement: the product sits ${where}, its centre about ${x}% from the left edge and ${y}% from the top, ${SIZE_TEXT[shot.size] ?? SIZE_TEXT.medium}. Keep this placement exactly; leave the rest of the frame to the set.`,
     `- Angle: ${ANGLE_TEXT[shot.angle] ?? ANGLE_TEXT.eye}.`,
   ];
 }

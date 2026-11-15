@@ -119,6 +119,14 @@ Research (competitors plus one live test) found the label already comes out righ
   - Ctrl/⌘+Enter generates;
   - Photo and Ad Studio remember size and count in this browser.
 - **Later ideas:** keep working while a job runs (results as rows on the studio page), and a "use these settings" link from a result back into the studio.
+- **Tested live on id-preview (b75ec00, 2026-11-15), all passing:**
+  - **Generate bar:** with nothing picked, the button reads "Add a scene and a product"; clicking "Add a product" opens the product picker; the balance shows ("1,775 left"); Ctrl+Enter started a job.
+  - **Camera step:** Marble kitchen + lemons, Large, from above, golden hour. Large size, warm low sun and the higher angle came through, and the label read as "ACME / GLOW / SERUM / • 30 ml" in the field and came out exact. "Middle left" landed only just left of centre, so the placement line now also gives coordinates (later commit; not yet re-tested).
+  - **Edit this photo:** tapped the lemons, "Swap the lemons for a small lit candle". The candle replaced the lemons and everything else stayed the same.
+  - **Build It Yourself:** scene (Sunny balcony) and prop (Sunglasses) picked from the Library generated fine. This was the old error.
+  - **Ad Studio:** one Bold Claim ad. The headline set on two lines clear of the button (the 76aae25 fix is confirmed), the label was exact, and there is no "Edit this photo" on ads.
+  - Credits used in testing: 10.
+- **Photo Studio and Ad Studio are done for now.** Next is Video Studio (fal.ai).
 
 ## 6. What's left, in a sensible order
 
