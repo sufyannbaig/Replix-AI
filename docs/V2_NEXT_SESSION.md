@@ -86,6 +86,18 @@ Every studio mode shows the Build Piece By Piece chevron bar as its steps (`Step
 
 v1's ten ad themes and v1-style copy replace v2's five themes. Each ad uses the new Banner layout, and its type style (bold, condensed or elegant) and colour are chosen per product. Details are in `V2_AD_DESIGN_PLAN.md` step 7. **Migration `20261115130000_v2_ad_themes_v1.sql` must run**, or every new theme fails with "That template isn't available any more." The first live test passed: the ten themes are in the picker and the database. The `preview--` address still serves an old build; test on `https://id-preview--0a083220-8ffb-4ce6-b754-315b07d1704f.lovable.app` (it has its own sign-in). Follow-up: the headline now sits on a solid band and batches can mix themes. Later the same day: the Banner became a photo above a solid panel (beside it on 16:9). The headline is bigger and testimonials get quotation marks; this was tested live and works. **Last fix, 76aae25** (a headline in a brand font wrapped into the button): it is in Lovable and checked locally and by tests, but the hosted preview hadn't picked it up yet, so check one live batch with a long headline.
 
+## 5f. Piece By Piece Phase 1: quality gate (2026-11-15)
+
+Research (competitors plus one live test) found the label already comes out right, but people shots can go wrong: in the test the hands didn't belong to the model and her head was cropped. Phase 1 changes only the server and prompts, with no new screens:
+
+- **Per-scene light and lens, per-pose framing:** `src/lib/v2/piece-direction.ts`, looked up by preset name. Uploads keep the generic lines.
+- **Person rules** whenever a model or pose is picked: one person, arms attached, five fingers, never crop through the head.
+- **Label lock (all Photo Studio modes):** one Gemini text call per job reads the printed words from the product photo, and the prompt quotes them exactly (`photo-check.ts`).
+- **Check and retry:** each photo is compared with the product (shape, colour, label words, and people errors when there is a person). A failed photo is made again once with the problems named; the retry is at our cost. A failing check call never blocks a photo.
+- **Tests:** `photo-check.test.ts`. Costs are in `V2_GENERATION_COSTS.md`.
+- **Still to check live:** one people shot (for example Bathroom vanity, Ayesha K., "Hand holding product close up"). Server logs show `photo failed check, retrying` when a retry runs.
+- **Phase 2 (not started):** product size and position grid, camera angle and light chips, a free mock-up preview before spending credits, fix-after edits (swap a prop, change the pose, brush to fix), saved Looks, and letting users correct the label text.
+
 ## 6. What's left, in a sensible order
 
 **Ad Studio**

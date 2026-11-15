@@ -20,6 +20,14 @@ import { LAYOUT_PHOTO_BRIEF, bannerFrame, layoutsFor, type AdLayoutId } from "./
 import { brandFontsForPlan } from "@/v2/data/pricing";
 import { isSafePublicUrl } from "./page-meta";
 import {
+  checkMessages,
+  fixLine,
+  labelMessages,
+  parseCheck,
+  parseLabel,
+  type CheckResult,
+} from "./photo-check";
+import {
   AD_THEME_RECIPES,
   adCopyMessages,
   adThemeOrder,
@@ -274,8 +282,54 @@ async function generateImage(prompt: string, refs: Loaded[]) {
   return { bytes, type };
 }
 
-/** `copy` is set for ads: the photo is stored text-free and the browser sets the type. */
-type Plan = { prompt: string; refs: Loaded[]; copy?: OutputCopy };
+/**
+ * `copy` is set for ads: the photo is stored text-free and the browser sets the type.
+ * `check` is set for Photo Studio: the finished photo is compared with the product.
+ */
+type Plan = {
+  prompt: string;
+  refs: Loaded[];
+  copy?: OutputCopy;
+  check?: { label: string[]; person: boolean };
+};
+
+/** The words printed on the product; [] when the read fails (it never blocks a job). */
+async function readLabel(productImage: string): Promise<string[]> {
+  try {
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: labelMessages(productImage),
+    });
+    return parseLabel(parseJsonBlock(raw));
+  } catch (error) {
+    console.error("[v2 generation] label read failed", error);
+    return [];
+  }
+}
+
+/** QA of one finished photo; passes when the check itself fails. */
+async function checkPhoto(
+  productImage: string,
+  photo: { bytes: Uint8Array; type: string },
+  check: NonNullable<Plan["check"]>,
+): Promise<CheckResult> {
+  try {
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: checkMessages(
+        productImage,
+        toDataUrl(photo.bytes.buffer as ArrayBuffer, photo.type),
+        check,
+      ),
+    });
+    return parseCheck(parseJsonBlock(raw));
+  } catch (error) {
+    console.error("[v2 generation] photo check failed", error);
+    return { pass: true, issues: [] };
+  }
+}
 
 async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInputs) {
   if (inputs.studio !== "photo") throw new GenerationError("Wrong studio.");
@@ -301,8 +355,11 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
     if (inputs.character) refs.push(await loadUpload(ctx, inputs.character, "character"));
     if (inputs.pose) refs.push(await loadUpload(ctx, inputs.pose, "pose"));
   }
+  const label = await readLabel(product.dataUrl);
+  const person = refs.some((r) => r.role === "character" || r.role === "pose");
   return Array.from({ length: job.count }, (_, i) => ({
     refs,
+    check: { label, person },
     prompt: photoPrompt(
       {
         product,
@@ -311,6 +368,7 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
         recipe,
         mode: inputs.mode,
         note: job.note,
+        label,
       },
       i,
       job.count,
@@ -488,15 +546,32 @@ export async function runJob(jobRow: GenerationJobRow, site: Site) {
           ? await adPlans(ctx, request, inputs)
           : [];
     if (!plans.length) throw new GenerationError("This studio isn't live yet.");
-    if (jobRow.studio === "ad") cost += EST_USD.text;
+    /* Ads: the copy call. Photos: the label read. */
+    cost += EST_USD.text;
     await admin.from("generation_jobs").update({ progress: 0.15 }).eq("id", jobRow.id);
 
     /* Two at a time keeps us under the gateway's per-workspace rate limit. */
     let done = 0;
     const runOne = async (plan: Plan, position: number) => {
       try {
-        const image = await generateImage(plan.prompt, plan.refs);
+        let image = await generateImage(plan.prompt, plan.refs);
         cost += EST_USD.image;
+        /* Photo Studio: check against the product and make it again once if it fails. The
+           retry is on us; the customer pays for one photo either way. */
+        if (plan.check) {
+          const result = await checkPhoto(plan.refs[0].dataUrl, image, plan.check);
+          cost += EST_USD.text;
+          if (!result.pass) {
+            console.warn("[v2 generation] photo failed check, retrying", jobRow.id, result.issues);
+            try {
+              image = await generateImage(plan.prompt + fixLine(result.issues), plan.refs);
+              cost += EST_USD.image;
+            } catch (error) {
+              /* Keep the first photo rather than losing it. */
+              console.error("[v2 generation] retry failed", jobRow.id, error);
+            }
+          }
+        }
         /* Ads: the clean photo; the browser uploads the finished ad as {n}.jpg. */
         const name = plan.copy ? `${position + 1}-photo` : `${position + 1}`;
         const path = `${jobRow.user_id}/${jobRow.id}/${name}.${extension(image.type)}`;

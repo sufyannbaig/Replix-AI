@@ -5,6 +5,8 @@
  * brief, set, light, camera, composition, then hard rules, then the variation.
  */
 import type { AspectRatio } from "@/v2/data/types";
+import { labelLine } from "./photo-check.ts";
+import { PERSON_RULES, poseFraming, sceneDirection } from "./piece-direction.ts";
 
 export type RefRole = "product" | "template" | "scene" | "prop" | "character" | "pose" | "layout";
 
@@ -80,11 +82,19 @@ export type PhotoBrief = {
   recipe?: { set?: string; light?: string; camera?: string; notes?: string };
   mode: "templates" | "piece" | "diy";
   note?: string | null;
+  /** The words printed on the product, read from its photo (photo-check.ts). */
+  label?: string[];
 };
 
 export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
   const { product, recipe } = brief;
   const fromTemplate = brief.mode === "templates";
+  /* Piece By Piece: the preset scene brings its own light and lens, the pose its framing. */
+  const named = (role: RefRole) => brief.refs.find((r) => r.role === role)?.name;
+  const scene = fromTemplate ? undefined : sceneDirection(named("scene"));
+  const framing = fromTemplate ? undefined : poseFraming(named("pose"));
+  const person =
+    !fromTemplate && brief.refs.some((r) => r.role === "character" || r.role === "pose");
   const lines = [
     "You are a senior commercial product photographer and retoucher. Create ONE finished product photo.",
     "",
@@ -93,13 +103,16 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
     "MASTER SHOT",
     `- Brief: a scroll-stopping photo of ${product.name}${product.description ? ` (${clip(product.description, 240)})` : ""}.`,
     `- Set: ${recipe?.set ?? (fromTemplate ? "as in the TEMPLATE." : "the SCENE, styled with the props provided.")}`,
-    `- Light: ${recipe?.light ?? (fromTemplate ? "match the TEMPLATE's light direction, softness and colour temperature." : "soft directional key light matching the SCENE, gentle fill, clean natural shadows.")}`,
-    `- Camera: ${recipe?.camera ?? "85mm product lens look, shallow depth of field on the background, product tack sharp."}`,
+    `- Light: ${recipe?.light ?? scene?.light ?? (fromTemplate ? "match the TEMPLATE's light direction, softness and colour temperature." : "soft directional key light matching the SCENE, gentle fill, clean natural shadows.")}`,
+    `- Camera: ${recipe?.camera ?? scene?.camera ?? "85mm product lens look, shallow depth of field on the background, product tack sharp."}`,
     `- Composition: ${ASPECT_TEXT[brief.aspect]}, product placed by the rule of thirds or centred as the set suggests, nothing important near the edges.`,
+    framing ? `- Framing: ${framing}` : "",
+    labelLine(brief.label ?? []),
     recipe?.notes ? `- Notes: ${recipe.notes}` : "",
     "",
     "RULES",
     ...PHOTO_RULES.map((r) => `- ${r}`),
+    ...(person ? PERSON_RULES.map((r) => `- ${r}`) : []),
     brief.note
       ? `\nThe customer adds: "${clip(brief.note, 400)}" (follow it unless it breaks the rules).`
       : "",
