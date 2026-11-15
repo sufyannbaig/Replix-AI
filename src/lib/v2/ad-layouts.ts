@@ -1694,7 +1694,10 @@ function banner(ctx: Ctx): AdNode {
     gap +
     ctaSize +
     2 * ctaPad;
-  let size = fitHeadline(words, box.width, {
+  /* Sized for a narrower width than it is drawn in: real glyphs can run wider than the
+     estimate, and an extra line would push the headline into the button. */
+  const fitW = Math.round(box.width * 0.86);
+  let size = fitHeadline(words, fitW, {
     maxLines: right ? 4 : ctx.aspect === "9:16" ? 3 : 2,
     max: Math.round(ctx.width * (right ? 0.075 : 0.13)),
     min: 40,
@@ -1704,7 +1707,7 @@ function banner(ctx: Ctx): AdNode {
   /* Shrink until the whole block fits the panel. */
   while (
     size > 40 &&
-    measuredLines(words, box.width, size, measure) * size * type.lh + rest > box.height
+    measuredLines(words, fitW, size, measure) * size * type.lh + rest > box.height
   )
     size -= 4;
   const pr = hexToRgb(panel)!;

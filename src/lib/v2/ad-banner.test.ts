@@ -9,6 +9,7 @@ import {
   bannerFrame,
   buildAdLayout,
   chromaticColors,
+  measuredLines,
   photoBackdrop,
   type AdNode,
 } from "./ad-layouts.ts";
@@ -218,4 +219,27 @@ describe("banner headline size", () => {
     const head = banner().find((s) => s.text === copy.headline.toUpperCase())!;
     ok((head.style.fontSize as number) >= 1080 * 0.09, `${head.style.fontSize}px`);
   });
+});
+
+describe("banner headline never runs into the button", () => {
+  /* Real glyphs a bit wider than the layout's estimate for the bold face. */
+  const wider = (t: string, s: number) => t.length * s * 0.74;
+  for (const aspect of ["1:1", "4:5", "9:16", "16:9"] as const) {
+    test(`${aspect}: lines at the real width still fit the panel`, () => {
+      const c = { ...copy, headline: "Secure your supply today." };
+      const { tree } = buildAdLayout({ layout: "banner", aspect, photo: "data:,", copy: c });
+      const box = (tree.props.children as AdNode[])[2];
+      const st = box.props.style as Record<string, number>;
+      const head = (box.props.children as AdNode[])[0];
+      const size = head.props.style?.fontSize as number;
+      const lines = measuredLines(c.headline.toUpperCase(), st.width, size, wider);
+      const planned = measuredLines(
+        c.headline.toUpperCase(),
+        Math.round(st.width * 0.86),
+        size,
+        (t, s) => t.length * s * 0.66,
+      );
+      ok(lines <= planned, `${lines} real lines vs ${planned} planned at ${size}px`);
+    });
+  }
 });
