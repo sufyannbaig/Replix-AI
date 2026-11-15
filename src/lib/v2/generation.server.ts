@@ -544,7 +544,11 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
     return {
       refs,
       copy: {
-        headline: themeId === "testimonial" ? quoteHeadline(c.headline) : c.headline,
+        /* Quote and Note draw their own big quotation mark, so only other layouts add them. */
+        headline:
+          themeId === "testimonial" && layouts[i] !== "quote" && layouts[i] !== "note"
+            ? quoteHeadline(c.headline)
+            : c.headline,
         subline: c.subline,
         cta: c.cta,
         ...(c.post ? { post: c.post } : {}),
