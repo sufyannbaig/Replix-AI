@@ -226,7 +226,19 @@ export type AdCopyBrief = {
   layoutBrief?: string;
   /** One brief per ad, when the ads use different layouts (layout A and B). */
   layoutBriefs?: string[];
+  /** A different look for each ad's scene, so a batch doesn't come out all alike. */
+  moods?: string[];
 };
+
+/** Scene looks a batch rotates through (one per ad), so the ads don't all look alike. */
+export const SCENE_MOODS = [
+  "bright, airy daylight with a light, fresh palette",
+  "rich, moody low-key light with deep colour",
+  "a real place where the product is used, in warm natural light",
+  "a bold, saturated colour set that suits the product",
+  "soft golden-hour light with warm tones",
+  "crisp, cool studio light on a clean, graphic set",
+];
 
 /** How each ad's photo is composed, for the copy call: one line, or one per ad. */
 function compositionText(brief: AdCopyBrief) {
@@ -249,13 +261,18 @@ export function adCopyMessages(brief: AdCopyBrief) {
 ${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
 ${compositionText(brief)}
-Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle on the theme.
+${
+  brief.moods?.length
+    ? `Scene look: ${brief.moods.length > 1 ? brief.moods.map((m, i) => `ad ${i + 1}: ${m}`).join("; ") : brief.moods[0]}.
+`
+    : ""
+}Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle on the theme.
 Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "type": how the headline should be set for this product, one of "bold" (everyday, tech, food, drinks, home goods), "condensed" (sport, fitness, energy, gaming, streetwear) or "elegant" (beauty, skincare, fragrance, jewellery, fashion, interiors), "ads":[{"headline": 3-6 punchy words that stop the scroll, "subline": optional, at most 7 words, "cta": 2-3 words like "Shop now", "scene": one vivid art-direction sentence for this ad's photo: setting, surface, props, lighting and colour palette, fitting the theme and the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB}]}. Every ad must be about that product.`;
   return [
     {
       role: "system",
       content:
-        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji, no invented statistics, reviews, prices, discounts or claims that aren't in the brief. Reply with JSON only.",
+        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji, no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees or claims that aren't in the brief. Reply with JSON only.",
     },
     {
       role: "user",
@@ -284,6 +301,8 @@ export function adPhotoPrompt(
     layoutBrief: string;
     /** The copywriter's scene for this ad. */
     scene?: string;
+    /** The photo's own shape when the layout uses only part of the frame (the Banner). */
+    photoAspect?: string;
     brand: BrandHints;
   },
   index: number,
@@ -300,7 +319,7 @@ export function adPhotoPrompt(
     `- Brief: a "${brief.themeName}" ad photo for ${brief.product.name}${brief.product.description ? ` (${clip(brief.product.description, 200)})` : ""}.`,
     theme ? `- Story: ${theme.story}` : "",
     brief.scene ? `- Scene: ${clip(brief.scene, 400)}` : "",
-    `- Composition: ${ASPECT_TEXT[brief.aspect]}. ${brief.layoutBrief}`,
+    `- Composition: ${brief.photoAspect ? `a ${brief.photoAspect} frame` : ASPECT_TEXT[brief.aspect]}. ${brief.layoutBrief}`,
     "- Light: real, motivated light from the scene. The product is lit by that same light and casts its own shadows and reflections, so it sits in the scene instead of looking pasted in.",
     "- People, if any: real and candid, mid-moment, never posing for the camera or looking like stock photos.",
     colors ? `- Brand colours: ${colors}. Let them appear naturally in the set or background.` : "",

@@ -120,7 +120,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
   stamp:
     "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp, filling about 50% of the frame height, standing left of centre with its middle about 40% from the left edge and slightly low in the frame. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right quarter of the frame and the bottom left corner are plain backdrop with nothing in them, not even the product's edge. Never a product standing still on a plain grey or white set.",
   banner:
-    "Studio-grade commercial photography in the scene described, like a premium paid-social ad. The whole product is sharp and the clear hero, about 40% of the frame height, standing in the upper-middle of the frame: its top edge around 12% from the top and its base no lower than 58% of the frame height, so the whole product including its label sits in the top 60%. The bottom 35% of the frame is only the surface it stands on or soft out-of-focus background, darker and calm, with nothing important in it, because the headline panel covers it.",
+    "Premium commercial photography in the scene described, like a top paid-social campaign. The whole product is the sharp, clear hero, centred, about 60% of the frame height, with clear space above and below it and nothing important near the edges, because the frame may be trimmed slightly. Its label faces the camera. The bottom edge of the frame is the calm surface or background the product stands in front of, since the ad continues below it in that colour.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -272,11 +272,6 @@ export function photoAccent(
 }
 
 /**
- * The photo's plain backdrop colour along its top edge (RGBA pixels, any small size): the
- * average of the top 10% of rows. Null when that band is busy (a scene, not one colour), so
- * the caller keeps its accent.
- */
-/**
  * The brand colours that are real colours: no near-black, near-white or grey, which would
  * turn the Banner's band and button into a plain neutral (and every brand would look alike).
  */
@@ -290,15 +285,25 @@ export function chromaticColors(colors: string[]) {
   });
 }
 
+/**
+ * The photo's plain backdrop colour along one edge (RGBA pixels, any small size): the
+ * average of the outer 10% of rows (or columns, for "right"). Null when that band is busy
+ * (a scene, not one colour), so the caller keeps its accent.
+ */
 export function photoBackdrop(
   data: Uint8ClampedArray,
   width: number,
   height: number,
+  edge: "top" | "bottom" | "right" = "top",
 ): string | null {
   const rows = Math.max(2, Math.round(height * 0.1));
+  const cols = Math.max(2, Math.round(width * 0.1));
   const px: number[][] = [];
-  for (let y = 0; y < rows; y++) {
+  for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      const inside =
+        edge === "top" ? y < rows : edge === "bottom" ? y >= height - rows : x >= width - cols;
+      if (!inside) continue;
       const i = (y * width + x) * 4;
       if (data[i + 3] >= 128) px.push([data[i], data[i + 1], data[i + 2]]);
     }
@@ -1611,63 +1616,95 @@ const BANNER_TYPE = {
 } as const;
 
 /**
- * Banner: v1's clear order (big headline, short line, button, all at the bottom) with type
- * that follows the product instead of one look for everything. The band is a deep shade of
- * the product's own colour, the button is that colour (or a light tint when it would sink
- * into the band), and the type voice changes with `typeStyle`. Set by code, so the words
- * are always spelled exactly.
+ * Where the Banner's photo sits and what shape it is asked for: the photo fills the area
+ * above the panel (beside it on wide frames), so the panel never covers the product.
+ */
+export function bannerFrame(aspect: AspectRatio) {
+  const { width, height } = AD_SIZES[aspect];
+  if (aspect === "16:9")
+    return { photoW: height, photoH: height, side: "right" as const, photoAspect: "1:1" };
+  const shape = { "1:1": [3, 2], "4:5": [5, 4], "9:16": [1, 1] } as const;
+  const [w, h] = shape[aspect];
+  return {
+    photoW: width,
+    photoH: Math.round((width * h) / w),
+    side: "bottom" as const,
+    photoAspect: `${w}:${h}`,
+  };
+}
+
+/**
+ * Banner: v1's clear order (the product photo, then a big headline, a short line and a
+ * button on a solid panel) with type that follows the product instead of one look for
+ * everything. The panel takes the photo's own edge colour, so it flows out of the scene and
+ * every ad looks different; the button is the product's colour (a lighter or deeper step of
+ * it when it would sink into the panel); the type voice changes with `typeStyle`. The words
+ * never sit on the photo, so they never cover the product, and they are set by code, so
+ * they are always spelled exactly.
  */
 function banner(ctx: Ctx): AdNode {
-  const tall = ctx.height > ctx.width;
+  const frame = bannerFrame(ctx.aspect);
+  const right = frame.side === "right";
   const type = BANNER_TYPE[ctx.typeStyle ?? "bold"];
-  const textW = ctx.width - ctx.pad * 2;
+  const panel = ctx.backdrop ?? shade(ctx.accent, 0.16);
+  const ink = inkOn(panel);
+  const inkRgb = hexToRgb(ink)!;
+  const soft = `rgba(${inkRgb.r},${inkRgb.g},${inkRgb.b},0.82)`;
+  const cta =
+    [
+      ctx.accent,
+      shade(ctx.accent, 0.3, true),
+      shade(ctx.accent, 0.55, true),
+      shade(ctx.accent, 0.55),
+      shade(ctx.accent, 0.3),
+    ].find((c) => contrast(c, panel) >= 3) ?? ink;
+  /* The text box: the panel, inside the safe area. */
+  const box = right
+    ? {
+        left: frame.photoW + ctx.pad,
+        top: ctx.top,
+        width: ctx.width - frame.photoW - ctx.pad * 2,
+        height: ctx.height - ctx.top - ctx.bottom,
+      }
+    : {
+        left: ctx.pad,
+        top: frame.photoH + Math.round(ctx.pad * 0.4),
+        width: ctx.width - ctx.pad * 2,
+        height: ctx.height - frame.photoH - Math.round(ctx.pad * 0.4) - ctx.bottom,
+      };
   const words = type.upper ? ctx.copy.headline.toUpperCase() : ctx.copy.headline;
   const measure = ctx.fit ?? ((t: string, s: number) => t.length * s * type.glyph);
-  let size = fitHeadline(words, textW, {
-    maxLines: tall ? 3 : 2,
-    max: Math.round(ctx.width * (tall ? 0.14 : 0.11)),
-    min: 56,
+  const sub = ctx.copy.subline ?? "";
+  const subSize = Math.round(ctx.width * (right ? 0.016 : type.upper ? 0.028 : 0.034));
+  const ctaSize = Math.round(ctx.width * (right ? 0.017 : 0.03));
+  const ctaPad = Math.round(ctaSize * 0.62);
+  const gap = Math.round(ctaSize * 0.9);
+  const rest =
+    (sub
+      ? 14 + subSize * 1.3 * Math.max(1, Math.ceil((sub.length * subSize * 0.6) / box.width))
+      : 0) +
+    gap +
+    ctaSize +
+    2 * ctaPad;
+  let size = fitHeadline(words, box.width, {
+    maxLines: right ? 4 : 2,
+    max: Math.round(ctx.width * (right ? 0.07 : 0.11)),
+    min: 40,
     glyph: type.glyph,
     measure: ctx.fit,
   });
-  /* Never more than a quarter of the frame: the photo stays the hero. */
+  /* Shrink until the whole block fits the panel. */
   while (
-    size > 56 &&
-    measuredLines(words, textW, size, measure) * size * type.lh > ctx.height * 0.25
+    size > 40 &&
+    measuredLines(words, box.width, size, measure) * size * type.lh + rest > box.height
   )
     size -= 4;
-  const band = shade(ctx.accent, 0.16);
-  const rgb = hexToRgb(band)!;
-  /* The product colour when it stands out on the band, else a lighter step of it. */
-  const cta =
-    [ctx.accent, shade(ctx.accent, 0.25, true), shade(ctx.accent, 0.45, true)].find(
-      (c) => contrast(c, band) >= 3,
-    ) ?? "#FFFFFF";
-  const sub = ctx.copy.subline ?? "";
-  const subSize = Math.round(ctx.width * (type.upper ? 0.028 : 0.034));
-  const ctaSize = Math.round(ctx.width * 0.03);
-  const lines = measuredLines(words, textW, size, measure);
-  const block =
-    lines * size * type.lh +
-    (sub ? 16 + subSize * 1.3 * Math.max(1, Math.ceil((sub.length * subSize * 0.6) / textW)) : 0) +
-    28 +
-    ctaSize +
-    2 * Math.round(ctaSize * 0.62);
-  /* Solid colour from just above the text down, so the words never sit over the product's
-     label; a short fade above it blends into the photo (v1's bottom panel, softened). */
-  const fade = ctx.height * 0.14;
-  const solidTop = Math.max(0, ctx.height - ctx.bottom - block - 28);
-  const bandTop = Math.max(0, solidTop - fade);
-  const solidAt = Math.round(((solidTop - bandTop) / Math.max(1, ctx.height - bandTop)) * 100);
-  const c = (a: number) => `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
-  /* Elegant gets a quiet outlined button; the others a solid one in the product colour. */
+  const pr = hexToRgb(panel)!;
+  const c = (a: number) => `rgba(${pr.r},${pr.g},${pr.b},${a})`;
+  const seam = Math.round((right ? frame.photoW : frame.photoH) * 0.14);
   const button: Record<string, string> =
     ctx.typeStyle === "elegant"
-      ? {
-          background: "transparent",
-          color: "#FFFFFF",
-          border: `2px solid ${shade(cta, 0.6, true)}`,
-        }
+      ? { background: "transparent", color: ink, border: `2px solid ${ink}` }
       : { background: cta, color: inkOn(cta) };
   return el(
     "div",
@@ -1676,28 +1713,52 @@ function banner(ctx: Ctx): AdNode {
       position: "relative",
       width: ctx.width,
       height: ctx.height,
-      background: band,
+      background: panel,
     },
     [
-      photoLayer(ctx),
-      el("div", {
-        position: "absolute",
-        left: 0,
-        top: bandTop,
-        width: ctx.width,
-        height: ctx.height - bandTop,
-        backgroundImage: `linear-gradient(180deg, ${c(0)} 0%, ${c(0.85)} ${Math.round(solidAt * 0.7)}%, ${c(1)} ${solidAt}%, ${c(1)} 100%)`,
-      }),
+      el(
+        "img",
+        {
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: frame.photoW,
+          height: frame.photoH,
+          objectFit: "cover",
+        },
+        undefined,
+        { src: ctx.photo, width: frame.photoW, height: frame.photoH },
+      ),
+      /* A short fade so the photo runs into the panel instead of stopping at a hard line. */
+      el(
+        "div",
+        right
+          ? {
+              position: "absolute",
+              left: frame.photoW - seam,
+              top: 0,
+              width: seam,
+              height: frame.photoH,
+              backgroundImage: `linear-gradient(90deg, ${c(0)} 0%, ${c(1)} 100%)`,
+            }
+          : {
+              position: "absolute",
+              left: 0,
+              top: frame.photoH - seam,
+              width: frame.photoW,
+              height: seam,
+              backgroundImage: `linear-gradient(180deg, ${c(0)} 0%, ${c(1)} 100%)`,
+            },
+      ),
       el(
         "div",
         {
           position: "absolute",
-          left: ctx.pad,
-          bottom: ctx.bottom,
-          width: textW,
+          ...box,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          justifyContent: "center",
         },
         [
           el(
@@ -1708,7 +1769,7 @@ function banner(ctx: Ctx): AdNode {
               fontSize: size,
               lineHeight: type.lh,
               letterSpacing: type.track,
-              color: "#FFFFFF",
+              color: ink,
               textAlign: "center",
             },
             words,
@@ -1718,13 +1779,13 @@ function banner(ctx: Ctx): AdNode {
                 el(
                   "div",
                   {
-                    marginTop: 16,
+                    marginTop: 14,
                     fontFamily: ctx.body,
                     fontWeight: 500,
                     fontSize: subSize,
                     letterSpacing: type.upper ? 1.5 : 0,
                     ...(type.upper ? { textTransform: "uppercase" } : {}),
-                    color: "rgba(255,255,255,0.88)",
+                    color: soft,
                     textAlign: "center",
                   },
                   sub,
@@ -1735,8 +1796,8 @@ function banner(ctx: Ctx): AdNode {
             "div",
             {
               display: "flex",
-              marginTop: 28,
-              padding: `${Math.round(ctaSize * 0.62)}px ${Math.round(ctaSize * 1.4)}px`,
+              marginTop: gap,
+              padding: `${ctaPad}px ${Math.round(ctaSize * 1.4)}px`,
               borderRadius: 999,
               ...button,
               fontFamily: ctx.body,

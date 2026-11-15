@@ -16,13 +16,14 @@ import type {
   PieceRef,
   UploadRef,
 } from "@/v2/data/types";
-import { LAYOUT_PHOTO_BRIEF, layoutsFor, type AdLayoutId } from "./ad-layouts";
+import { LAYOUT_PHOTO_BRIEF, bannerFrame, layoutsFor, type AdLayoutId } from "./ad-layouts";
 import { brandFontsForPlan } from "@/v2/data/pricing";
 import { isSafePublicUrl } from "./page-meta";
 import {
   AD_THEME_RECIPES,
   adCopyMessages,
   adThemeOrder,
+  SCENE_MOODS,
   adPhotoPrompt,
   parseAdCopy,
   photoPrompt,
@@ -391,6 +392,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
           count: ads.length,
           note: job.note,
           layoutBriefs: own.map((l) => LAYOUT_PHOTO_BRIEF[l]),
+          moods: ads.map((ad) => SCENE_MOODS[(seed + ad) % SCENE_MOODS.length]),
         }),
       });
       let parsed: unknown = null;
@@ -445,6 +447,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
           themeId,
           themeName: themeName(themeId),
           layoutBrief: LAYOUT_PHOTO_BRIEF[layouts[i]],
+          ...(layouts[i] === "banner" ? { photoAspect: bannerFrame(job.aspect).photoAspect } : {}),
           scene: c.scene,
           brand,
         },

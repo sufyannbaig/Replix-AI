@@ -3,7 +3,15 @@
 // over the photo with a type style picked per product and colours from the brand or product.
 import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
-import { AD_SIZES, FONT, buildAdLayout, chromaticColors, type AdNode } from "./ad-layouts.ts";
+import {
+  AD_SIZES,
+  FONT,
+  bannerFrame,
+  buildAdLayout,
+  chromaticColors,
+  photoBackdrop,
+  type AdNode,
+} from "./ad-layouts.ts";
 import { AD_THEME_RECIPES, adCopyMessages, adThemeOrder, parseAdCopy } from "./recipes.ts";
 
 const copy = { headline: "Cold brew, zero wait", subline: "Ready when you are", cta: "Shop now" };
@@ -145,12 +153,48 @@ describe("a batch with several themes", () => {
   });
 });
 
-describe("banner band", () => {
-  test("the text sits on solid colour, not see-through over the photo", () => {
-    const { tree } = buildAdLayout({ layout: "banner", aspect: "1:1", photo: "data:,", copy });
-    const band = String((tree.props.children as AdNode[])[1].props.style?.backgroundImage);
-    const stops = [...band.matchAll(/rgba\([^)]*,([\d.]+)\) (\d+)%/g)].map((m) => [+m[1], +m[2]]);
-    const solid = stops.find(([a]) => a === 1);
-    ok(solid && solid[1] < 60, band);
+describe("banner panel", () => {
+  for (const aspect of ["1:1", "4:5", "9:16", "16:9"] as const) {
+    test(`${aspect}: the photo sits above (or beside) the panel and the text never on it`, () => {
+      const frame = bannerFrame(aspect);
+      const { tree } = buildAdLayout({ layout: "banner", aspect, photo: "data:,", copy });
+      const [photo, , text] = tree.props.children as AdNode[];
+      strictEqual(photo.props.style?.height, frame.photoH);
+      strictEqual(photo.props.style?.width, frame.photoW);
+      const box = text.props.style as Record<string, number>;
+      if (frame.side === "right") ok(box.left >= frame.photoW, `left ${box.left}`);
+      else ok(box.top >= frame.photoH, `top ${box.top}`);
+      ok(box.top + box.height <= AD_SIZES[aspect].height);
+    });
+  }
+
+  test("the panel continues the photo's own edge colour, with readable text", () => {
+    const light = banner({ backdrop: "#F2EDE4" });
+    const head = light.find((s) => s.text === copy.headline.toUpperCase())!;
+    strictEqual(head.style.color, "#111111");
+    const dark = banner({ backdrop: "#101418" });
+    strictEqual(dark.find((s) => s.text === copy.headline.toUpperCase())!.style.color, "#FFFFFF");
+  });
+});
+
+describe("photoBackdrop edges", () => {
+  const img = (px: (x: number, y: number) => number[]) => {
+    const d = new Uint8ClampedArray(48 * 48 * 4);
+    for (let y = 0; y < 48; y++)
+      for (let x = 0; x < 48; x++) d.set([...px(x, y), 255], (y * 48 + x) * 4);
+    return d;
+  };
+  test("reads the bottom or right edge when asked", () => {
+    const d = img((x, y) => (y >= 43 ? [200, 40, 40] : x >= 43 ? [40, 200, 40] : [128, 128, 128]));
+    strictEqual(photoBackdrop(d, 48, 48, "bottom"), "#C82828");
+    strictEqual(
+      photoBackdrop(
+        img((x) => (x >= 43 ? [40, 200, 40] : [9, 9, 9])),
+        48,
+        48,
+        "right",
+      ),
+      "#28C828",
+    );
   });
 });

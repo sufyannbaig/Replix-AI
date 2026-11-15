@@ -6,6 +6,7 @@
  */
 import {
   FONT,
+  bannerFrame,
   buildAdLayout,
   chromaticColors,
   photoAccent,
@@ -257,8 +258,11 @@ async function adColors(design: AdDesign, photo: Blob) {
   return design.accent ? [usableAccent(design.accent)] : undefined;
 }
 
-/** The photo's plain top-edge colour, for the Poster's type field (null when busy). */
-async function adBackdrop(photo: Blob) {
+/**
+ * The photo's plain edge colour (null when busy): the top edge for the Poster's type field,
+ * the edge next to the Banner's panel so the panel continues the scene.
+ */
+async function adBackdrop(photo: Blob, edge: "top" | "bottom" | "right") {
   try {
     const bitmap = await createImageBitmap(photo, { resizeWidth: 48, resizeHeight: 48 });
     const canvas = document.createElement("canvas");
@@ -268,7 +272,7 @@ async function adBackdrop(photo: Blob) {
     if (!g) throw new Error("No canvas");
     g.drawImage(bitmap, 0, 0, 48, 48);
     bitmap.close();
-    return photoBackdrop(g.getImageData(0, 0, 48, 48).data, 48, 48);
+    return photoBackdrop(g.getImageData(0, 0, 48, 48).data, 48, 48, edge);
   } catch (error) {
     console.warn("[v2 ads] photo backdrop skipped", error);
     return null;
@@ -287,7 +291,11 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
     ]);
   const [colors, backdrop] = await Promise.all([
     adColors(design, photoBlob),
-    design.layout === "poster" ? adBackdrop(photoBlob) : Promise.resolve(null),
+    design.layout === "poster"
+      ? adBackdrop(photoBlob, "top")
+      : design.layout === "banner"
+        ? adBackdrop(photoBlob, bannerFrame(design.aspect).side)
+        : Promise.resolve(null),
   ]);
   const render = async (withBrand: boolean) => {
     const { width, height, tree } = buildAdLayout({
