@@ -3,8 +3,14 @@
 import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { checkMessages, fixLine, labelLine, parseCheck, parseLabel } from "./photo-check.ts";
-import { PERSON_RULES, poseFraming, sceneDirection } from "./piece-direction.ts";
-import { photoPrompt } from "./recipes.ts";
+import {
+  PERSON_RULES,
+  poseFraming,
+  sceneDirection,
+  shotLight,
+  shotLines,
+} from "./piece-direction.ts";
+import { editPrompt, photoPrompt, pointText } from "./recipes.ts";
 
 /* The preset names in src/v2/data/mock.ts (pieceOptions); mock.ts can't load under node. */
 const SCENES = [
@@ -131,5 +137,80 @@ describe("piece direction", () => {
     ok(!p.includes(PERSON_RULES[0]));
     ok(!p.includes("Framing:"));
     ok(p.includes("soft directional key light matching the SCENE"));
+  });
+});
+
+describe("Phase 2: camera step and edits", () => {
+  const base = {
+    product: { name: "Acme Glow Serum" },
+    refs: [
+      { role: "product" as const, name: "Acme Glow Serum" },
+      { role: "scene" as const, name: "Bathroom vanity" },
+    ],
+    aspect: "1:1" as const,
+    mode: "piece" as const,
+  };
+
+  test("placement, size and angle reach the prompt; picked light beats the scene's", () => {
+    const p = photoPrompt(
+      {
+        ...base,
+        shot: { size: "large", position: "bottom-left", angle: "top-down", light: "golden" },
+      },
+      0,
+      1,
+    );
+    ok(p.includes("in the bottom left of the frame"));
+    ok(p.includes("well over half of the frame height"));
+    ok(p.includes("directly overhead"));
+    ok(p.includes("golden-hour sun"));
+    ok(!p.includes(sceneDirection("Bathroom vanity")!.light));
+  });
+
+  test("'Match scene' keeps the scene's own light; centre reads as centred", () => {
+    const lines = shotLines({
+      size: "medium",
+      position: "middle-center",
+      angle: "eye",
+      light: "scene",
+    });
+    ok(lines[0].includes("centred in the frame"));
+    strictEqual(
+      shotLight({ size: "medium", position: "middle-center", angle: "eye", light: "scene" }),
+      undefined,
+    );
+    deepStrictEqual(shotLines(undefined), []);
+  });
+
+  test("templates ignore the camera step", () => {
+    const p = photoPrompt(
+      {
+        ...base,
+        mode: "templates",
+        refs: [
+          { role: "product", name: "x" },
+          { role: "template", name: "t" },
+        ],
+        shot: { size: "large", position: "top-left", angle: "low", light: "moody" },
+      },
+      0,
+      1,
+    );
+    ok(!p.includes("Placement:"));
+  });
+
+  test("an edit names the change, the spot and the label, and keeps the rest", () => {
+    const p = editPrompt({
+      product: { name: "Acme Glow Serum" },
+      instruction: "Swap the flowers for a candle",
+      point: { x: 0.85, y: 0.6 },
+      label: ["ACME GLOW SERUM"],
+    });
+    ok(p.includes("THE CHANGE: Swap the flowers for a candle"));
+    ok(p.includes("right of the photo (about 85% from the left"));
+    ok(p.includes("IMAGE 2 is the PHOTO TO EDIT"));
+    ok(p.includes('"ACME GLOW SERUM"'));
+    strictEqual(pointText({ x: 0.1, y: 0.1 }).startsWith("upper left"), true);
+    strictEqual(pointText({ x: 0.5, y: 0.5 }).startsWith("centre"), true);
   });
 });

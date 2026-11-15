@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { LibraryPicker } from "@/v2/components/studio/LibraryPicker";
 import type { PieceKind } from "@/v2/data/types";
 
-export type UploadedImage = { name: string; url: string; isVideo?: boolean };
+/** `pieceId` is set when the image was picked from the Library rather than uploaded. */
+export type UploadedImage = { name: string; url: string; isVideo?: boolean; pieceId?: string };
 
 const IMAGE_TYPES = "image/png,image/jpeg,image/webp";
 const VIDEO_TYPES = "video/mp4,video/quicktime";
@@ -200,7 +201,9 @@ export function UploadCard({
           kind={libraryKind}
           open={pickerOpen}
           onOpenChange={setPickerOpen}
-          onSelect={(piece) => onChange({ name: piece.name, url: piece.imageUrl })}
+          onSelect={(piece) =>
+            onChange({ name: piece.name, url: piece.imageUrl, pieceId: piece.id })
+          }
         />
       ) : null}
     </div>

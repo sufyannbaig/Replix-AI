@@ -10,6 +10,7 @@ import { extractBrandKit, readProductPage } from "@/lib/v2/v2.functions";
 import {
   getGenerationJob,
   getProductInsights,
+  readProductLabel,
   listGenerations,
   runGeneration,
   saveComposedAd,
@@ -769,6 +770,27 @@ export function useProductInsights(product: Product | null) {
       }
       await new Promise((resolve) => setTimeout(resolve, 1400));
       return sampleInsights;
+    },
+  });
+}
+
+/**
+ * The words printed on a product (Photo Studio camera step), read once per product and
+ * cached for the session. Sample-data mode returns none.
+ */
+export function useProductLabel(product: Product | null) {
+  return useQuery({
+    queryKey: ["v2", "label", product?.id ?? "none"],
+    enabled: !!product,
+    staleTime: Infinity,
+    retry: 1,
+    queryFn: async (): Promise<string[]> => {
+      if (product && (await backendUser("generation_jobs"))) {
+        return readProductLabel({
+          data: { product: { id: product.id, name: product.name, imageUrl: product.imageUrl } },
+        });
+      }
+      return [];
     },
   });
 }

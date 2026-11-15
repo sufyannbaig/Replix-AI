@@ -7,7 +7,13 @@ import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { FilterTabs, PillButton, PillLink } from "@/v2/components/primitives";
 import { ModeSwitcher, type StudioMode } from "@/v2/components/studio/ModeSwitcher";
-import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import {
+  ComposerBar,
+  isAspect,
+  missingHint,
+  TemplateChip,
+  useStickySetting,
+} from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import {
@@ -22,9 +28,16 @@ import {
   EMPTY_DIY,
   type DiySelection,
 } from "@/v2/components/studio/BuildItYourself";
-import { photoGenerationCost, usePhotoTemplates, usePiece } from "@/v2/data/api";
+import { DEFAULT_SHOT, labelLines, ShotStep } from "@/v2/components/studio/ShotStep";
+import { photoGenerationCost, usePhotoTemplates, usePiece, useProductLabel } from "@/v2/data/api";
 import { photoInputs } from "@/v2/data/inputs";
-import type { AspectRatio, PhotoTemplate, PhotoTemplateCategory, Product } from "@/v2/data/types";
+import type {
+  AspectRatio,
+  PhotoTemplate,
+  PhotoTemplateCategory,
+  Product,
+  ShotSettings,
+} from "@/v2/data/types";
 import mocha from "@/assets/v2/catalog/photo/two-tone-set.webp";
 import sodaHand from "@/assets/v2/catalog/photo/hold-out.webp";
 import sodaCherry from "@/assets/v2/catalog/product/acme-charge.webp";
@@ -251,9 +264,21 @@ function PhotoStudioPage() {
   const [pieceStep, setPieceStep] = useState(0);
   const [pieces, setPieces] = useState<PieceSelection>(EMPTY_SELECTION);
   const [diy, setDiy] = useState<DiySelection>(EMPTY_DIY);
-  const [aspect, setAspect] = useState<AspectRatio>("1:1");
-  const [count, setCount] = useState(1);
+  /* Size and count are remembered for the next visit. */
+  const [aspect, setAspect] = useStickySetting<AspectRatio>("photo-aspect", "1:1", isAspect);
+  const [count, setCount] = useStickySetting(
+    "photo-count",
+    1,
+    (v) => typeof v === "number" && v >= 1 && v <= 4,
+  );
   const [note, setNote] = useState("");
+  const [shot, setShot] = useState<ShotSettings>(DEFAULT_SHOT);
+  /* The words on the product: read from its photo, then the user's edit wins. */
+  const label = useProductLabel(mode === "templates" ? null : product);
+  const [labelEdit, setLabelEdit] = useState<string | null>(null);
+  useEffect(() => setLabelEdit(null), [product?.id]);
+  const labelText = labelEdit ?? (label.data ?? []).join(" / ");
+  const confirmedLabel = labelEdit !== null || label.data ? labelLines(labelText) : undefined;
 
   /* "Use in Photo Studio" from the Library: add the piece, then clean up the URL. */
   const { data: incoming } = usePiece(use);
@@ -279,6 +304,23 @@ function PhotoStudioPage() {
     }
     setSelected(template);
   };
+
+  const shotPanel = (sceneUrl?: string) => (
+    <ShotStep
+      shot={shot}
+      onShot={setShot}
+      aspect={aspect}
+      sceneUrl={sceneUrl}
+      product={product}
+      labelText={labelText}
+      labelLoading={label.isFetching}
+      onLabelText={setLabelEdit}
+      onReread={() => {
+        setLabelEdit(null);
+        void label.refetch();
+      }}
+    />
+  );
 
   /* What the composer shows and the result screen records for the current mode. */
   const style =
@@ -364,9 +406,12 @@ function PhotoStudioPage() {
             onChange={setPieces}
             isFreePlan={plan === "free"}
             onLocked={setUpgradeFor}
+            shot={shot}
+            onShot={setShot}
+            shotPanel={shotPanel(pieces.scene?.imageUrl)}
           />
         ) : (
-          <BuildItYourself value={diy} onChange={setDiy} />
+          <BuildItYourself value={diy} onChange={setDiy} shotPanel={shotPanel(diy.scene?.url)} />
         )}
       </div>
 
@@ -397,6 +442,8 @@ function PhotoStudioPage() {
                   templateId: selected?.id ?? null,
                   pieces,
                   diy,
+                  shot,
+                  label: confirmedLabel,
                 }),
                 product: product!,
                 style: style || undefined,
@@ -407,6 +454,11 @@ function PhotoStudioPage() {
               })
             }
             generating={generating}
+            onMissing={() => {
+              if (style) setPickerOpen(true);
+              else if (mode === "piece") setPieceStep(0);
+              else window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           />
         </div>
       </div>

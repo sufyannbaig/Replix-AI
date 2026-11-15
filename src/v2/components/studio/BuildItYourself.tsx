@@ -1,5 +1,5 @@
 import { Plus, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { LibraryPicker } from "@/v2/components/studio/LibraryPicker";
 import {
   StackArt,
@@ -36,9 +36,12 @@ const CastArt = <StackArt images={[castBack, castMiddle, castFront]} />;
 export function BuildItYourself({
   value,
   onChange,
+  shotPanel,
 }: {
   value: DiySelection;
   onChange: (value: DiySelection) => void;
+  /** The camera step (ShotStep), owned by the page. */
+  shotPanel?: ReactNode;
 }) {
   const propInput = useRef<HTMLInputElement>(null);
   const [picking, setPicking] = useState<"style" | "prop" | null>(null);
@@ -181,13 +184,25 @@ export function BuildItYourself({
         />
       </section>
 
+      {shotPanel ? (
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="type-card-title text-v2-ink">Camera</h2>
+            <p className="font-inter-tight text-sm text-v2-muted">
+              Where your product sits, the angle and the light
+            </p>
+          </div>
+          {shotPanel}
+        </section>
+      ) : null}
+
       {picking ? (
         <LibraryPicker
           kind={picking}
           open
           onOpenChange={(open) => !open && setPicking(null)}
           onSelect={(piece) => {
-            const picked = { name: piece.name, url: piece.imageUrl };
+            const picked = { name: piece.name, url: piece.imageUrl, pieceId: piece.id };
             if (piece.kind === "style") onChange({ ...value, pose: picked });
             else if (!value.props.some((p) => p.url === picked.url))
               onChange({ ...value, props: [...value.props, picked] });

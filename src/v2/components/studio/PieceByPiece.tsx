@@ -1,11 +1,11 @@
-import { Upload, X } from "lucide-react";
-import { useRef } from "react";
+import { Bookmark, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PillButton } from "@/v2/components/primitives";
 import { StepBar } from "@/v2/components/studio/StudioSteps";
 import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
-import type { PieceKind, PieceOption } from "@/v2/data/types";
+import type { PieceKind, PieceOption, ShotSettings } from "@/v2/data/types";
 import plusSmall from "@/assets/v2/pieces/plus-small.svg";
 import artBack from "@/assets/v2/catalog/scene/marble-kitchen.webp";
 import artMiddle from "@/assets/v2/catalog/scene/sand-linen-studio.webp";
@@ -28,14 +28,55 @@ export const EMPTY_SELECTION: PieceSelection = {
 /** Props can be stacked (a plant behind, something in hand); the others are single. */
 const MAX_PROPS = 3;
 
-const STEPS: { kind: PieceKind; label: string; plural: string }[] = [
+const STEPS: { kind: PieceKind | "shot"; label: string; plural: string }[] = [
   { kind: "scene", label: "Scene", plural: "Scene" },
   { kind: "prop", label: "Props", plural: "Props" },
   { kind: "character", label: "Character", plural: "Character" },
   { kind: "style", label: "Pose", plural: "Pose" },
+  { kind: "shot", label: "Camera", plural: "Camera" },
 ];
 
-export function pieceStepIndex(kind: PieceKind) {
+/**
+ * Saved Looks: a scene, props, model, pose and camera saved once and applied to any
+ * product, for a consistent catalog. Kept in this browser only (no account sync yet).
+ */
+export type Look = { id: string; name: string; pieces: PieceSelection; shot: ShotSettings };
+const LOOKS_KEY = "replix-v2-looks";
+const MAX_LOOKS = 12;
+
+function readLooks(): Look[] {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(LOOKS_KEY) ?? "[]");
+    return Array.isArray(raw) ? (raw as Look[]).filter((l) => l?.pieces?.scene && l.shot) : [];
+  } catch {
+    return [];
+  }
+}
+
+function useLooks() {
+  const [looks, setLooks] = useState<Look[]>([]);
+  useEffect(() => setLooks(readLooks()), []);
+  const save = (next: Look[]) => {
+    setLooks(next);
+    try {
+      window.localStorage.setItem(LOOKS_KEY, JSON.stringify(next));
+    } catch {
+      /* Storage blocked: the Look lasts until the page closes. */
+    }
+  };
+  return {
+    looks,
+    add: (look: Look) =>
+      save([look, ...looks.filter((l) => l.name !== look.name)].slice(0, MAX_LOOKS)),
+    remove: (id: string) => save(looks.filter((l) => l.id !== id)),
+  };
+}
+
+function lookName(pieces: PieceSelection) {
+  return [pieces.scene?.name, pieces.character?.name].filter(Boolean).join(" · ");
+}
+
+export function pieceStepIndex(kind: PieceKind | "shot") {
   return Math.max(
     0,
     STEPS.findIndex((s) => s.kind === kind),
@@ -196,6 +237,9 @@ export function PieceByPiece({
   onChange,
   isFreePlan,
   onLocked,
+  shot,
+  onShot,
+  shotPanel,
 }: {
   step: number;
   onStep: (index: number) => void;
@@ -203,10 +247,31 @@ export function PieceByPiece({
   onChange: (next: PieceSelection) => void;
   isFreePlan: boolean;
   onLocked: (piece: PieceOption) => void;
+  shot: ShotSettings;
+  onShot: (shot: ShotSettings) => void;
+  /** The Camera step's content (ShotStep), owned by the page. */
+  shotPanel: ReactNode;
 }) {
   const current = STEPS[step];
-  const { data: options = [] } = usePieceOptions(current.kind);
+  const pieceKind: PieceKind = current.kind === "shot" ? "scene" : current.kind;
+  const { data: options = [] } = usePieceOptions(pieceKind);
   const upload = useAddLibraryUpload();
+  const { looks, add: addLook, remove: removeLook } = useLooks();
+  const applyLook = (look: Look) => {
+    const locked = [
+      look.pieces.scene,
+      ...look.pieces.props,
+      look.pieces.character,
+      look.pieces.pose,
+    ].find((p) => p?.isPro && isFreePlan);
+    if (locked) {
+      onLocked(locked);
+      return;
+    }
+    onChange(look.pieces);
+    onShot(look.shot);
+    toast.success(`Look applied: ${look.name}`);
+  };
 
   const isSelected = (piece: PieceOption) =>
     piece.kind === "prop"
@@ -236,7 +301,7 @@ export function PieceByPiece({
 
   const addUpload = (file: File) =>
     upload.mutate(
-      { file, kind: current.kind },
+      { file, kind: pieceKind },
       {
         onSuccess: toggle,
         onError: () => toast.error("Upload failed. Please try again."),
@@ -246,7 +311,42 @@ export function PieceByPiece({
   return (
     <div className="flex flex-col gap-[29px] xl:flex-row xl:items-start">
       <div className="flex min-w-0 flex-1 flex-col gap-8">
+        {looks.length ? (
+          <div className="flex flex-col gap-2.5">
+            <span className="type-label text-v2-ink">Your Looks</span>
+            <div className="flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+              {looks.map((look) => (
+                <span
+                  key={look.id}
+                  className="flex shrink-0 items-center gap-2 rounded-[74px] bg-v2-surface py-1 pl-1 pr-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => applyLook(look)}
+                    className="flex items-center gap-2 font-archivo text-sm font-medium tracking-[-0.28px] text-v2-ink"
+                  >
+                    <img
+                      src={look.pieces.scene?.imageUrl}
+                      alt=""
+                      className="size-8 rounded-full object-cover"
+                    />
+                    {look.name}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete look ${look.name}`}
+                    onClick={() => removeLook(look.id)}
+                    className="flex size-5 items-center justify-center rounded-full text-v2-ink-60 hover:bg-v2-canvas hover:text-v2-ink"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <Stepper step={step} onStep={onStep} />
+        {current.kind === "shot" ? shotPanel : null}
         {current.kind === "style" && !selection.character ? (
           <p className="-mt-3 font-inter-tight text-sm text-v2-muted">
             Poses apply when your shot has a character.{" "}
@@ -259,7 +359,12 @@ export function PieceByPiece({
             </button>
           </p>
         ) : null}
-        <div className="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-3 xl:gap-y-10">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-3 xl:gap-y-10",
+            current.kind === "shot" && "hidden",
+          )}
+        >
           <UploadTile label={current.label} onFile={addUpload} />
           {options.map((piece) => {
             const active = isSelected(piece);
@@ -332,6 +437,19 @@ export function PieceByPiece({
           <PillButton variant="outline" className="w-full" onClick={() => onStep(step + 1)}>
             Next: {STEPS[step + 1].plural}
           </PillButton>
+        ) : null}
+        {selection.scene ? (
+          <button
+            type="button"
+            onClick={() => {
+              const name = lookName(selection);
+              addLook({ id: `look_${Date.now().toString(36)}`, name, pieces: selection, shot });
+              toast.success(`Saved as a Look: ${name}`);
+            }}
+            className="flex items-center justify-center gap-1.5 font-inter-tight text-sm text-v2-ink-70 hover:text-v2-ink"
+          >
+            <Bookmark className="size-3.5" /> Save as a Look
+          </button>
         ) : null}
       </aside>
     </div>

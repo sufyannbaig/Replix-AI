@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, Check, Download, Play, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Download, Play, RefreshCw, TriangleAlert, Wand2 } from "lucide-react";
+import { EditPhotoDialog } from "@/v2/components/studio/EditPhotoDialog";
 import { toast } from "sonner";
 import { useGenerationJob } from "@/v2/data/api";
 import type {
@@ -105,6 +106,9 @@ function Result({ job }: { job: GenerationJob }) {
   const { generate, pending } = useGenerate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = job.outputs.find((o) => o.id === selectedId) ?? job.outputs[0];
+  /* Fix after: real Photo Studio photos only (sample results have no stored photo). */
+  const [editing, setEditing] = useState(false);
+  const canEdit = request.studio === "photo" && !!selected && /^[0-9a-f-]{36}$/i.test(selected.id);
 
   /* Announce completion only when it happens here, not when reopening a finished result. */
   const previousStatus = useRef(status);
@@ -214,6 +218,11 @@ function Result({ job }: { job: GenerationJob }) {
                   Open
                 </Link>
               </div>
+              {canEdit ? (
+                <PillButton variant="outline" className="w-full" onClick={() => setEditing(true)}>
+                  <Wand2 className="size-4" /> Edit this photo
+                </PillButton>
+              ) : null}
               <PillButton
                 variant="outline"
                 className="w-full"
@@ -235,6 +244,15 @@ function Result({ job }: { job: GenerationJob }) {
           <Details job={job} />
         </aside>
       </div>
+      {canEdit && selected ? (
+        <EditPhotoDialog
+          key={selected.id}
+          job={job}
+          output={selected}
+          open={editing}
+          onOpenChange={setEditing}
+        />
+      ) : null}
     </AppShell>
   );
 }

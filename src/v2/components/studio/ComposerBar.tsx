@@ -1,6 +1,8 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { useCredits } from "@/hooks/use-credits";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,13 +18,59 @@ import sizeSquare from "@/assets/v2/icons/size-square.svg";
 import minusIcon from "@/assets/v2/icons/minus.svg";
 import plusIcon from "@/assets/v2/icons/plus.svg";
 
-/* Figma says "1:1 Portrait"; 1:1 is square, so each ratio gets its correct name. */
-export const ASPECT_OPTIONS: readonly { value: AspectRatio; label: string }[] = [
-  { value: "1:1", label: "1:1 Square" },
-  { value: "4:5", label: "4:5 Portrait" },
-  { value: "9:16", label: "9:16 Story" },
-  { value: "16:9", label: "16:9 Landscape" },
+/* Figma says "1:1 Portrait"; 1:1 is square, so each ratio gets its correct name. `use`
+   says where each size fits, so sellers don't have to know ratios. */
+export const ASPECT_OPTIONS: readonly { value: AspectRatio; label: string; use: string }[] = [
+  { value: "1:1", label: "1:1 Square", use: "Product pages, marketplaces, feed posts" },
+  { value: "4:5", label: "4:5 Portrait", use: "Instagram and Facebook feed" },
+  { value: "9:16", label: "9:16 Story", use: "Stories, Reels, TikTok" },
+  { value: "16:9", label: "16:9 Landscape", use: "Website banners, YouTube" },
 ];
+
+/** The ratio's shape as a small outline, for the size menu. */
+function AspectShape({ value }: { value: AspectRatio }) {
+  const [w, h] = value.split(":").map(Number);
+  const scale = 14 / Math.max(w, h);
+  return (
+    <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden>
+      <span
+        className="rounded-[2px] border-[1.5px] border-current"
+        style={{ width: Math.round(w * scale), height: Math.round(h * scale) }}
+      />
+    </span>
+  );
+}
+
+/**
+ * A studio setting remembered in this browser (size and count), so a return visit starts
+ * where the user left off. `valid` guards against old or tampered values.
+ */
+export function useStickySetting<T>(key: string, initial: T, valid: (value: unknown) => boolean) {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(`replix-v2-${key}`);
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (valid(parsed)) setValue(parsed as T);
+      }
+    } catch {
+      /* Storage blocked: use the default. */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read once per key
+  }, [key]);
+  const set = (next: T) => {
+    setValue(next);
+    try {
+      window.localStorage.setItem(`replix-v2-${key}`, JSON.stringify(next));
+    } catch {
+      /* Storage blocked: the setting lasts until the page closes. */
+    }
+  };
+  return [value, set] as const;
+}
+
+export const isAspect = (v: unknown) => ASPECT_OPTIONS.some((o) => o.value === v);
 
 /** Style of a setting chip in the composer's lower row; studios can add their own. */
 export const composerChip =
@@ -63,10 +111,20 @@ export function missingHint(items: (string | false)[]) {
   return `Add ${list} to generate.`;
 }
 
+/** "Add a product to generate." becomes "Add a product" on the button itself. */
+function shortHint(hint: string) {
+  return hint.replace(/ to generate\.?$/i, "").replace(/\.$/, "");
+}
+
+const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
 /**
  * Shared Composer Bar (Read-me rule: every studio ends in it). Product tile on the left;
  * the note and Generate share the top row, every setting is a chip on the row below.
- * Credit cost is always visible before Generate is clicked.
+ * Following the best generate bars (docs/V2_NEXT_SESSION.md, "Generate bar"): the cost is
+ * always on the button and the balance beside it; when something is missing the button
+ * says what and takes you there; too few credits turns it into the way to get more;
+ * Ctrl/Cmd+Enter generates from anywhere on the page.
  */
 export function ComposerBar({
   product,
@@ -88,6 +146,7 @@ export function ComposerBar({
   noteAction,
   duration,
   generating = false,
+  onMissing,
 }: {
   product: { name: string; imageUrl: string } | null;
   onPickProduct: () => void;
@@ -114,8 +173,47 @@ export function ComposerBar({
   duration?: { value: number; options: readonly number[]; onChange: (seconds: number) => void };
   /** True while the job is being started; the button shows a spinner. */
   generating?: boolean;
+  /** Takes the user to what's missing (e.g. opens the product picker). */
+  onMissing?: () => void;
 }) {
   const aspectLabel = ASPECT_OPTIONS.find((o) => o.value === aspect)?.label ?? aspect;
+  const navigate = useNavigate();
+  const { credits, loading: creditsLoading } = useCredits();
+  const short = !creditsLoading && credits < cost;
+
+  const press = () => {
+    if (generating) return;
+    if (!canGenerate) {
+      toast(generateHint ?? "Add a product to generate.");
+      onMissing?.();
+      return;
+    }
+    if (short) {
+      void navigate({ to: "/upgrade" });
+      return;
+    }
+    onGenerate();
+  };
+
+  /* Ctrl/Cmd+Enter generates, unless a dialog is open. */
+  const pressRef = useRef(press);
+  pressRef.current = press;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      pressRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const label = !canGenerate
+    ? shortHint(generateHint ?? "Add a product")
+    : short
+      ? `Get credits · need ${cost - credits} more`
+      : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`;
 
   return (
     <div className="grid w-full max-w-[622px] grid-cols-[64px_minmax(0,1fr)] gap-x-3 gap-y-2.5 rounded-[12px] bg-v2-composer p-3 shadow-[0_0_44.2px_rgba(0,0,0,0.08)] sm:grid-cols-[96px_minmax(0,1fr)_auto] sm:gap-x-4">
@@ -157,22 +255,17 @@ export function ComposerBar({
 
       <button
         type="button"
-        onClick={() => {
-          if (!canGenerate) {
-            toast(generateHint ?? "Add a product to generate.");
-            return;
-          }
-          onGenerate();
-        }}
+        onClick={press}
         disabled={generating}
         aria-busy={generating}
         aria-disabled={!canGenerate}
-        title={canGenerate ? undefined : generateHint}
+        aria-keyshortcuts="Control+Enter Meta+Enter"
+        title={canGenerate ? `${isMac() ? "⌘" : "Ctrl"}+Enter` : generateHint}
         className={pillClass(
           "primary",
           cn(
             "col-span-2 row-start-3 h-[49.88px] w-full text-sm sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:w-auto",
-            !canGenerate && "opacity-50 hover:brightness-100",
+            !canGenerate && "opacity-60 hover:brightness-100",
           ),
         )}
       >
@@ -181,7 +274,7 @@ export function ComposerBar({
         ) : (
           <img src={creditCoin} alt="" className="size-5" />
         )}
-        Generate · {cost} {cost === 1 ? "credit" : "credits"}
+        <span className="truncate">{label}</span>
       </button>
 
       <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-2">
@@ -194,11 +287,22 @@ export function ComposerBar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {ASPECT_OPTIONS.map((option) => (
-              <DropdownMenuItem key={option.value} onSelect={() => onAspectChange(option.value)}>
+              <DropdownMenuItem
+                key={option.value}
+                onSelect={() => onAspectChange(option.value)}
+                className="items-start gap-2.5 py-2"
+              >
                 <Check
-                  className={cn("size-4", option.value === aspect ? "opacity-100" : "opacity-0")}
+                  className={cn(
+                    "mt-0.5 size-4",
+                    option.value === aspect ? "opacity-100" : "opacity-0",
+                  )}
                 />
-                {option.label}
+                <AspectShape value={option.value} />
+                <span className="flex flex-col">
+                  <span>{option.label}</span>
+                  <span className="text-xs text-muted-foreground">{option.use}</span>
+                </span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -252,6 +356,17 @@ export function ComposerBar({
             </button>
           </div>
         )}
+        {!creditsLoading ? (
+          <span
+            className={cn(
+              "ml-auto flex items-center gap-1 font-inter-tight text-[11px] tabular-nums",
+              short ? "text-[#c2410c]" : "text-v2-muted",
+            )}
+          >
+            <img src={creditCoin} alt="" className="size-3.5" />
+            {credits.toLocaleString()} left
+          </span>
+        ) : null}
       </div>
     </div>
   );

@@ -137,3 +137,50 @@ export const PERSON_RULES = [
   "Five fingers per hand, natural grip on the product, fingers never covering the label.",
   "Never crop through the head: keep the whole head in frame with a little headroom, or keep the face out of frame entirely.",
 ];
+
+/* Camera step (Phase 2): the user's own size, position, angle and light. */
+type Shot = {
+  size: "small" | "medium" | "large";
+  position: string;
+  angle: "eye" | "above" | "top-down" | "low";
+  light: "scene" | "daylight" | "golden" | "studio" | "moody";
+};
+
+const SIZE_TEXT: Record<Shot["size"], string> = {
+  small: "small in the frame, about a fifth of the frame height, with plenty of set around it",
+  medium: "a clear hero, about two fifths of the frame height",
+  large: "large and close, filling well over half of the frame height, details crisp",
+};
+
+const ANGLE_TEXT: Record<Shot["angle"], string> = {
+  eye: "eye level with the product, straight on",
+  above: "slightly above, a three-quarter view looking down about 30 degrees",
+  "top-down": "directly overhead, a flat-lay view looking straight down",
+  low: "low angle looking slightly up at the product, so it feels bold and heroic",
+};
+
+export const LIGHT_TEXT: Record<Exclude<Shot["light"], "scene">, string> = {
+  daylight: "bright natural daylight from a window, soft and clean, true colours.",
+  golden: "warm golden-hour sun low from one side, long soft shadows, a gentle glow.",
+  studio: "clean studio lighting: a large soft box key, white fill, crisp product edges.",
+  moody: "low-key moody light: one directional source, deep soft shadows, rich contrast.",
+};
+
+/** The prompt lines for the camera step; [] for the defaults the scene already covers. */
+export function shotLines(shot: Shot | undefined): string[] {
+  if (!shot) return [];
+  const [row, col] = shot.position.split("-");
+  const where =
+    shot.position === "middle-center"
+      ? "centred in the frame"
+      : `in the ${row === "middle" ? "middle" : row} ${col === "center" ? "centre" : col} of the frame`;
+  return [
+    `- Placement: the product sits ${where}, ${SIZE_TEXT[shot.size] ?? SIZE_TEXT.medium}. Keep this placement exactly.`,
+    `- Angle: ${ANGLE_TEXT[shot.angle] ?? ANGLE_TEXT.eye}.`,
+  ];
+}
+
+/** The light the user picked; undefined keeps the scene's own light. */
+export function shotLight(shot: Shot | undefined): string | undefined {
+  return shot && shot.light !== "scene" ? LIGHT_TEXT[shot.light] : undefined;
+}

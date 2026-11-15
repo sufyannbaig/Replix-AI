@@ -6,9 +6,17 @@
  */
 import type { AspectRatio } from "@/v2/data/types";
 import { labelLine } from "./photo-check.ts";
-import { PERSON_RULES, poseFraming, sceneDirection } from "./piece-direction.ts";
+import {
+  PERSON_RULES,
+  poseFraming,
+  sceneDirection,
+  shotLight,
+  shotLines,
+} from "./piece-direction.ts";
+import type { ShotSettings } from "@/v2/data/types";
 
-export type RefRole = "product" | "template" | "scene" | "prop" | "character" | "pose" | "layout";
+export type RefRole =
+  "product" | "template" | "scene" | "prop" | "character" | "pose" | "layout" | "source";
 
 export type PromptRef = { role: RefRole; name: string };
 
@@ -61,6 +69,8 @@ export function describeRefs(refs: PromptRef[]) {
       `the MODEL ("${n}"). Keep this person's face, skin tone, hair and build. They interact with the product naturally.`,
     pose: (n) =>
       `the POSE reference ("${n}"). The model takes this pose; ignore everything else in it.`,
+    source: () =>
+      `the PHOTO TO EDIT. Keep it exactly as it is (same scene, people, props, light, framing and product) except for the one change asked for below.`,
     layout: (n) =>
       `a LAYOUT reference for the "${n}" ad style. Borrow its structure and energy only, never its product, people, brand or any of its words, labels, bubbles or lists.`,
   };
@@ -84,6 +94,8 @@ export type PhotoBrief = {
   note?: string | null;
   /** The words printed on the product, read from its photo (photo-check.ts). */
   label?: string[];
+  /** Piece By Piece / Build It Yourself camera step. */
+  shot?: ShotSettings;
 };
 
 export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
@@ -103,10 +115,11 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
     "MASTER SHOT",
     `- Brief: a scroll-stopping photo of ${product.name}${product.description ? ` (${clip(product.description, 240)})` : ""}.`,
     `- Set: ${recipe?.set ?? (fromTemplate ? "as in the TEMPLATE." : "the SCENE, styled with the props provided.")}`,
-    `- Light: ${recipe?.light ?? scene?.light ?? (fromTemplate ? "match the TEMPLATE's light direction, softness and colour temperature." : "soft directional key light matching the SCENE, gentle fill, clean natural shadows.")}`,
+    `- Light: ${recipe?.light ?? shotLight(brief.shot) ?? scene?.light ?? (fromTemplate ? "match the TEMPLATE's light direction, softness and colour temperature." : "soft directional key light matching the SCENE, gentle fill, clean natural shadows.")}`,
     `- Camera: ${recipe?.camera ?? scene?.camera ?? "85mm product lens look, shallow depth of field on the background, product tack sharp."}`,
     `- Composition: ${ASPECT_TEXT[brief.aspect]}, product placed by the rule of thirds or centred as the set suggests, nothing important near the edges.`,
     framing ? `- Framing: ${framing}` : "",
+    ...(fromTemplate ? [] : shotLines(brief.shot)),
     labelLine(brief.label ?? []),
     recipe?.notes ? `- Notes: ${recipe.notes}` : "",
     "",
@@ -119,6 +132,46 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
     variationLine(index, total),
   ];
   return lines
+    .filter((l, i, all) => l !== "" || all[i - 1] !== "")
+    .join("\n")
+    .trim();
+}
+
+export type EditBrief = {
+  product: { name: string };
+  instruction: string;
+  /** Where the user tapped, 0 to 1 from the left and top. */
+  point?: { x: number; y: number };
+  label?: string[];
+};
+
+/** Third of the frame a tapped point falls in, in words ("upper left", "centre"). */
+export function pointText(point: { x: number; y: number }) {
+  const col = point.x < 1 / 3 ? "left" : point.x > 2 / 3 ? "right" : "";
+  const row = point.y < 1 / 3 ? "upper" : point.y > 2 / 3 ? "lower" : "";
+  const where = [row, col].filter(Boolean).join(" ") || "centre";
+  return `${where} of the photo (about ${Math.round(point.x * 100)}% from the left and ${Math.round(point.y * 100)}% from the top)`;
+}
+
+/** Edit a finished photo: IMAGE 1 the product, IMAGE 2 the photo to change. */
+export function editPrompt(brief: EditBrief) {
+  return [
+    "You are a senior commercial retoucher. Edit the photo and return ONE finished photo.",
+    "",
+    describeRefs([
+      { role: "product", name: brief.product.name },
+      { role: "source", name: "" },
+    ]),
+    "",
+    `THE CHANGE: ${clip(brief.instruction, 400)}`,
+    brief.point ? `Where: around the ${pointText(brief.point)}.` : "",
+    labelLine(brief.label ?? []),
+    "",
+    "RULES",
+    "- Change only what is asked; everything else stays pixel-faithful to IMAGE 2: same framing, aspect ratio, light and colours.",
+    "- The product must still match IMAGE 1 exactly: shape, colours, label and every printed word.",
+    ...PHOTO_RULES.slice(2).map((r) => `- ${r}`),
+  ]
     .filter((l, i, all) => l !== "" || all[i - 1] !== "")
     .join("\n")
     .trim();

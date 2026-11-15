@@ -224,7 +224,27 @@ export type PieceRef = { id: string; kind: PieceKind | "pose"; name: string; ima
  * A file the user added in a studio. `url` is a blob: URL until the generation starts; the
  * server function uploads it to the `uploads` bucket and replaces `url` with `path`.
  */
-export type UploadRef = { name: string; url?: string; path?: string; isVideo?: boolean };
+/** `pieceId`: a Library piece picked in an upload slot; the server loads it as a piece. */
+export type UploadRef = {
+  name: string;
+  url?: string;
+  path?: string;
+  isVideo?: boolean;
+  pieceId?: string;
+};
+
+/** Piece By Piece / Build It Yourself camera step: how the product sits in the shot. */
+export type ShotSize = "small" | "medium" | "large";
+export type ShotRow = "top" | "middle" | "bottom";
+export type ShotColumn = "left" | "center" | "right";
+export type ShotAngle = "eye" | "above" | "top-down" | "low";
+export type ShotLight = "scene" | "daylight" | "golden" | "studio" | "moody";
+export type ShotSettings = {
+  size: ShotSize;
+  position: `${ShotRow}-${ShotColumn}`;
+  angle: ShotAngle;
+  light: ShotLight;
+};
 
 /**
  * What the server needs to build each studio's prompt, on top of product, aspect and count.
@@ -239,6 +259,9 @@ export type GenerationInputs =
       props: PieceRef[];
       character: PieceRef | null;
       pose: PieceRef | null;
+      shot?: ShotSettings;
+      /** The words on the product as the user confirmed them; read from the photo when absent. */
+      label?: string[];
     }
   | {
       studio: "photo";
@@ -247,6 +270,16 @@ export type GenerationInputs =
       props: UploadRef[];
       character: UploadRef | null;
       pose: UploadRef | null;
+      shot?: ShotSettings;
+      label?: string[];
+    }
+  | {
+      /** Edit a finished photo: the change in words, optionally at a tapped spot (0 to 1). */
+      studio: "photo";
+      mode: "edit";
+      outputId: string;
+      instruction: string;
+      point?: { x: number; y: number };
     }
   | {
       studio: "ad";

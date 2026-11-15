@@ -96,7 +96,29 @@ Research (competitors plus one live test) found the label already comes out righ
 - **Check and retry:** each photo is compared with the product (shape, colour, label words, and people errors when there is a person). A failed photo is made again once with the problems named; the retry is at our cost. A failing check call never blocks a photo.
 - **Tests:** `photo-check.test.ts`. Costs are in `V2_GENERATION_COSTS.md`.
 - **Tested live (imported as 58cb4e0):** the same shot that failed (Bathroom vanity, towel, flowers, Ayesha K., "Hand holding product close up"). Now there is one person with the hands clearly hers, her whole head in frame, all pieces used and the label exact; it took about 30 s, so it most likely passed the check first time. The product sits a little smaller than before. Server logs show `photo failed check, retrying` when a retry runs.
-- **Phase 2 (not started):** product size and position grid, camera angle and light chips, a free mock-up preview before spending credits, fix-after edits (swap a prop, change the pose, brush to fix), saved Looks, and letting users correct the label text.
+- **Phase 2:** see 5g.
+
+## 5g. Photo Studio Phase 2, Build It Yourself fix and the generate bar (2026-11-15)
+
+- **Build It Yourself error, fixed.** Picking a scene, pose or prop from the Library (instead of uploading) failed with "One of your uploads didn't finish", because the server accepted only uploaded files. Library picks now carry `pieceId` and load as Library pieces (`loadUpload` in `generation.server.ts`).
+- **Camera step:** step 5 in Piece By Piece, and a "Camera" section in Build It Yourself (`ShotStep.tsx`). It sets:
+  - product position (3×3 grid) and size (small, medium, large);
+  - camera angle (eye level, from above, top-down, low);
+  - light ("Match scene" keeps the scene's own light, or daylight, golden hour, studio, moody).
+
+  A free rough layout preview shows the scene with the product placed. The prompt lines are `shotLines` and `shotLight` in `piece-direction.ts`.
+
+- **Text on your product:** the camera step reads the label once per product (`readProductLabel`, cached for the session). The user can fix it ("/" between lines) and the confirmed words go in the request (`inputs.label`); without it the server reads the label itself.
+- **Saved Looks:** "Save as a Look" saves the scene, props, model, pose and camera. They appear as "Your Looks" chips that apply to any product. Kept in this browser (localStorage `replix-v2-looks`); there is no account sync, which would need a table.
+- **Edit this photo:** on the result page of a real Photo Studio photo. Tap a spot (optional), pick a quick change or type one, and a new photo is made from that one at the price of one photo (2 credits). It is the new mode `inputs.mode = "edit"` (`editPrompt` in `recipes.ts`), with no database change. Edits get the same check and retry.
+- **Generate bar** (`ComposerBar.tsx`, shared by every studio), from the competitor research (Higgsfield, Leonardo, Ideogram, Runway, Krea, Midjourney, Canva):
+  - when something is missing, the button says what ("Add a product") and the click takes you there;
+  - too few credits turns it into "Get credits · need N more", linking to /upgrade;
+  - the balance shows beside the chips;
+  - the size menu shows each ratio's shape and where it is used (feed, Stories, banners);
+  - Ctrl/⌘+Enter generates;
+  - Photo and Ad Studio remember size and count in this browser.
+- **Later ideas:** keep working while a job runs (results as rows on the studio page), and a "use these settings" link from a result back into the studio.
 
 ## 6. What's left, in a sensible order
 

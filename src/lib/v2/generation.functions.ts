@@ -41,7 +41,25 @@ const Upload = z.object({
   url: str(4000).optional(),
   path: str(400).optional(),
   isVideo: z.boolean().optional(),
+  pieceId: str(200).optional(),
 });
+const Shot = z.object({
+  size: z.enum(["small", "medium", "large"]),
+  position: z.enum([
+    "top-left",
+    "top-center",
+    "top-right",
+    "middle-left",
+    "middle-center",
+    "middle-right",
+    "bottom-left",
+    "bottom-center",
+    "bottom-right",
+  ]),
+  angle: z.enum(["eye", "above", "top-down", "low"]),
+  light: z.enum(["scene", "daylight", "golden", "studio", "moody"]),
+});
+const Label = z.array(str(60)).max(8);
 const Inputs = z.union([
   z.object({ studio: z.literal("photo"), mode: z.literal("templates"), templateId: str(120) }),
   z.object({
@@ -51,6 +69,8 @@ const Inputs = z.union([
     props: z.array(Piece).max(5),
     character: Piece.nullable(),
     pose: Piece.nullable(),
+    shot: Shot.optional(),
+    label: Label.optional(),
   }),
   z.object({
     studio: z.literal("photo"),
@@ -59,6 +79,15 @@ const Inputs = z.union([
     props: z.array(Upload).max(5),
     character: Upload.nullable(),
     pose: Upload.nullable(),
+    shot: Shot.optional(),
+    label: Label.optional(),
+  }),
+  z.object({
+    studio: z.literal("photo"),
+    mode: z.literal("edit"),
+    outputId: z.string().uuid(),
+    instruction: z.string().trim().min(3).max(400),
+    point: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).optional(),
   }),
   z.object({
     studio: z.literal("ad"),
@@ -389,6 +418,15 @@ export const listGenerations = createServerFn({ method: "POST" })
 const InsightsInput = z.object({
   product: z.object({ id: str(200), name: str(200), imageUrl: str(4000) }),
 });
+
+/** Photo Studio camera step: the words printed on the product, for the user to confirm. */
+export const readProductLabel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => InsightsInput.parse(data))
+  .handler(async ({ data, context }): Promise<string[]> => {
+    const { productLabel } = await import("./generation.server");
+    return productLabel(context.userId, data.product, requestSite());
+  });
 
 /** Ad Studio's "pain points / ad angles" panel: Gemini looks at the product photo. */
 export const getProductInsights = createServerFn({ method: "POST" })

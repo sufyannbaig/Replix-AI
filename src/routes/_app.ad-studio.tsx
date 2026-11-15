@@ -4,7 +4,13 @@ import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { SectionTitle } from "@/v2/components/primitives";
-import { ComposerBar, missingHint, TemplateChip } from "@/v2/components/studio/ComposerBar";
+import {
+  ComposerBar,
+  isAspect,
+  missingHint,
+  TemplateChip,
+  useStickySetting,
+} from "@/v2/components/studio/ComposerBar";
 import { StudioBrandChip, useStudioBrand } from "@/v2/components/brand/BrandMenus";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { StudioSteps } from "@/v2/components/studio/StudioSteps";
@@ -29,8 +35,13 @@ function AdStudioPage() {
      them in turn. */
   const [picked, setPicked] = useState<AdTheme[]>([]);
   const theme = picked[0] ?? null;
-  const [aspect, setAspect] = useState<AspectRatio>("1:1");
-  const [count, setCountRaw] = useState(1);
+  /* Size and count are remembered for the next visit. */
+  const [aspect, setAspect] = useStickySetting<AspectRatio>("ad-aspect", "1:1", isAspect);
+  const [count, setCountRaw] = useStickySetting(
+    "ad-count",
+    1,
+    (v) => typeof v === "number" && v >= 1 && v <= 4,
+  );
   const setCount = (next: number) => {
     setCountRaw(next);
     setPicked((list) => list.slice(0, Math.max(1, next)));
@@ -176,6 +187,10 @@ function AdStudioPage() {
               })
             }
             generating={generating}
+            onMissing={() => {
+              if (!product) setPickerOpen(true);
+              else window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           />
         </div>
       </div>

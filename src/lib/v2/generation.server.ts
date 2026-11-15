@@ -34,6 +34,7 @@ import {
   quoteHeadline,
   SCENE_MOODS,
   adPhotoPrompt,
+  editPrompt,
   parseAdCopy,
   photoPrompt,
   type AdCopy,
@@ -163,6 +164,10 @@ async function loadPiece(ctx: Ctx, piece: PieceRef, role: PromptRef["role"]): Pr
 }
 
 async function loadUpload(ctx: Ctx, file: UploadRef, role: PromptRef["role"]): Promise<Loaded> {
+  /* Build It Yourself also lets you pick from the Library: load those as pieces. */
+  if (file.pieceId) {
+    return loadPiece(ctx, { id: file.pieceId, kind: "scene", name: file.name, imageUrl: "" }, role);
+  }
   if (!file.path || !file.path.startsWith(`${ctx.userId}/`) || file.isVideo) {
     throw new GenerationError("One of your uploads didn't finish. Add it again.");
   }
@@ -308,6 +313,16 @@ async function readLabel(productImage: string): Promise<string[]> {
   }
 }
 
+/** The words on a product, for the camera step's "Text on your product" field. */
+export async function productLabel(
+  userId: string,
+  product: GenerationRequest["product"],
+  site: Site,
+) {
+  const loaded = await loadProduct({ userId, plan: "free", site }, product);
+  return readLabel(loaded.dataUrl);
+}
+
 /** QA of one finished photo; passes when the check itself fails. */
 async function checkPhoto(
   productImage: string,
@@ -335,6 +350,7 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
   if (inputs.studio !== "photo") throw new GenerationError("Wrong studio.");
   const product = await loadProduct(ctx, job.product);
   const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
+  if (inputs.mode === "edit") return editPlans(ctx, job, inputs, product, refs);
   let recipe: Record<string, string> | undefined;
   if (inputs.mode === "templates") {
     const tpl = await loadTemplate(ctx, inputs.templateId, "photo");
@@ -355,7 +371,10 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
     if (inputs.character) refs.push(await loadUpload(ctx, inputs.character, "character"));
     if (inputs.pose) refs.push(await loadUpload(ctx, inputs.pose, "pose"));
   }
-  const label = await readLabel(product.dataUrl);
+  /* The words the user confirmed in the camera step, else read from the photo now. */
+  const label =
+    inputs.mode !== "templates" && inputs.label ? inputs.label : await readLabel(product.dataUrl);
+  const shot = inputs.mode === "templates" ? undefined : inputs.shot;
   const person = refs.some((r) => r.role === "character" || r.role === "pose");
   return Array.from({ length: job.count }, (_, i) => ({
     refs,
@@ -369,10 +388,42 @@ async function photoPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationIn
         mode: inputs.mode,
         note: job.note,
         label,
+        shot,
       },
       i,
       job.count,
     ),
+  }));
+}
+
+/** Edit a finished photo of this user's: the product plus that photo, and the change. */
+async function editPlans(
+  ctx: Ctx,
+  job: GenerationRequest,
+  inputs: Extract<GenerationInputs, { mode: "edit" }>,
+  product: { name: string; dataUrl: string },
+  refs: Loaded[],
+): Promise<Plan[]> {
+  if (!UUID.test(inputs.outputId)) throw new GenerationError("That photo can't be edited.");
+  const { data: out } = await admin
+    .from("generation_outputs")
+    .select("image_path")
+    .eq("id", inputs.outputId)
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  if (!out?.image_path) throw new GenerationError("That photo is no longer available.");
+  refs.push({ role: "source", name: "", dataUrl: await fromStorage("outputs", out.image_path) });
+  const label = await readLabel(product.dataUrl);
+  const prompt = editPrompt({
+    product,
+    instruction: inputs.instruction,
+    point: inputs.point,
+    label,
+  });
+  return Array.from({ length: job.count }, () => ({
+    refs,
+    check: { label, person: false },
+    prompt,
   }));
 }
 
