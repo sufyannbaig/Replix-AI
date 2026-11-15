@@ -23,6 +23,7 @@ import {
   AD_THEME_RECIPES,
   adCopyMessages,
   adThemeOrder,
+  quoteHeadline,
   SCENE_MOODS,
   adPhotoPrompt,
   parseAdCopy,
@@ -425,7 +426,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
     return {
       refs,
       copy: {
-        headline: c.headline,
+        headline: themeId === "testimonial" ? quoteHeadline(c.headline) : c.headline,
         subline: c.subline,
         cta: c.cta,
         layout: layouts[i],

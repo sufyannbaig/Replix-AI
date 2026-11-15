@@ -1623,7 +1623,8 @@ export function bannerFrame(aspect: AspectRatio) {
   const { width, height } = AD_SIZES[aspect];
   if (aspect === "16:9")
     return { photoW: height, photoH: height, side: "right" as const, photoAspect: "1:1" };
-  const shape = { "1:1": [3, 2], "4:5": [5, 4], "9:16": [1, 1] } as const;
+  /* 1:1 gets a 16:10 photo so the panel has room for a two-line headline. */
+  const shape = { "1:1": [16, 10], "4:5": [5, 4], "9:16": [1, 1] } as const;
   const [w, h] = shape[aspect];
   return {
     photoW: width,
@@ -1668,27 +1669,34 @@ function banner(ctx: Ctx): AdNode {
       }
     : {
         left: ctx.pad,
-        top: frame.photoH + Math.round(ctx.pad * 0.4),
+        top: frame.photoH + Math.round(ctx.pad * 0.2),
         width: ctx.width - ctx.pad * 2,
-        height: ctx.height - frame.photoH - Math.round(ctx.pad * 0.4) - ctx.bottom,
+        /* The panel is clear of the photo, so outside the story safe zone it can run closer
+           to the bottom edge. */
+        height:
+          ctx.height -
+          frame.photoH -
+          Math.round(ctx.pad * 0.2) -
+          (ctx.aspect === "9:16" ? ctx.bottom : Math.round(ctx.pad * 0.6)),
       };
   const words = type.upper ? ctx.copy.headline.toUpperCase() : ctx.copy.headline;
   const measure = ctx.fit ?? ((t: string, s: number) => t.length * s * type.glyph);
   const sub = ctx.copy.subline ?? "";
-  const subSize = Math.round(ctx.width * (right ? 0.016 : type.upper ? 0.028 : 0.034));
-  const ctaSize = Math.round(ctx.width * (right ? 0.017 : 0.03));
-  const ctaPad = Math.round(ctaSize * 0.62);
-  const gap = Math.round(ctaSize * 0.9);
+  /* The headline is the star: the line and button stay small and tight under it. */
+  const subSize = Math.round(ctx.width * (right ? 0.015 : type.upper ? 0.024 : 0.03));
+  const ctaSize = Math.round(ctx.width * (right ? 0.015 : 0.026));
+  const ctaPad = Math.round(ctaSize * 0.55);
+  const gap = Math.round(ctaSize * 0.75);
   const rest =
     (sub
-      ? 14 + subSize * 1.3 * Math.max(1, Math.ceil((sub.length * subSize * 0.6) / box.width))
+      ? 12 + subSize * 1.3 * Math.max(1, Math.ceil((sub.length * subSize * 0.6) / box.width))
       : 0) +
     gap +
     ctaSize +
     2 * ctaPad;
   let size = fitHeadline(words, box.width, {
-    maxLines: right ? 4 : 2,
-    max: Math.round(ctx.width * (right ? 0.07 : 0.11)),
+    maxLines: right ? 4 : ctx.aspect === "9:16" ? 3 : 2,
+    max: Math.round(ctx.width * (right ? 0.075 : 0.13)),
     min: 40,
     glyph: type.glyph,
     measure: ctx.fit,
@@ -1779,7 +1787,7 @@ function banner(ctx: Ctx): AdNode {
                 el(
                   "div",
                   {
-                    marginTop: 14,
+                    marginTop: 12,
                     fontFamily: ctx.body,
                     fontWeight: 500,
                     fontSize: subSize,

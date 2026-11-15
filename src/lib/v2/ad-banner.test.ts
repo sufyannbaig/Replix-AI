@@ -12,7 +12,13 @@ import {
   photoBackdrop,
   type AdNode,
 } from "./ad-layouts.ts";
-import { AD_THEME_RECIPES, adCopyMessages, adThemeOrder, parseAdCopy } from "./recipes.ts";
+import {
+  AD_THEME_RECIPES,
+  adCopyMessages,
+  adThemeOrder,
+  parseAdCopy,
+  quoteHeadline,
+} from "./recipes.ts";
 
 const copy = { headline: "Cold brew, zero wait", subline: "Ready when you are", cta: "Shop now" };
 
@@ -196,5 +202,20 @@ describe("photoBackdrop edges", () => {
       ),
       "#28C828",
     );
+  });
+});
+
+describe("testimonial quotes", () => {
+  test("wraps the headline in curly quotes once", () => {
+    strictEqual(quoteHeadline("Replaced my second coffee"), "“Replaced my second coffee”");
+    strictEqual(quoteHeadline("“Already quoted”"), "“Already quoted”");
+    strictEqual(quoteHeadline("'Single'"), "“Single”");
+  });
+});
+
+describe("banner headline size", () => {
+  test("1:1: a short headline gets big type, at least 9% of the width", () => {
+    const head = banner().find((s) => s.text === copy.headline.toUpperCase())!;
+    ok((head.style.fontSize as number) >= 1080 * 0.09, `${head.style.fontSize}px`);
   });
 });

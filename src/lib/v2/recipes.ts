@@ -197,6 +197,15 @@ export function adThemeOrder(themeIds: (string | null)[], count: number): (strin
   return Array.from({ length: count }, (_, i) => list[i % list.length]);
 }
 
+/**
+ * A testimonial headline in curly quotation marks, so it reads as a customer's words
+ * (parseAdCopy strips straight quotes, so they're added here, once).
+ */
+export function quoteHeadline(headline: string) {
+  const bare = headline.replace(/^["'‘“\s]+|["'’”\s]+$/g, "");
+  return bare ? `“${bare}”` : headline;
+}
+
 /** How the Banner sets the type: picked by the copywriter for each product. */
 export const AD_TYPE_STYLES = ["bold", "condensed", "elegant"] as const;
 export type AdTypeStyle = (typeof AD_TYPE_STYLES)[number];
