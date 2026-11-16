@@ -40,7 +40,7 @@ About $10 of fal credit: 3 Shorts templates × Kling 3 Pro, Kling 4 and Seedance
 
 ## 4. What's needed from people
 
-- **`FAL_KEY`:** Benjamin creates the fal.ai account, sets a small budget and adds the key as a project secret in Lovable (D4). Nothing in step 1 can run without it.
+- **fal key (done 2026-11-16, secret `FAL_AI_KEY`):** Benjamin creates the fal.ai account, sets a small budget and adds the key as a project secret in Lovable (D4). Nothing in step 1 can run without it.
 - **Approval** for the sweeper's `pg_cron` job (step 1.4).
 - Before UGC launches: the character-upload consent terms (D5).
 
@@ -49,7 +49,7 @@ About $10 of fal credit: 3 Shorts templates × Kling 3 Pro, Kling 4 and Seedance
 Built and tested with no fal key; not yet run against fal.
 
 - **Recipes** (`src/lib/v2/shorts.ts`, tested in `shorts.test.ts`): a set, light, camera and motion for each of the six templates (Studio Turn, Floating, 360 Spin, Dramatic Light, Morning Light, Splash), motion for the Custom animations (Auto, Camera pan, Zoom in, Zoom out, Orbit, Floating), and rules that keep the product, its shape and its label unchanged. Model: `fal-ai/kling-video/v3/pro/image-to-video`, audio off, the Short's length (5, 8 or 10 s).
-- **Running a Short** (`runShortJob` in `generation.server.ts`): checks `FAL_KEY` first (no key: the job fails at once and the credits come back). Then the first frame through the Photo Studio prompt (template poster or the user's scene, label lock, true size, the check and one retry), stored as `outputs/<uid>/<job>/1-frame.png`. Then a fal queue submit with a signed link to the frame. The fal request id goes in `generation_jobs.provider_job_ids`, the model in `provider`, and the job stays "running" at 40%.
+- **Running a Short** (`runShortJob` in `generation.server.ts`): checks the fal key first (the Lovable secret `FAL_AI_KEY`, or `FAL_KEY`) (no key: the job fails at once and the credits come back). Then the first frame through the Photo Studio prompt (template poster or the user's scene, label lock, true size, the check and one retry), stored as `outputs/<uid>/<job>/1-frame.png`. Then a fal queue submit with a signed link to the frame. The fal request id goes in `generation_jobs.provider_job_ids`, the model in `provider`, and the job stays "running" at 40%.
 - **Finishing** (`syncVideoJob`): the result screen polls every 4 seconds, and the server asks fal about the job at most every 4 seconds. fal's webhook (`/api/public/hooks/fal?job=<id>`) does the same check at once. The webhook body is never trusted: the request id must match the job's, and the result is fetched from fal with our key. When the video is done, the mp4 is saved as `1.mp4` (`generation_outputs.video_path`) and the job settles. Only one caller finishes a job. If fal fails, the credits come back.
 - **No sweeper needed for now:** a Short still running after 15 minutes is failed and refunded the next time anyone opens it (the same lazy recovery as photos). A job no one opens again keeps its credits reserved until then. A `pg_cron` sweeper would close those too; it still needs approval.
 - **Front end:** Shorts go to the server (`useStartGeneration`). The result page and the Assets viewer play the video (muted, looping, with controls) with the first frame as the poster. Download saves the mp4. The motion-reference upload is kept with the Short but not used yet; the screen says the motion comes from the animation picked.

@@ -611,6 +611,11 @@ const NO_VIDEO = "Video generation isn't switched on yet. Your credits are back.
 const VIDEO_FAILED = "The video didn't come out. Your credits are back.";
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
 
+/** The fal.ai key, a project secret in Lovable (saved there as FAL_AI_KEY). */
+function falKey() {
+  return process.env.FAL_AI_KEY || process.env.FAL_KEY;
+}
+
 async function jobCtx(jobRow: GenerationJobRow, site: Site): Promise<Ctx> {
   const { data: credits } = await admin
     .from("user_credits")
@@ -685,7 +690,7 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
     const inputs = request.inputs;
     if (!inputs) throw new GenerationError("This request is missing its settings.");
     /* Checked first, so no frame is paid for when video can't run. */
-    const key = process.env.FAL_KEY;
+    const key = falKey();
     if (!key) throw new GenerationError(NO_VIDEO);
     const ctx = await jobCtx(jobRow, site);
     const { plan, motion } = await shortPlan(ctx, request, inputs);
@@ -771,7 +776,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
   const now = Date.now();
   if (!force && now - (lastVideoSync.get(row.id) ?? 0) < 4000) return false;
   lastVideoSync.set(row.id, now);
-  const key = process.env.FAL_KEY;
+  const key = falKey();
   if (!key) return false;
   const urls = falUrls(row.provider.slice(4), requestId);
   const headers = { Authorization: `Key ${key}` };
