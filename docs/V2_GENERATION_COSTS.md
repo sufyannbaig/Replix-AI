@@ -68,6 +68,18 @@ v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, 10 c
 | Concept ad, 30 s       | 20      | $3.93 to $6.66               | $2.40 to $6.50   | Depends on the model                              |
 | Free plan (10 credits) | 10      | $0                           | 5 photos ≈ $0.35 | Fine for photos and ads                           |
 
+**Product Shorts after the live model test (2026-11-16, `V2_VIDEO_PLAN.md` section 5).** Our cost per Short is the video plus about $0.15 for the first frame and its checks. Kling 3 Pro keeps the label as well as the dearer models, so it stays the model for every template.
+
+| Short | Kling 3 Pro ($0.112/s) | Kling 4 ($0.157/s) | Seedance 2.0, 720p ($0.30/s) | 10 credits on Scale ($1.97) |
+| ----- | ---------------------- | ------------------ | ---------------------------- | --------------------------- |
+| 5 s   | $0.71                  | $0.94              | $1.67                        | Kling 3 keeps 64%           |
+| 8 s   | $1.05                  | $1.41              | $2.58                        | Kling 3 keeps 47%           |
+| 10 s  | $1.27                  | $1.72              | $3.18                        | Kling 3 keeps 36%           |
+
+At today's flat 10 credits, every Kling 3 Short earns money on every plan, but a 10 s Short on Scale keeps only about a third. Seedance would lose money at 8 and 10 s.
+
+**Proposal (not applied; needs Benjamin's call):** price Shorts by length, like UGC: **8 / 11 / 13 credits for 5 / 8 / 10 s** (about 1 credit a second plus 3 for the frame). On Scale that keeps at least 50% at every length; on Starter, about 70% or more. If a "Pro motion" Seedance option is added later for Splash-style shots, charge about double (18 credits for 5 s keeps about 53% on Scale). Changing the price is one table in `src/v2/data/pricing.ts` (`videoGenerationCost` for the `shorts` studio).
+
 **Video lengths (changed 2026-11-06, Benjamin's call):** UGC is now 8 or 15 s (was 15 to 60 s), Concept ads 15 or 30 s (was 15 to 60 s), Product Shorts stay 5, 8 or 10 s. The table is `VIDEO_LENGTHS` in `src/v2/data/pricing.ts`. Shorter videos cost less and need fewer stitched clips, which also lowers the risk of a bad result.
 
 **Why UGC has its own price.** The video models bill per second. At the old 10 credits per 15 s, UGC earned $0.13 a second on Scale, while talking video with a voice costs us $0.15 to $0.17 a second, so every Scale UGC video lost money. At about 2 credits a second it earns at least $0.39 a second on Scale.

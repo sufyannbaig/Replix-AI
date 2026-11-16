@@ -168,7 +168,7 @@ Research (competitors plus one live test) found the label already comes out righ
 
 - Benjamin has to create the fal.ai account and add `FAL_KEY` as a project secret (D4). Then run the video test, which decides D1 (credit unit and plan sizes).
 - Order: Product Shorts, then AI UGC (the priority feature), then Concept ads.
-- **Product Shorts works live (2026-11-16):** the first real Short (Studio Turn, 5 s) finished in about 4.5 minutes with the label intact, and plays on the result page and in Assets. The fal key is the Lovable secret `FAL_AI_KEY`. Results and next steps: "Status" in `V2_VIDEO_PLAN.md`.
+- **Product Shorts works live (2026-11-16):** the first real Short (Studio Turn, 5 s) finished in about 4.5 minutes with the label intact, and plays on the result page and in Assets. The fal key is the Lovable secret `FAL_AI_KEY`. Results and next steps: "Status" in `V2_VIDEO_PLAN.md`. The model test (Kling 4 and Seedance 2.0 against Kling 3 Pro) is done: keep Kling 3 Pro. A per-length Shorts price (8 / 11 / 13 credits) is proposed in `V2_GENERATION_COSTS.md` section 4 and waits on Benjamin.
 
 **Waiting on other people**
 

@@ -5,7 +5,7 @@ Photo Studio and Ad Studio are done. This is the plan for the three video studio
 ## 1. What changed since the backend plan
 
 - **Veo leaves fal.ai on 2026-11-17.** Veo 3.1, Veo 3.1 Fast and Lite are removed from fal tomorrow. Veo stays available through Lovable's own AI gateway (no key), so it is still an option there for talking-head UGC.
-- **Kling 4 is out:** about $0.157 a second at 720p on fal ($0.235 at 1080p). Kling 3 Pro is $0.112 a second ($0.168 with audio). Kling is the reviewers' pick for keeping a packshot faithful.
+- **Kling 4 is out:** about $0.157 a second on fal (fal's page shows this price with 1080p selected; an earlier note said $0.235 at 1080p, to be checked against the fal bill, see section 5). Kling 3 Pro is $0.112 a second ($0.168 with audio). Kling is the reviewers' pick for keeping a packshot faithful.
 - **Seedance 2.0** is about $0.30 a second at 720p on fal, with audio included. It is the pick for physics shots (pouring, splashing, impact).
 - Prices move monthly. Check the live fal pages before setting credit prices.
 
@@ -60,20 +60,32 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 - **Webhook on the preview:** the preview host only serves signed-in Lovable users, so fal's webhook may not reach it. The poll covers that; on the published site the webhook works.
 - **All six templates, live (2026-11-16):** Acme Glow Serum, 5 s, 9:16, Kling 3 Pro. Each was checked at the start, middle and end. All six finished with no failures, each 1076×1924 and 5.04 s, 10 credits each (60 in total). The label stayed the same in every one.
 
-  | Template | Motion | Label | Notes |
-  |---|---|---|---|
-  | Studio Turn | quarter turn and back | sharp at start and end | good |
-  | Floating | floats on its side and bobs | readable throughout (sideways) | a serum lying on its side is an odd pose (fixed, see below) |
-  | 360 Spin | turns on the marble plinth, the back shows mid-clip | unchanged when it comes back | good |
-  | Dramatic Light | spotlight, glossy reflection, slow push-in | sharp in every frame | the most premium look |
-  | Morning Light | window light, very gentle drift | perfect | calm, almost too still |
-  | Splash | water bursts up, droplets settle | unchanged (a droplet sits over one letter at the end) | the most eye-catching |
+  | Template       | Motion                                              | Label                                                 | Notes                                                       |
+  | -------------- | --------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------- |
+  | Studio Turn    | quarter turn and back                               | sharp at start and end                                | good                                                        |
+  | Floating       | floats on its side and bobs                         | readable throughout (sideways)                        | a serum lying on its side is an odd pose (fixed, see below) |
+  | 360 Spin       | turns on the marble plinth, the back shows mid-clip | unchanged when it comes back                          | good                                                        |
+  | Dramatic Light | spotlight, glossy reflection, slow push-in          | sharp in every frame                                  | the most premium look                                       |
+  | Morning Light  | window light, very gentle drift                     | perfect                                               | calm, almost too still                                      |
+  | Splash         | water bursts up, droplets settle                    | unchanged (a droplet sits over one letter at the end) | the most eye-catching                                       |
 
 - **Fixes (207970b):** Floating now keeps the product upright, Morning Light asks for visible movement (the camera glides and pushes in, the leaf shadows sway), and the first frame asks for the product centred left to right (a Short's recipe replaces the photo prompt's rule-of-thirds line through `recipe.composition`; Photo Studio is unchanged).
 - **Correction:** the off-centre framing first reported for Studio Turn and Floating came from a wrong screenshot crop (the page is 902 px wide, the screenshots 800), not from the videos. Checked again with the right crop: Studio Turn was centred. The centring rule stays as a safeguard.
 - **Re-test after the fixes (2026-11-16):** Floating came out upright and centred, floating and bobbing while the camera pushes in, with the label sharp throughout. Morning Light has not been re-run.
 - **Custom, live (2026-11-16):** the Library scene "Bathroom vanity" with the Orbit animation, 5 s. The first frame put the bottle in the middle of the vanity (marble counter, mirror, shells) with the label exact, and the video finished like the templates. The Orbit motion itself wasn't checked frame by frame. Credits: 10 each, 80 in total across all the Shorts tests.
-- **Next:** the model test in section 3 (Kling 4, Seedance 2.0 for Splash) and the credit prices.
+- **Model test, live (2026-11-16):** Studio Turn, Dramatic Light and Splash, each with Kling 4 and Seedance 2.0. Same product, 5 s and 9:16, as the Kling 3 Pro runs above. Picked with `?model=kling4` or `?model=seedance2` on the Shorts page; this works only on the Lovable preview (`canPickVideoModel`), and everywhere else a Short uses Kling 3 Pro. All six finished with no failures and charged 10 credits each (1651 → 1591). Each finished within about 5 to 8 minutes of Generate, about the same as Kling 3; exact times weren't recorded. Frames checked at 0.1 s, 2.5 s and the end.
+
+  | Model               | Output                  | Studio Turn                                                           | Dramatic Light                                                                              | Splash                                                                                                               | Video cost, 5 s |
+  | ------------------- | ----------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------- |
+  | Kling 3 Pro         | 1076×1924, about 9 MB   | quarter turn, label sharp                                             | the most premium look                                                                       | eye-catching, a droplet over one letter at the end                                                                   | $0.56           |
+  | Kling 4 (1080p)     | 1076×1924, 2.7 to 9 MB  | turns further (the back shows mid-clip), label sharp at start and end | push-in, the light moves, label and reflection correct                                      | water runs over the label and it stays clean; strong push-in; at the end the base sinks slightly into the glass dish | $0.79           |
+  | Seedance 2.0 (720p) | 720×1280, 0.9 to 2.5 MB | same turn, label intact, softer and the bottle smaller in frame       | the strongest push-in; label readable; close up, the bottle looks a little wider at the end | the most natural splash (a crown around the base), label never covered                                               | $1.52           |
+
+  **Verdict:** all three keep the label and shape. Kling 4 is a little more lively than Kling 3 but not clearly better, at 40% more cost. Seedance has the best water physics, but at this price it is only 720p, it costs 2.7× Kling 3, and its close-ups can stretch the shape a little. **Keep Kling 3 Pro for every template, Splash included.** Seedance could come back as a paid "Pro motion" option later (see `V2_GENERATION_COSTS.md` section 4).
+
+  **Price to confirm:** fal's Kling 4 page shows $0.157 a second with 1080p selected, so the "$0.235 at 1080p" in section 1 looks wrong. Check the fal usage page for the three Kling 4 jobs (eca417e9, b7783073, 381c80b3) before relying on either figure.
+
+- **Next:** decide the Shorts credit price (proposal in `V2_GENERATION_COSTS.md` section 4), re-run Morning Light after its motion fix, then AI UGC (step 2).
 
 ## 6. What needs no one
 
