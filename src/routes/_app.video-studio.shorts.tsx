@@ -272,7 +272,10 @@ function ShortsPage() {
                 onChange={setReference}
                 acceptVideo
               />
-              <UploadTip>A short clip works best. We copy its motion, not its look.</UploadTip>
+              <UploadTip>
+                For now the motion comes from the animation you pick. Your clip is kept with the
+                Short.
+              </UploadTip>
             </div>
           </div>
         )}

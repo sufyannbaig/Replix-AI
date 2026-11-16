@@ -109,7 +109,7 @@ export function AssetViewer({
   const download = async () => {
     setBusy(true);
     try {
-      await saveFile(item.thumbnailUrl, stem);
+      await saveFile(item.videoUrl ?? item.thumbnailUrl, stem);
     } finally {
       setBusy(false);
     }
@@ -136,7 +136,20 @@ export function AssetViewer({
         <DialogContent className="flex max-h-[94vh] w-[min(1100px,calc(100vw-24px))] max-w-none flex-col gap-0 overflow-hidden rounded-[18px] border-none bg-v2-surface p-0 text-v2-ink lg:flex-row [&>button:last-child]:hidden">
           {/* Stage */}
           <div className="relative flex min-h-[320px] flex-1 items-center justify-center bg-[#0f1115] p-4 sm:p-8 lg:min-h-[640px]">
-            {item.kind === "video" ? (
+            {item.videoUrl ? (
+              <video
+                key={item.id}
+                src={item.videoUrl}
+                poster={item.thumbnailUrl || undefined}
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+                aria-label={item.title}
+                className="max-h-[56vh] max-w-full rounded-[10px] bg-black object-contain shadow-[0_20px_60px_rgba(0,0,0,0.45)] lg:max-h-[80vh]"
+              />
+            ) : item.kind === "video" ? (
               <div className="relative">
                 <img
                   src={item.thumbnailUrl}
@@ -144,7 +157,7 @@ export function AssetViewer({
                   className="max-h-[56vh] max-w-full rounded-[10px] object-contain lg:max-h-[80vh]"
                 />
                 <span className="absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-black/60 px-3 py-1 font-inter-tight text-xs text-white">
-                  Video playback arrives with Video Studio
+                  This video isn't ready to play
                 </span>
               </div>
             ) : (

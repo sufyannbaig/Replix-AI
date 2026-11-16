@@ -328,21 +328,32 @@ function Viewer({ job, output }: { job: GenerationJob; output: GenerationOutput 
         FRAME[request.aspect],
       )}
     >
-      <img
-        src={output.imageUrl}
-        alt={`${NOUN[request.kind][0]} of ${request.product.name}`}
-        className="size-full object-cover"
-      />
-      {request.kind === "video" ? (
+      {output.videoUrl ? (
+        <video
+          key={output.id}
+          src={output.videoUrl}
+          poster={output.imageUrl || undefined}
+          controls
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-label={`Video of ${request.product.name}`}
+          className="size-full bg-black object-cover"
+        />
+      ) : (
+        <img
+          src={output.imageUrl}
+          alt={`${NOUN[request.kind][0]} of ${request.product.name}`}
+          className="size-full object-cover"
+        />
+      )}
+      {request.kind === "video" && !output.videoUrl ? (
         <>
           <button
             type="button"
             aria-label="Play video"
-            onClick={() =>
-              output.videoUrl
-                ? window.open(output.videoUrl, "_blank", "noopener")
-                : toast.info("Playback starts working once video generation is connected.")
-            }
+            onClick={() => toast.info("This video isn't ready to play.")}
             className="absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#12213d] shadow-lg backdrop-blur transition-transform hover:scale-105"
           >
             <Play className="ml-0.5 size-6 fill-current" />
@@ -584,7 +595,7 @@ function PostCopy({ post }: { post: NonNullable<GenerationOutput["post"]> }) {
  */
 async function downloadOutput(job: GenerationJob, output: GenerationOutput) {
   if (job.request.kind === "video" && !output.videoUrl) {
-    toast.info("Video downloads start working once video generation is connected.");
+    toast.info("This video isn't ready to download.");
     return;
   }
   const index = job.outputs.indexOf(output) + 1;

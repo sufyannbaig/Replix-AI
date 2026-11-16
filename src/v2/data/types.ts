@@ -197,7 +197,10 @@ export type AssetItem = {
   kind: AssetKind;
   origin: "generation" | "upload";
   title: string;
+  /** Image, or the first frame of a video. */
   thumbnailUrl: string;
+  /** Finished videos: the mp4. */
+  videoUrl?: string;
   createdAt: string;
   /** Generated ads only: the output, and its layout while it isn't composed yet. */
   outputId?: string;

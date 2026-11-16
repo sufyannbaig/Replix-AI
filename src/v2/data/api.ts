@@ -1191,7 +1191,8 @@ export function useStartGeneration() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (request: GenerationRequest): Promise<GenerationJob> => {
-      const real = request.studio === "photo" || request.studio === "ad";
+      const real =
+        request.studio === "photo" || request.studio === "ad" || request.studio === "shorts";
       const userId = real ? await backendUser("generation_jobs") : null;
       /* Never hand a signed-in user a sample result: say it didn't run (no credits used). */
       if (real && (!userId || !request.inputs) && (await signedInUserId())) {
@@ -1203,7 +1204,7 @@ export function useStartGeneration() {
           data: {
             ...request,
             studio: request.studio,
-            kind: request.kind as "photo" | "ad",
+            kind: request.kind as "photo" | "ad" | "video",
             inputs,
           } as never,
         });
@@ -1249,7 +1250,11 @@ function keepSignedUrls(
   const sameFile = (a: string, b: string) => a.split("?")[0] === b.split("?")[0];
   const outputs = job.outputs.map((o) => {
     const p = previous.outputs.find((x) => x.id === o.id);
-    return p?.imageUrl && sameFile(p.imageUrl, o.imageUrl) ? { ...o, imageUrl: p.imageUrl } : o;
+    const imageUrl = p?.imageUrl && sameFile(p.imageUrl, o.imageUrl) ? p.imageUrl : o.imageUrl;
+    /* A fresh link each poll would restart a playing video. */
+    const videoUrl =
+      p?.videoUrl && o.videoUrl && sameFile(p.videoUrl, o.videoUrl) ? p.videoUrl : o.videoUrl;
+    return { ...o, imageUrl, ...(videoUrl ? { videoUrl } : {}) };
   });
   const prevProduct = previous.request.product?.imageUrl;
   const product =
@@ -1420,7 +1425,9 @@ export function useGenerationJob(jobId: string) {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status !== "queued" && status !== "running") return false;
-      return UUID.test(jobId) ? 1500 : 500;
+      if (!UUID.test(jobId)) return 500;
+      /* Videos take minutes; the server checks fal at most every few seconds anyway. */
+      return query.state.data?.request.kind === "video" ? 4000 : 1500;
     },
   });
 }

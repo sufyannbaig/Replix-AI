@@ -1,0 +1,160 @@
+/**
+ * Product Shorts (docs/V2_VIDEO_PLAN.md, step 1). A Short is made in two steps:
+ *
+ * 1. First frame: the Photo Studio pipeline (label lock, true size, check) makes a still of
+ *    the product in the template's set, at the Short's frame. The product looks right before
+ *    any video money is spent.
+ * 2. Motion: fal.ai image-to-video animates that frame with the template's motion, asked to
+ *    keep the product, its shape and its label unchanged.
+ *
+ * Pure: recipes, prompts and fal queue helpers only. The calls live in generation.server.ts.
+ */
+
+/** The image-to-video model: Kling 3 Pro, the reviewers' pick for faithful packshots. */
+export const VIDEO_MODEL = "fal-ai/kling-video/v3/pro/image-to-video";
+/** fal list price per second without audio (2026-11-16); see V2_GENERATION_COSTS.md. */
+export const VIDEO_USD_PER_SECOND = 0.112;
+
+export type ShortRecipe = {
+  /** The still's set, light and camera (first frame). */
+  set: string;
+  light: string;
+  camera: string;
+  /** What moves, for the video model. */
+  motion: string;
+};
+
+/** One recipe per Shorts template slug (the catalog's six). */
+export const SHORT_RECIPES: Record<string, ShortRecipe> = {
+  "studio-turn": {
+    set: "a clean white seamless studio sweep, the product standing alone in the middle on the floor of the sweep.",
+    light: "large soft box overhead and to one side, white bounce fill, a soft contact shadow.",
+    camera: "eye level, 85mm product lens, the whole product in frame with space around it.",
+    motion:
+      "The product turns slowly on the spot, about a quarter turn, as if on a hidden turntable, then settles back to face the camera. The camera stays still. Soft light glides across its surface.",
+  },
+  floating: {
+    set: "a bright, airy white studio, the product floating in mid-air just above a soft shadow on the floor.",
+    light: "bright, even soft light from above, a gentle shadow below the product.",
+    camera: "eye level, the product centred with plenty of air around it.",
+    motion:
+      "The product floats weightlessly, bobbing gently up and down and tilting a few degrees, while the camera pushes in very slowly. Calm, smooth, premium.",
+  },
+  "360-spin": {
+    set: "a minimal white studio, the product standing on a small white marble plinth.",
+    light: "soft, even studio light that wraps around the product, a soft shadow on the plinth.",
+    camera: "eye level with the product, centred, the plinth's top edge in frame.",
+    motion:
+      "The product rotates smoothly on the plinth, a slow half turn and back, so the camera sees its sides. The camera and plinth stay still. The label is readable whenever it faces the camera.",
+  },
+  "dramatic-light": {
+    set: "a dark, glossy black studio floor and black backdrop, the product standing alone, its reflection in the floor.",
+    light:
+      "low-key: one spotlight from above and rim light from behind, deep blacks, glossy reflections.",
+    camera: "just above floor level, 100mm lens, the product centred and sharp.",
+    motion:
+      "In the dark, a beam of light sweeps across the product from one side to the other, revealing it, while the camera pushes in slowly. Reflections shimmer on the glossy floor. Moody and cinematic.",
+  },
+  "morning-light": {
+    set: "a sunny windowsill or marble counter beside a window, a small plant softly out of focus behind.",
+    light: "warm morning sun through the window, soft leaf shadows across the surface.",
+    camera: "50mm lens at counter height, background softly blurred.",
+    motion:
+      "Gentle morning: soft leaf shadows sway slowly across the product and counter, dust motes drift in the sunbeam, and the camera dollies sideways a little. Calm and real.",
+  },
+  splash: {
+    set: "a bright aqua backdrop, the product standing in a shallow pool of clear water, droplets on it.",
+    light: "crisp, bright studio light, sparkling highlights on the water and droplets.",
+    camera: "eye level, the product large and centred, the water's surface in frame.",
+    motion:
+      "Clear water splashes up around the product in slow motion, droplets flying and catching the light, then falling back. The product stays still and upright in the middle.",
+  },
+};
+
+/** Added to the first frame's photo prompt, so the still leaves room for the motion. */
+export const FRAME_NOTE =
+  "This still is the first frame of a short product video: show the whole product, sharp and upright, with clear space around it for the camera to move; nothing important near the edges; no text, captions or logos added.";
+
+/** Motion for the Custom mode's animation choice. */
+export const ANIMATION_MOTION: Record<string, string> = {
+  Auto: "Subtle, premium motion that suits the scene: a slow camera push-in with gentle movement in the light and background.",
+  "Camera pan": "The camera pans slowly sideways across the scene, keeping the product in frame.",
+  "Zoom in": "The camera pushes in slowly and smoothly towards the product.",
+  "Zoom out": "The camera pulls back slowly to reveal more of the scene around the product.",
+  Orbit: "The camera orbits slowly part of the way around the product, keeping it centred.",
+  Floating: "The product lifts off the surface and floats gently, bobbing and tilting slightly.",
+};
+
+/** Rules every Short's motion prompt ends with, so the product survives the motion. */
+export const MOTION_RULES = [
+  "The product keeps exactly its shape, colours, size and label: every printed word stays the same and readable, never morphing, melting or changing.",
+  "No new text, logos, people or hands appear. Natural physics, smooth motion, no cuts.",
+];
+
+export const NEGATIVE_PROMPT =
+  "blur, distortion, morphing product, changing label, garbled text, extra objects, extra hands, flicker, low quality";
+
+/** The text for the video model. */
+export function motionPrompt(opts: { productName: string; motion: string; note?: string | null }) {
+  const note = opts.note?.replace(/\s+/g, " ").trim().slice(0, 300);
+  return [
+    `A short premium product video of ${opts.productName}.`,
+    opts.motion,
+    ...MOTION_RULES,
+    note ? `The customer adds: "${note}"` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** The template slug from a Shorts template id ("short_splash" → "splash"). */
+export function shortSlug(templateId: string) {
+  return templateId.replace(/^short_/, "");
+}
+
+/** fal queue URLs: submit goes to the full model path, status and result to owner/app. */
+export function falUrls(model: string, requestId?: string) {
+  const app = model.split("/").slice(0, 2).join("/");
+  return {
+    submit: `https://queue.fal.run/${model}`,
+    status: requestId ? `https://queue.fal.run/${app}/requests/${requestId}/status` : "",
+    result: requestId ? `https://queue.fal.run/${app}/requests/${requestId}` : "",
+  };
+}
+
+/** The submit body for the video model. Kling takes 3 to 15 seconds. */
+export function falVideoInput(opts: { prompt: string; imageUrl: string; seconds: number }) {
+  return {
+    prompt: opts.prompt.slice(0, 2400),
+    start_image_url: opts.imageUrl,
+    duration: String(Math.min(15, Math.max(3, Math.round(opts.seconds)))),
+    negative_prompt: NEGATIVE_PROMPT,
+    generate_audio: false,
+  };
+}
+
+export type FalState = "queued" | "running" | "done" | "failed";
+
+/** fal's status reply in our words; anything unexpected counts as still running. */
+export function parseFalStatus(raw: unknown): FalState {
+  const status = (raw as { status?: unknown } | null)?.status;
+  if (status === "IN_QUEUE") return "queued";
+  if (status === "COMPLETED") return "done";
+  if (status === "FAILED" || status === "ERROR") return "failed";
+  return "running";
+}
+
+/** The finished video's link from fal's result; undefined when there is none. */
+export function parseFalVideo(raw: unknown): string | undefined {
+  const url = (raw as { video?: { url?: unknown } } | null)?.video?.url;
+  return typeof url === "string" && /^https:\/\//.test(url) ? url : undefined;
+}
+
+/**
+ * Progress shown while fal works: the first frame is done at 0.4, then it climbs towards
+ * 0.95 over about two minutes (Kling takes one to three), never reaching it.
+ */
+export function videoProgress(elapsedMs: number) {
+  const t = Math.max(0, elapsedMs) / 120_000;
+  return Number((0.4 + 0.55 * (1 - Math.exp(-2 * t))).toFixed(3));
+}

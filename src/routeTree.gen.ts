@@ -52,6 +52,7 @@ import { Route as AppVideoStudioConceptRouteImport } from './routes/_app.video-s
 import { Route as AppVideoStudioShortsRouteImport } from './routes/_app.video-studio.shorts'
 import { Route as AppVideoStudioUgcRouteImport } from './routes/_app.video-studio.ugc'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicHooksFalRouteImport } from './routes/api/public/hooks/fal'
 import { Route as ApiPublicHooksWeeklyDigestRouteImport } from './routes/api/public/hooks/weekly-digest'
 import { Route as ApiPublicShopifyCallbackRouteImport } from './routes/api/public/shopify/callback'
 import { Route as ApiPublicShopifyInstallRouteImport } from './routes/api/public/shopify/install'
@@ -283,6 +284,12 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksFalRoute =
+  ApiPublicHooksFalRouteImport.update({
+    id: '/api/public/hooks/fal',
+    path: '/api/public/hooks/fal',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksWeeklyDigestRoute =
   ApiPublicHooksWeeklyDigestRouteImport.update({
     id: '/api/public/hooks/weekly-digest',
@@ -413,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/': typeof AppCampaignsIndexRoute
   '/generate/': typeof AppGenerateIndexRoute
   '/video-studio/': typeof AppVideoStudioIndexRoute
+  '/api/public/hooks/fal': typeof ApiPublicHooksFalRoute
   '/api/public/hooks/weekly-digest': typeof ApiPublicHooksWeeklyDigestRoute
   '/api/public/shopify/callback': typeof ApiPublicShopifyCallbackRoute
   '/api/public/shopify/install': typeof ApiPublicShopifyInstallRoute
@@ -472,6 +480,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof AppCampaignsIndexRoute
   '/generate': typeof AppGenerateIndexRoute
   '/video-studio': typeof AppVideoStudioIndexRoute
+  '/api/public/hooks/fal': typeof ApiPublicHooksFalRoute
   '/api/public/hooks/weekly-digest': typeof ApiPublicHooksWeeklyDigestRoute
   '/api/public/shopify/callback': typeof ApiPublicShopifyCallbackRoute
   '/api/public/shopify/install': typeof ApiPublicShopifyInstallRoute
@@ -533,6 +542,7 @@ export interface FileRoutesById {
   '/_app/campaigns/': typeof AppCampaignsIndexRoute
   '/_app/generate/': typeof AppGenerateIndexRoute
   '/_app/video-studio/': typeof AppVideoStudioIndexRoute
+  '/api/public/hooks/fal': typeof ApiPublicHooksFalRoute
   '/api/public/hooks/weekly-digest': typeof ApiPublicHooksWeeklyDigestRoute
   '/api/public/shopify/callback': typeof ApiPublicShopifyCallbackRoute
   '/api/public/shopify/install': typeof ApiPublicShopifyInstallRoute
@@ -594,6 +604,7 @@ export interface FileRouteTypes {
     | '/campaigns/'
     | '/generate/'
     | '/video-studio/'
+    | '/api/public/hooks/fal'
     | '/api/public/hooks/weekly-digest'
     | '/api/public/shopify/callback'
     | '/api/public/shopify/install'
@@ -653,6 +664,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/generate'
     | '/video-studio'
+    | '/api/public/hooks/fal'
     | '/api/public/hooks/weekly-digest'
     | '/api/public/shopify/callback'
     | '/api/public/shopify/install'
@@ -713,6 +725,7 @@ export interface FileRouteTypes {
     | '/_app/campaigns/'
     | '/_app/generate/'
     | '/_app/video-studio/'
+    | '/api/public/hooks/fal'
     | '/api/public/hooks/weekly-digest'
     | '/api/public/shopify/callback'
     | '/api/public/shopify/install'
@@ -744,6 +757,7 @@ export interface RootRouteChildren {
   InstallSelectPlanRoute: typeof InstallSelectPlanRoute
   InstallWelcomeRoute: typeof InstallWelcomeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicHooksFalRoute: typeof ApiPublicHooksFalRoute
   ApiPublicHooksWeeklyDigestRoute: typeof ApiPublicHooksWeeklyDigestRoute
   ApiPublicShopifyCallbackRoute: typeof ApiPublicShopifyCallbackRoute
   ApiPublicShopifyInstallRoute: typeof ApiPublicShopifyInstallRoute
@@ -1064,6 +1078,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/fal': {
+      id: '/api/public/hooks/fal'
+      path: '/api/public/hooks/fal'
+      fullPath: '/api/public/hooks/fal'
+      preLoaderRoute: typeof ApiPublicHooksFalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/weekly-digest': {
       id: '/api/public/hooks/weekly-digest'
       path: '/api/public/hooks/weekly-digest'
@@ -1264,6 +1285,7 @@ const rootRouteChildren: RootRouteChildren = {
   InstallSelectPlanRoute: InstallSelectPlanRoute,
   InstallWelcomeRoute: InstallWelcomeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicHooksFalRoute: ApiPublicHooksFalRoute,
   ApiPublicHooksWeeklyDigestRoute: ApiPublicHooksWeeklyDigestRoute,
   ApiPublicShopifyCallbackRoute: ApiPublicShopifyCallbackRoute,
   ApiPublicShopifyInstallRoute: ApiPublicShopifyInstallRoute,

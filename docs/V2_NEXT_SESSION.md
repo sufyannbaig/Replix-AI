@@ -167,7 +167,8 @@ Research (competitors plus one live test) found the label already comes out righ
 **Phase 2+ (video)**: `docs/V2_VIDEO_PLAN.md` (2026-11-16, current), and `docs/V2_BACKEND_PLAN.md` sections 4, 8 and 9.
 
 - Benjamin has to create the fal.ai account and add `FAL_KEY` as a project secret (D4). Then run the video test, which decides D1 (credit unit and plan sizes).
-- Order: Product Shorts (image-to-video, webhook, cron sweeper), then AI UGC (the priority feature), then Concept ads.
+- Order: Product Shorts, then AI UGC (the priority feature), then Concept ads.
+- **Product Shorts is written (2026-11-16), waiting on `FAL_KEY`.** See "Status" in `V2_VIDEO_PLAN.md`. Without the key a Short fails at once with "Video generation isn't switched on yet. Your credits are back." (no frame is made, nothing is charged). With it: first frame, then Kling 3 Pro on fal, then the mp4 on the result page and in Assets. No migration and no cron job were needed.
 
 **Waiting on other people**
 

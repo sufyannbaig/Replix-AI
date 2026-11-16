@@ -33,6 +33,8 @@ function requestSite() {
 
 const STALE_QUEUED_MS = 10 * 60_000;
 const STALE_RUNNING_MS = 6 * 60_000;
+/** Shorts: the first frame, then fal's queue (one to three minutes, sometimes more). */
+const STALE_VIDEO_MS = 15 * 60_000;
 const MAX_JOBS_PER_MINUTE = 6;
 
 const str = (max: number) => z.string().max(max);
@@ -95,16 +97,24 @@ const Inputs = z.union([
     themeId: str(60).nullable(),
     themeIds: z.array(str(60)).max(10).optional(),
   }),
+  z.object({ studio: z.literal("shorts"), mode: z.literal("templates"), templateId: str(120) }),
+  z.object({
+    studio: z.literal("shorts"),
+    mode: z.literal("custom"),
+    scene: Upload.nullable(),
+    motionReference: Upload.nullable(),
+    animation: str(40),
+  }),
 ]);
 const Request = z.object({
-  studio: z.enum(["photo", "ad"]),
-  kind: z.enum(["photo", "ad"]),
+  studio: z.enum(["photo", "ad", "shorts"]),
+  kind: z.enum(["photo", "ad", "video"]),
   inputs: Inputs,
   product: z.object({ id: str(200), name: str(200), imageUrl: str(4000) }),
   style: z.object({ label: str(300), imageUrl: str(4000).optional() }).optional(),
   aspect: z.enum(["1:1", "4:5", "9:16", "16:9"]),
   count: z.number().int().min(1).max(MAX_IMAGES_PER_JOB),
-  seconds: z.number().int().optional(),
+  seconds: z.number().int().min(3).max(15).optional(),
   note: str(1000).optional(),
   cost: z.number().int().min(0),
   brandKitId: z.string().uuid().optional(),
@@ -135,7 +145,11 @@ export const startGeneration = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => Request.parse(data))
   .handler(async ({ data, context }): Promise<{ jobId: string; cost: number }> => {
     if (data.inputs.studio !== data.studio) throw new Error("Studio and inputs don't match.");
-    if ((data.studio === "ad") !== (data.kind === "ad")) throw new Error("Wrong generation kind.");
+    const kind = data.studio === "ad" ? "ad" : data.studio === "shorts" ? "video" : "photo";
+    if (data.kind !== kind) throw new Error("Wrong generation kind.");
+    /* One Short per job; its length is what's charged and what fal is asked for. */
+    const seconds = kind === "video" ? (data.seconds ?? 5) : null;
+    if (kind === "video" && data.count !== 1) throw new Error("One video at a time.");
     const { admin } = await import("./generation.server");
 
     const since = new Date(Date.now() - 60_000).toISOString();
@@ -148,8 +162,8 @@ export const startGeneration = createServerFn({ method: "POST" })
       throw new Error("You're generating very fast. Wait a minute and try again.");
     }
 
-    const cost = generationCost(data.kind, data.count, data.seconds, data.studio);
-    const request = { ...storableRequest(data), cost };
+    const cost = generationCost(data.kind, data.count, seconds ?? undefined, data.studio);
+    const request = { ...storableRequest(data), ...(seconds ? { seconds } : {}), cost };
     const { data: jobId, error } = await admin.rpc("v2_create_generation_job", {
       _user_id: context.userId,
       _studio: data.studio,
@@ -157,7 +171,7 @@ export const startGeneration = createServerFn({ method: "POST" })
       _request: request,
       _aspect: data.aspect,
       _count: data.count,
-      _seconds: null,
+      _seconds: seconds,
       _cost: cost,
     });
     if (error) {
@@ -190,7 +204,7 @@ export const runGeneration = createServerFn({ method: "POST" })
   });
 
 async function signOutputs(db: SupabaseClient<V2Database>, rows: GenerationOutputRow[]) {
-  const paths = rows.flatMap((r) => (r.image_path ? [r.image_path] : []));
+  const paths = rows.flatMap((r) => [r.image_path, r.video_path].filter((p): p is string => !!p));
   if (!paths.length) return new Map<string, string>();
   const { data } = await db.storage.from("outputs").createSignedUrls(paths, 60 * 60 * 6);
   return new Map(
@@ -229,6 +243,7 @@ function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<
       .map((o) => ({
         id: o.id,
         imageUrl: urls.get(o.image_path ?? "") ?? "",
+        ...(o.video_path ? { videoUrl: urls.get(o.video_path) ?? "" } : {}),
         savedToAssets: o.saved_to_assets,
         ...(design(o) ? { design: design(o) } : {}),
         ...(o.copy?.post ? { post: { ...o.copy.post, cta: o.copy.cta } } : {}),
@@ -248,17 +263,28 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     let { data: row } = await load();
     if (!row) return null;
 
+    /* Shorts wait on fal: ask it how the video is doing (the webhook may never reach us). */
+    if (row.status === "running" && row.kind === "video" && row.provider) {
+      const { syncVideoJob } = await import("./generation.server");
+      if (await syncVideoJob(row)) ({ data: row } = await load());
+      if (!row) return null;
+    }
+
     /* Recover jobs whose worker died (tab closed mid-run, platform timeout). */
+    const video = row.kind === "video";
     const age = Date.now() - Date.parse(row.started_at ?? row.created_at);
     const stalled =
       (row.status === "queued" && age > STALE_QUEUED_MS) ||
-      (row.status === "running" && age > STALE_RUNNING_MS);
+      (row.status === "running" && age > (video ? STALE_VIDEO_MS : STALE_RUNNING_MS));
     if (stalled) {
       const { admin } = await import("./generation.server");
-      const { count } = await admin
+      /* A Short's first frame alone isn't a result: only a finished video counts. */
+      let outputsDone = admin
         .from("generation_outputs")
         .select("id", { count: "exact", head: true })
         .eq("job_id", row.id);
+      if (video) outputsDone = outputsDone.not("video_path", "is", null);
+      const { count } = await outputsDone;
       await admin.rpc("v2_settle_generation_job", {
         _job_id: row.id,
         _ok: count ?? 0,
@@ -408,6 +434,7 @@ export const listGenerations = createServerFn({ method: "POST" })
           origin: "generation" as const,
           title: title(j),
           thumbnailUrl: urls.get(o.image_path) ?? "",
+          ...(o.video_path ? { videoUrl: urls.get(o.video_path) ?? "" } : {}),
           createdAt: o.created_at,
           outputId: o.id,
           jobId: j.id,

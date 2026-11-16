@@ -20,6 +20,21 @@ import { LAYOUT_PHOTO_BRIEF, bannerFrame, layoutsFor, type AdLayoutId } from "./
 import { brandFontsForPlan } from "@/v2/data/pricing";
 import { isSafePublicUrl } from "./page-meta";
 import {
+  ANIMATION_MOTION,
+  FRAME_NOTE,
+  SHORT_RECIPES,
+  VIDEO_MODEL,
+  VIDEO_USD_PER_SECOND,
+  falUrls,
+  falVideoInput,
+  motionPrompt,
+  parseFalStatus,
+  parseFalVideo,
+  shortSlug,
+  videoProgress,
+  type ShortRecipe,
+} from "./shorts";
+import {
   checkMessages,
   fixLine,
   labelMessages,
@@ -175,7 +190,7 @@ async function loadUpload(ctx: Ctx, file: UploadRef, role: PromptRef["role"]): P
   return { role, name: file.name.slice(0, 80), dataUrl: await fromStorage("uploads", file.path) };
 }
 
-async function loadTemplate(ctx: Ctx, id: string, studio: "photo" | "ad") {
+async function loadTemplate(ctx: Ctx, id: string, studio: "photo" | "ad" | "shorts") {
   const { data } = await admin
     .from("templates")
     .select("*")
@@ -586,10 +601,263 @@ function extension(type: string) {
   return type === "image/jpeg" ? "jpg" : "png";
 }
 
+/* ---------------------------------------------------------------------------------------
+ * Product Shorts (docs/V2_VIDEO_PLAN.md step 1): the first frame here, the motion on fal.
+ * The job stays "running" after submit; syncVideoJob finishes it from the result screen's
+ * poll or from fal's webhook (/api/public/hooks/fal), whichever comes first.
+ * ------------------------------------------------------------------------------------- */
+
+const NO_VIDEO = "Video generation isn't switched on yet. Your credits are back.";
+const VIDEO_FAILED = "The video didn't come out. Your credits are back.";
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+
+async function jobCtx(jobRow: GenerationJobRow, site: Site): Promise<Ctx> {
+  const { data: credits } = await admin
+    .from("user_credits")
+    .select("plan")
+    .eq("user_id", jobRow.user_id)
+    .maybeSingle();
+  return { userId: jobRow.user_id, plan: credits?.plan ?? "free", site };
+}
+
+/** The first frame's prompt and refs, and the motion prompt for the video model. */
+async function shortPlan(ctx: Ctx, job: GenerationRequest, inputs: GenerationInputs) {
+  if (inputs.studio !== "shorts") throw new GenerationError("Wrong studio.");
+  const product = await loadProduct(ctx, job.product);
+  const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
+  const studioTurn = SHORT_RECIPES["studio-turn"];
+  let recipe: ShortRecipe = studioTurn;
+  let motion = studioTurn.motion;
+  let mode: "templates" | "diy" = "templates";
+  if (inputs.mode === "templates") {
+    const tpl = await loadTemplate(ctx, inputs.templateId, "shorts");
+    recipe = SHORT_RECIPES[tpl.slug] ?? SHORT_RECIPES[shortSlug(tpl.id)] ?? studioTurn;
+    motion = recipe.motion;
+    refs.push({
+      role: "template",
+      name: tpl.name,
+      dataUrl: await bundledArt(catalogImage("short", tpl.slug), ctx.site),
+    });
+  } else {
+    motion = ANIMATION_MOTION[inputs.animation] ?? ANIMATION_MOTION.Auto;
+    /* Their own scene photo sets the place; without one, a clean studio. */
+    if (inputs.scene) {
+      refs.push(await loadUpload(ctx, inputs.scene, "scene"));
+      mode = "diy";
+    }
+  }
+  const read = await readProduct(product.dataUrl);
+  const prompt = photoPrompt(
+    {
+      product,
+      refs,
+      aspect: job.aspect,
+      recipe:
+        mode === "diy"
+          ? { notes: FRAME_NOTE }
+          : { set: recipe.set, light: recipe.light, camera: recipe.camera, notes: FRAME_NOTE },
+      mode,
+      note: job.note,
+      label: read.label,
+      size: read.size,
+    },
+    0,
+    1,
+  );
+  const plan: Plan = { prompt, refs, check: { label: read.label, person: false } };
+  return { plan, motion: motionPrompt({ productName: product.name, motion, note: job.note }) };
+}
+
+async function settleFailed(jobId: string, error: string, cost: number) {
+  await admin.rpc("v2_settle_generation_job", {
+    _job_id: jobId,
+    _ok: 0,
+    _error: error,
+    _provider_cost_usd: Number(cost.toFixed(5)),
+  });
+}
+
+/** Make the first frame, store it, and hand it to fal. Never throws. */
+async function runShortJob(jobRow: GenerationJobRow, site: Site) {
+  const request = jobRow.request as GenerationRequest;
+  let cost = 0;
+  try {
+    const inputs = request.inputs;
+    if (!inputs) throw new GenerationError("This request is missing its settings.");
+    /* Checked first, so no frame is paid for when video can't run. */
+    const key = process.env.FAL_KEY;
+    if (!key) throw new GenerationError(NO_VIDEO);
+    const ctx = await jobCtx(jobRow, site);
+    const { plan, motion } = await shortPlan(ctx, request, inputs);
+    cost += EST_USD.text;
+    await admin.from("generation_jobs").update({ progress: 0.15 }).eq("id", jobRow.id);
+
+    let frame = await generateImage(plan.prompt, plan.refs);
+    cost += EST_USD.image;
+    if (plan.check) {
+      const result = await checkPhoto(plan.refs[0].dataUrl, frame, plan.check);
+      cost += EST_USD.text;
+      if (!result.pass) {
+        try {
+          frame = await generateImage(plan.prompt + fixLine(result.issues), plan.refs);
+          cost += EST_USD.image;
+        } catch (error) {
+          console.error("[v2 shorts] frame retry failed", jobRow.id, error);
+        }
+      }
+    }
+    const framePath = `${jobRow.user_id}/${jobRow.id}/1-frame.${extension(frame.type)}`;
+    const up = await admin.storage
+      .from("outputs")
+      .upload(framePath, frame.bytes, { contentType: frame.type, upsert: true });
+    if (up.error) throw new Error(up.error.message);
+    const ins = await admin.from("generation_outputs").insert({
+      job_id: jobRow.id,
+      user_id: jobRow.user_id,
+      position: 0,
+      image_path: framePath,
+    });
+    if (ins.error) throw new Error(ins.error.message);
+
+    /* fal downloads the frame from a short-lived signed link. */
+    const { data: signed } = await admin.storage
+      .from("outputs")
+      .createSignedUrl(framePath, 60 * 60);
+    if (!signed?.signedUrl) throw new Error("Couldn't sign the first frame.");
+    const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
+    const submit = `${falUrls(VIDEO_MODEL).submit}?fal_webhook=${encodeURIComponent(hook)}`;
+    const res = await fetch(submit, {
+      method: "POST",
+      headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(
+        falVideoInput({ prompt: motion, imageUrl: signed.signedUrl, seconds: jobRow.seconds ?? 5 }),
+      ),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+    if (!res.ok || typeof body?.request_id !== "string") {
+      console.error("[v2 shorts] fal submit failed", jobRow.id, res.status, body);
+      throw new GenerationError("The video service didn't take the job. Your credits are back.");
+    }
+    await admin
+      .from("generation_jobs")
+      .update({
+        provider: `fal:${VIDEO_MODEL}`,
+        provider_job_ids: [body.request_id],
+        provider_cost_usd: Number(cost.toFixed(5)),
+        progress: 0.4,
+      })
+      .eq("id", jobRow.id);
+  } catch (error) {
+    console.error("[v2 shorts] job failed", jobRow.id, error);
+    const message =
+      error instanceof GenerationError
+        ? error.message
+        : "Something went wrong. Your credits are back.";
+    await settleFailed(jobRow.id, message, cost);
+  }
+}
+
+/** Last fal check per job, so a fast poll doesn't call fal every time. */
+const lastVideoSync = new Map<string, number>();
+
+/**
+ * Check a running Short on fal and finish it when the video is ready: save the mp4 next to
+ * the first frame and settle the job. Returns true when the job changed. Never throws.
+ */
+export async function syncVideoJob(row: GenerationJobRow, force = false) {
+  const requestId = row.provider_job_ids?.[0];
+  if (row.status !== "running" || !row.provider?.startsWith("fal:") || !requestId) return false;
+  const now = Date.now();
+  if (!force && now - (lastVideoSync.get(row.id) ?? 0) < 4000) return false;
+  lastVideoSync.set(row.id, now);
+  const key = process.env.FAL_KEY;
+  if (!key) return false;
+  const urls = falUrls(row.provider.slice(4), requestId);
+  const headers = { Authorization: `Key ${key}` };
+  const frameCost = Number(row.provider_cost_usd ?? 0);
+  try {
+    const status = await fetch(urls.status, { headers, signal: AbortSignal.timeout(15_000) });
+    if (!status.ok) return false;
+    const state = parseFalStatus(await status.json());
+    if (state === "queued" || state === "running") {
+      /* The frame took about half a minute of the time since the job started. */
+      const since = Date.parse(row.started_at ?? row.created_at) + 30_000;
+      await admin
+        .from("generation_jobs")
+        .update({ progress: Math.max(row.progress, videoProgress(now - since)) })
+        .eq("id", row.id)
+        .eq("status", "running");
+      return false;
+    }
+    if (state === "failed") {
+      await settleFailed(row.id, VIDEO_FAILED, frameCost);
+      return true;
+    }
+    /* Done: only one caller (poll or webhook) gets to finish it. */
+    const { data: claimed } = await admin
+      .from("generation_jobs")
+      .update({ progress: 0.99 })
+      .eq("id", row.id)
+      .eq("status", "running")
+      .lt("progress", 0.99)
+      .select("id");
+    if (!claimed?.length) return false;
+
+    const result = await fetch(urls.result, { headers, signal: AbortSignal.timeout(15_000) });
+    const videoUrl = result.ok ? parseFalVideo(await result.json()) : undefined;
+    if (!videoUrl) {
+      await settleFailed(row.id, VIDEO_FAILED, frameCost);
+      return true;
+    }
+    const file = await fetch(videoUrl, { signal: AbortSignal.timeout(60_000) });
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (!file.ok || !bytes.byteLength || bytes.byteLength > MAX_VIDEO_BYTES) {
+      throw new Error(`video download failed (${file.status}, ${bytes.byteLength} bytes)`);
+    }
+    const path = `${row.user_id}/${row.id}/1.mp4`;
+    const up = await admin.storage
+      .from("outputs")
+      .upload(path, bytes, { contentType: "video/mp4", upsert: true });
+    if (up.error) throw new Error(up.error.message);
+    const saved = await admin
+      .from("generation_outputs")
+      .update({ video_path: path })
+      .eq("job_id", row.id)
+      .eq("position", 0);
+    if (saved.error) throw new Error(saved.error.message);
+    const cost = frameCost + VIDEO_USD_PER_SECOND * (row.seconds ?? 5);
+    await admin.rpc("v2_settle_generation_job", {
+      _job_id: row.id,
+      _ok: 1,
+      _error: null,
+      _provider_cost_usd: Number(cost.toFixed(5)),
+    });
+    await admin.from("usage_events").insert({
+      user_id: row.user_id,
+      event_type: "v2_shorts",
+      model: VIDEO_MODEL,
+      variant_count: 1,
+      estimated_cost_usd: Number(cost.toFixed(5)),
+    });
+    return true;
+  } catch (error) {
+    console.error("[v2 shorts] sync failed", row.id, error);
+    /* Let the next check try again; the stale timer refunds it if it never works. */
+    await admin
+      .from("generation_jobs")
+      .update({ progress: 0.95 })
+      .eq("id", row.id)
+      .eq("status", "running");
+    return false;
+  }
+}
+
 /**
  * Run one claimed job to completion. Never throws: failures settle the job (with refund).
  */
 export async function runJob(jobRow: GenerationJobRow, site: Site) {
+  if (jobRow.studio === "shorts") return runShortJob(jobRow, site);
   const request = jobRow.request as GenerationRequest;
   let ok = 0;
   let cost = 0;
