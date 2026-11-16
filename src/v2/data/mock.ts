@@ -295,6 +295,37 @@ export const sampleInsights: ProductInsights = {
   adAngles: ["Everyday upgrade", "Real results", "Quality you can see", "Gift"],
 };
 
+/*
+ * Ad themes for business buyers (B2B). They exist in code only (no `templates` rows) and
+ * reuse the picker art and layouts of the nearest consumer theme until they get their own.
+ */
+export const b2bAdThemes: AdTheme[] = [
+  {
+    id: "b2b-problem",
+    name: "Problem First",
+    description: "Name the buyer's problem in their words",
+    imageUrl: themeProblemSolution,
+  },
+  {
+    id: "b2b-proof",
+    name: "Proof Number",
+    description: "One real figure that makes the case",
+    imageUrl: themeStats,
+  },
+  {
+    id: "b2b-quote",
+    name: "Customer Quote",
+    description: "A real customer's words",
+    imageUrl: themeTestimonial,
+  },
+  {
+    id: "b2b-old-way",
+    name: "Old Way vs Us",
+    description: "How it's done today, and the better way",
+    imageUrl: themeUsVsThem,
+  },
+];
+
 /* v1's ten ad themes (src/data/studio.ts on main), brought back on 2026-11-15. */
 export const adThemes: AdTheme[] = [
   {

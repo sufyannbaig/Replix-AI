@@ -360,7 +360,10 @@ export function ChannelPreviewDialog({
   aspect,
   post,
   brand,
+  startOn,
 }: {
+  /** The tab to open on (LinkedIn for B2B ads); by default it follows the ad's shape. */
+  startOn?: ChannelId;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   image: string;
@@ -368,7 +371,9 @@ export function ChannelPreviewDialog({
   post: ChannelPost;
   brand: ChannelBrand;
 }) {
-  const [channel, setChannel] = useState<ChannelId>(aspect === "9:16" ? "story" : "facebook");
+  const [channel, setChannel] = useState<ChannelId>(
+    startOn ?? (aspect === "9:16" ? "story" : "facebook"),
+  );
   const Mock = MOCKS[channel];
   const note = fitNote(channel, aspect);
   return (

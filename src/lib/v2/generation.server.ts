@@ -8,7 +8,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { gatewayChat, parseJsonBlock } from "@/lib/ai-gateway.server";
 import type { GenerationJobRow, OutputCopy, V2Database } from "@/v2/data/db-types";
-import { adThemes, catalogImage, catalogPathForUrl, pieceOptions } from "@/v2/data/mock";
+import {
+  adThemes,
+  b2bAdThemes,
+  catalogImage,
+  catalogPathForUrl,
+  pieceOptions,
+} from "@/v2/data/mock";
+import { B2B_CTAS } from "@/v2/data/types";
 import type {
   AspectRatio,
   GenerationInputs,
@@ -48,6 +55,9 @@ import {
   AD_THEME_RECIPES,
   adCopyMessages,
   adThemeOrder,
+  B2B_LAYOUT_THEME,
+  QUOTE_THEMES,
+  isB2bTheme,
   quoteHeadline,
   reviewHeadline,
   SCENE_MOODS,
@@ -522,10 +532,17 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   const product = await loadProduct(ctx, job.product);
   /* A batch can mix themes: each ad takes the picked themes in turn. */
   const picked = [...new Set(inputs.themeIds?.length ? inputs.themeIds : [inputs.themeId])];
-  for (const id of picked) if (id) await loadTemplate(ctx, id, "ad");
+  /* B2B themes live in code (no template rows); they only run for a B2B request. */
+  const b2b = inputs.audience === "b2b";
+  for (const id of picked) {
+    if (isB2bTheme(id) !== b2b && id) throw new GenerationError("Pick a theme for this audience.");
+    if (id && !b2b) await loadTemplate(ctx, id, "ad");
+  }
+  /* The button is the user's pick from our list, never the model's wording. */
+  const cta = b2b ? B2B_CTAS.find((c) => c === inputs.cta) : undefined;
   const order = adThemeOrder(picked, job.count);
   const themeName = (id: string | null) =>
-    (id ? adThemes.find((t) => t.id === id)?.name : undefined) ?? "Product ad";
+    (id ? [...adThemes, ...b2bAdThemes].find((t) => t.id === id)?.name : undefined) ?? "Product ad";
   const brand = await loadBrand(ctx.userId, {
     brandKitId: job.brandKitId,
     productId: job.product.id,
@@ -536,7 +553,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   const layouts: AdLayoutId[] = new Array(job.count);
   /* A testimonial is only set as a quote when the user pasted a real review. */
   const review = inputs.review?.trim() || undefined;
-  const quoted = (id: string | null) => id === "testimonial" && !!review;
+  const quoted = (id: string | null) => !!id && QUOTE_THEMES.includes(id) && !!review;
 
   /* One copy call per theme, for that theme's ads, run side by side. */
   const groups = picked.map((id) => ({
@@ -550,7 +567,9 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       /* Each ad takes one of the theme's layouts (A or B), in turns from a random start. */
       /* Without a real review the Testimonial theme has no quote marks or quote layouts. */
       const own = layoutsFor(
-        id === "testimonial" && !review ? "showcase" : id,
+        id && QUOTE_THEMES.includes(id) && !review
+          ? "showcase"
+          : ((id && B2B_LAYOUT_THEME[id]) ?? id),
         job.aspect,
         ads.length,
         seed,
@@ -567,6 +586,9 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
           count: ads.length,
           note: job.note,
           review,
+          audience: inputs.audience,
+          cta,
+          proof: inputs.proof,
           layoutBriefs: own.map((l) => LAYOUT_PHOTO_BRIEF[l]),
           moods: ads.map((ad) => SCENE_MOODS[(seed + ad) % SCENE_MOODS.length]),
         }),
@@ -580,7 +602,11 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       seen ??= (parsed as { product?: unknown } | null)?.product;
       parseAdCopy(parsed, ads.length, product.name).forEach((c, k) => {
         /* The quote must be the customer's own words, never the model's. */
-        copies[ads[k]] = quoted(id) ? { ...c, headline: reviewHeadline(c.headline, review!) } : c;
+        copies[ads[k]] = {
+          ...c,
+          ...(quoted(id) ? { headline: reviewHeadline(c.headline, review!) } : {}),
+          ...(cta ? { cta } : {}),
+        };
       });
     }),
   );

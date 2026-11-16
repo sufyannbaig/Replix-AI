@@ -101,6 +101,9 @@ const Inputs = z.union([
     themeIds: z.array(str(60)).max(10).optional(),
     /** A real customer review the user pasted, for the Testimonial theme. */
     review: z.string().trim().max(300).optional(),
+    audience: z.enum(["b2c", "b2b"]).optional(),
+    cta: str(30).optional(),
+    proof: z.string().trim().max(200).optional(),
   }),
   z.object({ studio: z.literal("shorts"), mode: z.literal("templates"), templateId: str(120) }),
   z.object({
@@ -459,6 +462,7 @@ export const listGenerations = createServerFn({ method: "POST" })
 
 const InsightsInput = z.object({
   product: z.object({ id: str(200), name: str(200), imageUrl: str(4000) }),
+  audience: z.enum(["b2c", "b2b"]).optional(),
 });
 
 /** Photo Studio camera step: the words printed on the product, for the user to confirm. */
@@ -481,14 +485,14 @@ export const getProductInsights = createServerFn({ method: "POST" })
     await spendDailyAllowance(context.userId, "v2_insights", DAILY_INSIGHTS);
     const { gatewayChat, parseJsonBlock } = await import("@/lib/ai-gateway.server");
     const product = await loadProductForInsights(context.userId, data.product, requestSite());
+    const b2b = data.audience === "b2b";
     const raw = await gatewayChat({
       model: TEXT_MODEL,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content:
-            "You are a senior direct-response strategist. Ground everything in the product photo and details. No invented statistics or reviews. Reply with JSON only.",
+          content: `You are a senior ${b2b ? "B2B marketing" : "direct-response"} strategist. Ground everything in the product photo and details. No invented statistics or reviews. Reply with JSON only.`,
         },
         {
           role: "user",
@@ -496,7 +500,11 @@ export const getProductInsights = createServerFn({ method: "POST" })
             {
               type: "text",
               text: `Product: ${product.name}${product.description ? `\nDetails: ${product.description.slice(0, 600)}` : ""}
-Return {"painPoints": 4 short customer pain points this product solves (max 10 words each), "adAngles": 4 short ad angles that would sell it (max 10 words each)}.`,
+${
+  b2b
+    ? `This is sold to businesses. Return {"painPoints": 4 short work problems it solves for the person buying for a company (max 10 words each), "adAngles": 4 short ad angles a business buyer would care about, such as time saved, cost, reliability or risk, without inventing figures (max 10 words each)}.`
+    : `Return {"painPoints": 4 short customer pain points this product solves (max 10 words each), "adAngles": 4 short ad angles that would sell it (max 10 words each)}.`
+}`,
             },
             { type: "image_url", image_url: { url: product.dataUrl } },
           ],

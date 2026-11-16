@@ -242,6 +242,28 @@ export const AD_THEME_RECIPES: Record<
     layout: "The product looking clearly premium and better made, in a crisp set.",
     labels: ["The usual", "Ours"],
   },
+  /* Business buyers (B2B): plain, specific, about the buyer's work. */
+  "b2b-problem": {
+    story:
+      "Lead with the buyer's problem, in the words they would use at work. The headline names it; the subline says this product fixes it.",
+    layout: "The product at work in the place the problem happens, calm and credible.",
+  },
+  "b2b-proof": {
+    story:
+      "One hard, specific fact about the product (a size, a capacity, a time, a count from the brief). Never invent statistics, percentages, savings, ratings or customer numbers.",
+    layout: "Clean, confident set with the product sharp and clear, like a spec sheet hero.",
+  },
+  "b2b-quote": {
+    story:
+      "What business customers value about it, said in the brand's own voice. Not a quote: no quotation marks, no 'I', 'we' or 'our team', nothing written as a customer's words. No invented names, companies, job titles or statistics.",
+    layout: "The product in real use at a workplace, warm and believable.",
+  },
+  "b2b-old-way": {
+    story:
+      "The way this job is usually done versus doing it with this product. The headline contrasts the two without naming or attacking any real brand.",
+    layout: "The product looking clearly better organised and more professional, in a crisp set.",
+    labels: ["The old way", "With us"],
+  },
   "problem-fix": {
     story: "Name the customer's pain in the headline, show the product as the fix.",
     layout:
@@ -277,11 +299,40 @@ export function adThemeOrder(themeIds: (string | null)[], count: number): (strin
  * US FTC rule of 2024, the UK's DMCC Act and Meta), so a quote is only used when the user
  * pasted a real review; otherwise the ad speaks in the brand's own voice.
  */
-export function testimonialStory(review?: string | null) {
+export function testimonialStory(review?: string | null, themeId = "testimonial") {
   const real = review?.replace(/\s+/g, " ").trim();
   return real
     ? `A real customer review. The headline is the strongest phrase taken word for word from this review, at most 9 words and 55 characters, with nothing added, changed or reordered: "${real.replace(/"/g, "'")}". The subline may say what it shows about the product. No invented names, star counts or statistics.`
-    : AD_THEME_RECIPES.testimonial.story;
+    : AD_THEME_RECIPES[themeId].story;
+}
+
+/** The themes that quote a customer, and only ever a real, pasted review. */
+export const QUOTE_THEMES = ["testimonial", "b2b-quote"];
+
+/** The four B2B themes and the consumer theme whose layouts each one uses. */
+export const B2B_LAYOUT_THEME: Record<string, string> = {
+  "b2b-problem": "problem-solution",
+  "b2b-proof": "stats",
+  "b2b-quote": "testimonial",
+  "b2b-old-way": "us-vs-them",
+};
+export const isB2bTheme = (id: string | null | undefined) => !!id && id in B2B_LAYOUT_THEME;
+
+/** The Proof number story: the user's own figure when they typed one, else a hard fact. */
+export function proofStory(proof?: string | null) {
+  const real = proof?.replace(/\s+/g, " ").trim();
+  return real
+    ? `One number that makes the case. The customer gave this real figure: "${real.replace(/"/g, "'")}". Build the headline around it exactly as given; don't change the number, add other numbers or exaggerate it.`
+    : AD_THEME_RECIPES["b2b-proof"].story;
+}
+
+/** The story the copy call gets for a theme, with the user's review or figure when given. */
+export function themeStory(brief: Pick<AdCopyBrief, "themeId" | "review" | "proof">) {
+  const id = brief.themeId;
+  if (!id || !AD_THEME_RECIPES[id]) return "";
+  if (QUOTE_THEMES.includes(id)) return testimonialStory(brief.review, id);
+  if (id === "b2b-proof") return proofStory(brief.proof);
+  return AD_THEME_RECIPES[id].story;
 }
 
 const reviewWords = (s: string) =>
@@ -351,8 +402,14 @@ export type AdCopyBrief = {
   brand: BrandHints;
   count: number;
   note?: string | null;
-  /** A real customer review the user pasted (Testimonial theme). */
+  /** A real customer review the user pasted (Testimonial and Customer quote themes). */
   review?: string | null;
+  /** "b2b" writes for business buyers; anything else is the consumer default. */
+  audience?: string | null;
+  /** B2B: the button the user picked; the copy must use exactly this. */
+  cta?: string | null;
+  /** B2B Proof number: a real figure the user typed in. */
+  proof?: string | null;
   insights?: { painPoints: string[]; adAngles: string[] } | null;
   /** What the photo must leave room for (LAYOUT_PHOTO_BRIEF), so each scene suits the layout. */
   layoutBrief?: string;
@@ -389,8 +446,10 @@ function compositionText(brief: AdCopyBrief) {
 export function adCopyMessages(brief: AdCopyBrief) {
   const theme = brief.themeId ? AD_THEME_RECIPES[brief.themeId] : undefined;
   const photo = brief.product.dataUrl;
+  const b2b = brief.audience === "b2b";
+  const cta = b2b ? brief.cta?.replace(/["\n\r]+/g, " ").trim() : "";
   const text = `${photo ? "The attached photo shows the product. Work out what it is from the photo and details, not from the name alone.\n" : ""}Product: ${brief.product.name}
-${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${brief.themeId === "testimonial" ? testimonialStory(brief.review) : theme.story})` : ""}
+${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${themeStory(brief)})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
 ${compositionText(brief)}
 ${
@@ -398,13 +457,24 @@ ${
     ? `Scene look: ${brief.moods.length > 1 ? brief.moods.map((m, i) => `ad ${i + 1}: ${m}`).join("; ") : brief.moods[0]}.
 `
     : ""
-}Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle on the theme.
-Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "type": how the headline should be set for this product, one of "bold" (everyday, tech, food, drinks, home goods), "condensed" (sport, fitness, energy, gaming, streetwear) or "elegant" (beauty, skincare, fragrance, jewellery, fashion, interiors), "ads":[{"headline": 3-6 punchy words that stop the scroll, "subline": optional, at most 7 words, "cta": 2-3 words like "Shop now", "scene": one vivid art-direction sentence for this ad's photo: setting, surface, props, lighting and colour palette, fitting the theme and the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB, "post": the words that go with this ad when it is posted on Facebook and Instagram: {"primary": the primary text, 2-4 short lines separated by \\n, the hook in the first 125 characters, at most 2 emoji, ending with 2-3 relevant hashtags, "headline": the headline shown under the ad, at most 40 characters, "description": at most 30 characters}}]}. Every ad must be about that product.`;
+}${
+    b2b
+      ? "Audience: people buying for a business (B2B), reading on LinkedIn. They answer to a boss and a budget, so be plain, specific and credible: name the work problem, say what the product does about it, no hype, no jargon, no exclamation marks. The scene shows the product where it is used at work.\n"
+      : ""
+  }Write ${brief.count} DISTINCT ad${brief.count > 1 ? "s" : ""}, each a different angle on the theme.
+Return {"product": what the product is and does, in under 15 words, judged from the photo and details, "type": how the headline should be set for this product, one of "bold" (everyday, tech, food, drinks, home goods${b2b ? "; the usual choice for business buyers" : ""}), "condensed" (sport, fitness, energy, gaming, streetwear) or "elegant" (beauty, skincare, fragrance, jewellery, fashion, interiors), "ads":[{"headline": ${b2b ? "3-7 plain, specific words a buyer could repeat to their boss" : "3-6 punchy words that stop the scroll"}, "subline": optional, at most 7 words, "cta": ${cta ? `exactly "${cta}"` : b2b ? '2-3 words like "Learn more" or "Get a quote"' : '2-3 words like "Shop now"'}, "scene": one vivid art-direction sentence for this ad's photo: setting, surface, props, lighting and colour palette, fitting the theme and the composition above, specific and not a stock-photo cliché, with no words, signs or screens in it, "accent": one strong colour taken from the product itself, as #RRGGBB, "post": ${
+    b2b
+      ? 'the words that go with this ad when it is posted on LinkedIn: {"primary": the intro text, 2-4 short lines separated by \\n, the hook in the first 150 characters, no emoji, ending with at most 3 relevant hashtags,'
+      : 'the words that go with this ad when it is posted on Facebook and Instagram: {"primary": the primary text, 2-4 short lines separated by \\n, the hook in the first 125 characters, at most 2 emoji, ending with 2-3 relevant hashtags,'
+  } "headline": the headline shown under the ad, at most 40 characters, "description": at most 30 characters}}]}. Every ad must be about that product.`;
   return [
     {
       role: "system",
       content:
-        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji (except up to 2 in the post's primary text), no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees, health, medical or financial claims, or any claim that isn't in the brief. Reply with JSON only.",
+        (b2b
+          ? "You are a world-class B2B copywriter for LinkedIn and paid social. Plain, specific, credible, short."
+          : "You are a world-class direct-response copywriter for paid social. Specific, human, short.") +
+        " No emoji (except up to 2 in the post's primary text), no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees, health, medical or financial claims, or any claim that isn't in the brief. Reply with JSON only.",
     },
     {
       role: "user",

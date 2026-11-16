@@ -33,6 +33,7 @@ import { FONT_UPLOAD_TYPES, fetchGoogleFonts, fontNameFromFile } from "./fonts";
 import type { BrandKitRow, LibraryItemRow, ProductRow } from "./db-types";
 import {
   adThemes,
+  b2bAdThemes,
   brandKits,
   communityCreations,
   helpFaqs,
@@ -48,6 +49,7 @@ import {
   ugcTemplates,
 } from "./mock";
 import type {
+  AdAudience,
   AdTheme,
   AdDesign,
   AssetItem,
@@ -77,7 +79,8 @@ export const queryKeys = {
   products: ["v2", "products"] as const,
   storeBrand: (shop: string) => ["v2", "store-brand", shop] as const,
   pieces: (kind: PieceKind) => ["v2", "pieces", kind] as const,
-  insights: (productId: string) => ["v2", "insights", productId] as const,
+  insights: (productId: string, audience = "b2c") =>
+    ["v2", "insights", productId, audience] as const,
   adThemes: ["v2", "ad-themes"] as const,
   ugcTemplates: ["v2", "ugc-templates"] as const,
   shortTemplates: ["v2", "short-templates"] as const,
@@ -767,16 +770,19 @@ export function useAddLibraryUpload() {
  * AI product analysis for Ad Studio: Gemini reads the product photo for pain points and
  * ad angles. Cached for the session per product. Sample-data mode returns demo insights.
  */
-export function useProductInsights(product: Product | null) {
+export function useProductInsights(product: Product | null, audience: AdAudience = "b2c") {
   return useQuery({
-    queryKey: queryKeys.insights(product?.id ?? "none"),
+    queryKey: queryKeys.insights(product?.id ?? "none", audience),
     enabled: !!product,
     staleTime: Infinity,
     retry: 1,
     queryFn: async (): Promise<ProductInsights> => {
       if (product && (await backendUser("generation_jobs"))) {
         return getProductInsights({
-          data: { product: { id: product.id, name: product.name, imageUrl: product.imageUrl } },
+          data: {
+            product: { id: product.id, name: product.name, imageUrl: product.imageUrl },
+            audience,
+          },
         });
       }
       await new Promise((resolve) => setTimeout(resolve, 1400));
@@ -806,10 +812,10 @@ export function useProductLabel(product: Product | null) {
   });
 }
 
-export function useAdThemes() {
+export function useAdThemes(audience: AdAudience = "b2c") {
   return useQuery({
-    queryKey: queryKeys.adThemes,
-    queryFn: async (): Promise<AdTheme[]> => adThemes,
+    queryKey: [...queryKeys.adThemes, audience],
+    queryFn: async (): Promise<AdTheme[]> => (audience === "b2b" ? b2bAdThemes : adThemes),
   });
 }
 

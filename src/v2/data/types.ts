@@ -138,9 +138,26 @@ export type AdThemeId =
   | "stats"
   | "testimonial"
   | "us-vs-them"
+  | "b2b-problem"
+  | "b2b-proof"
+  | "b2b-quote"
+  | "b2b-old-way"
   | "problem-fix"
   | "bold-offer"
   | "lifestyle";
+
+/** Who the ad is for: shoppers (B2C, the default) or business buyers (B2B). */
+export type AdAudience = "b2c" | "b2b";
+
+/** The buttons a B2B ad can carry. The user picks one; the copy model never invents it. */
+export const B2B_CTAS = [
+  "Book a demo",
+  "Get a quote",
+  "Start free trial",
+  "Download the guide",
+  "Contact sales",
+  "Learn more",
+] as const;
 
 export type AdTheme = {
   id: AdThemeId;
@@ -295,8 +312,14 @@ export type GenerationInputs =
       themeId: AdThemeId | null;
       /** When a batch mixes themes: every picked theme, in the order the ads take them. */
       themeIds?: AdThemeId[];
-      /** A real customer review the user pasted, for the Testimonial theme. */
+      /** A real customer review the user pasted, for the Testimonial and Customer quote themes. */
       review?: string;
+      /** Shoppers (default) or business buyers. */
+      audience?: AdAudience;
+      /** B2B: the button the user picked (one of B2B_CTAS). */
+      cta?: string;
+      /** B2B Proof number theme: a real figure the user typed in. */
+      proof?: string;
     }
   | { studio: "ugc"; mode: "templates"; templateId: string; script: string }
   | {

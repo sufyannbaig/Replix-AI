@@ -5,6 +5,7 @@ import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import {
   AD_SIZES,
+  THEME_LAYOUTS,
   FONT,
   bannerFrame,
   buildAdLayout,
@@ -18,9 +19,14 @@ import {
   adCopyMessages,
   adThemeOrder,
   parseAdCopy,
+  B2B_LAYOUT_THEME,
+  QUOTE_THEMES,
+  isB2bTheme,
+  proofStory,
   quoteHeadline,
   reviewHeadline,
   testimonialStory,
+  themeStory,
 } from "./recipes.ts";
 
 const copy = { headline: "Cold brew, zero wait", subline: "Ready when you are", cta: "Shop now" };
@@ -296,6 +302,79 @@ describe("testimonials are never invented", () => {
     );
     ok(text.includes("never show or promise a change to someone's body"));
     ok(text.includes("health, medical or financial claims"));
+  });
+});
+
+describe("B2B ads", () => {
+  const brief = (themeId: string, extra: object = {}) =>
+    JSON.stringify(
+      adCopyMessages({
+        product: { name: "X" },
+        themeName: "T",
+        themeId,
+        brand: {},
+        count: 1,
+        audience: "b2b",
+        ...extra,
+      }),
+    );
+
+  test("every B2B theme has a recipe and borrows a layout set that exists", () => {
+    for (const [id, layoutTheme] of Object.entries(B2B_LAYOUT_THEME)) {
+      ok(AD_THEME_RECIPES[id]?.story, id);
+      ok(THEME_LAYOUTS[layoutTheme]?.length, layoutTheme);
+      ok(isB2bTheme(id));
+    }
+    ok(!isB2bTheme("showcase"));
+    ok(!isB2bTheme(null));
+    deepStrictEqual(AD_THEME_RECIPES["b2b-old-way"].labels, ["The old way", "With us"]);
+  });
+
+  test("the copy is written for business buyers and LinkedIn", () => {
+    const text = brief("b2b-problem");
+    ok(text.includes("B2B copywriter"));
+    ok(text.includes("buying for a business"));
+    ok(text.includes("posted on LinkedIn"));
+    ok(text.includes("first 150 characters"));
+    ok(!text.includes("Shop now"));
+    ok(!text.includes("Facebook and Instagram"));
+  });
+
+  test("the button is the user's pick, word for word", () => {
+    ok(brief("b2b-problem", { cta: "Book a demo" }).includes('exactly \\\"Book a demo\\\"'));
+  });
+
+  test("consumer ads are unchanged", () => {
+    const text = JSON.stringify(
+      adCopyMessages({
+        product: { name: "X" },
+        themeName: "T",
+        themeId: "showcase",
+        brand: {},
+        count: 1,
+        cta: "Book a demo",
+      }),
+    );
+    ok(text.includes("Shop now"));
+    ok(text.includes("Facebook and Instagram"));
+    ok(!text.includes("Book a demo"));
+    ok(!text.includes("B2B"));
+  });
+
+  test("Proof number uses the user's figure, or a fact, never an invented number", () => {
+    ok(proofStory().includes("Never invent statistics"));
+    const story = proofStory("Cuts packing time by 40%");
+    ok(story.includes("Cuts packing time by 40%"));
+    ok(story.includes("exactly as given"));
+    ok(brief("b2b-proof", { proof: "Cuts packing time by 40%" }).includes("by 40%"));
+  });
+
+  test("Customer quote only quotes a pasted review", () => {
+    ok(QUOTE_THEMES.includes("b2b-quote"));
+    ok(themeStory({ themeId: "b2b-quote" }).includes("no quotation marks"));
+    ok(themeStory({ themeId: "b2b-quote", review: "Saved us hours" }).includes("word for word"));
+    strictEqual(themeStory({ themeId: "showcase" }), AD_THEME_RECIPES.showcase.story);
+    strictEqual(themeStory({ themeId: null }), "");
   });
 });
 

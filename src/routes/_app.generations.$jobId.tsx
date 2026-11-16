@@ -313,6 +313,11 @@ function Result({ job }: { job: GenerationJob }) {
           onOpenChange={setPreviewing}
           image={selected.imageUrl}
           aspect={request.aspect}
+          startOn={
+            request.inputs?.studio === "ad" && request.inputs.audience === "b2b"
+              ? "linkedin"
+              : undefined
+          }
           post={
             selected.post ?? {
               primary: "",

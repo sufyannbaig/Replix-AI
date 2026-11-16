@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
-import { SectionTitle } from "@/v2/components/primitives";
+import { FilterTabs, SectionTitle } from "@/v2/components/primitives";
 import {
   ComposerBar,
   isAspect,
@@ -15,7 +15,8 @@ import { StudioBrandChip, useStudioBrand } from "@/v2/components/brand/BrandMenu
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import { adGenerationCost, useAdThemes, useProductInsights } from "@/v2/data/api";
-import type { AdTheme, AspectRatio, Product } from "@/v2/data/types";
+import { B2B_CTAS } from "@/v2/data/types";
+import type { AdAudience, AdTheme, AspectRatio, Product } from "@/v2/data/types";
 import plusJoin from "@/assets/v2/icons/plus-join.svg";
 import artMocha from "@/assets/v2/catalog/product/acme-linen-shirt.webp";
 import artSodaHand from "@/assets/v2/catalog/ad/testimonial.webp";
@@ -27,8 +28,24 @@ export const Route = createFileRoute("/_app/ad-studio")({
   component: AdStudioPage,
 });
 
+const AUDIENCES = [
+  { value: "b2c", label: "Selling to shoppers" },
+  { value: "b2b", label: "Selling to businesses" },
+] as const;
+const QUOTE_THEMES = ["testimonial", "b2b-quote"];
+
 function AdStudioPage() {
   const { generate, pending: generating } = useGenerate();
+  /* Who the ads are for. Remembered in this browser; it changes the themes, the insights,
+     the copy and the button. */
+  const [audience, setAudienceRaw] = useStickySetting<AdAudience>(
+    "ad-audience",
+    "b2c",
+    (v) => v === "b2c" || v === "b2b",
+  );
+  const b2b = audience === "b2b";
+  const [cta, setCta] = useState<string>(B2B_CTAS[0]);
+  const [proof, setProof] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   /* With more than one ad, several themes can be picked (up to one per ad); the ads take
@@ -59,9 +76,14 @@ function AdStudioPage() {
   const [note, setNote] = useState("");
   /* Testimonial ads quote a real review only; without one they speak in the brand's voice. */
   const [review, setReview] = useState("");
-  const wantsReview = picked.some((t) => t.id === "testimonial");
-  const insights = useProductInsights(product);
-  const { data: themes = [] } = useAdThemes();
+  const wantsReview = picked.some((t) => QUOTE_THEMES.includes(t.id));
+  const wantsProof = picked.some((t) => t.id === "b2b-proof");
+  const setAudience = (next: AdAudience) => {
+    setAudienceRaw(next);
+    setPicked([]);
+  };
+  const insights = useProductInsights(product, audience);
+  const { data: themes = [] } = useAdThemes(audience);
   const brand = useStudioBrand(product);
 
   return (
@@ -73,6 +95,14 @@ function AdStudioPage() {
             { label: "Theme", done: !!theme },
             { label: "Generate", done: false },
           ]}
+        />
+
+        <FilterTabs
+          options={AUDIENCES}
+          value={audience}
+          onChange={setAudience}
+          label="Who the ads are for"
+          className="self-start"
         />
 
         <section className="relative grid gap-5 lg:grid-cols-[454fr_512fr] lg:gap-[74px]">
@@ -109,7 +139,10 @@ function AdStudioPage() {
             {multi ? `Creative themes · pick up to ${count}` : "Creative theme · pick one"}
           </SectionTitle>
           <div
-            className="grid grid-cols-2 gap-[22px] md:grid-cols-3 xl:grid-cols-5"
+            className={cn(
+              "grid grid-cols-2 gap-[22px] md:grid-cols-3",
+              b2b ? "xl:grid-cols-4" : "xl:grid-cols-5",
+            )}
             role={multi ? "group" : "radiogroup"}
             aria-label={multi ? "Creative themes" : "Creative theme"}
           >
@@ -150,8 +183,9 @@ function AdStudioPage() {
                 Paste a real customer review (optional)
               </span>
               <span className="font-inter-tight text-xs text-v2-muted">
-                Testimonial ads quote it word for word. Without one, the ad speaks in your brand's
-                own voice, because ad platforms and the law don't allow made-up reviews.
+                {b2b ? "Customer quote" : "Testimonial"} ads quote it word for word. Without one,
+                the ad speaks in your brand's own voice, because ad platforms and the law don't
+                allow made-up reviews.
               </span>
               <textarea
                 value={review}
@@ -163,7 +197,38 @@ function AdStudioPage() {
               />
             </label>
           ) : null}
+          {wantsProof ? (
+            <label className="flex flex-col gap-2 rounded-[12px] bg-v2-surface p-5">
+              <span className="type-label text-black night:text-v2-ink">
+                Your proof number (optional)
+              </span>
+              <span className="font-inter-tight text-xs text-v2-muted">
+                A real figure you can back up. We use it exactly as you type it and never make
+                numbers up; without one, the ad leads with a fact about the product.
+              </span>
+              <input
+                value={proof}
+                onChange={(e) => setProof(e.target.value)}
+                maxLength={200}
+                placeholder="Cuts packing time by 40% (2025 customer survey)"
+                className="rounded-[8px] bg-v2-canvas px-3 py-2 font-inter-tight text-sm text-v2-ink outline-none placeholder:text-v2-muted"
+              />
+            </label>
+          ) : null}
         </section>
+
+        {b2b ? (
+          <section className="flex flex-col gap-[18px]">
+            <SectionTitle>Button on the ad</SectionTitle>
+            <FilterTabs
+              options={B2B_CTAS.map((c) => ({ value: c, label: c }))}
+              value={cta}
+              onChange={setCta}
+              label="Button on the ad"
+              className="self-start"
+            />
+          </section>
+        ) : null}
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:bottom-6 lg:left-[308px]">
@@ -199,6 +264,8 @@ function AdStudioPage() {
                   themeId: theme?.id ?? null,
                   ...(picked.length > 1 ? { themeIds: picked.map((t) => t.id) } : {}),
                   ...(wantsReview && review.trim() ? { review: review.trim() } : {}),
+                  ...(b2b ? { audience, cta } : {}),
+                  ...(wantsProof && proof.trim() ? { proof: proof.trim() } : {}),
                 },
                 product: product!,
                 style: theme ? { label: themeLabel, imageUrl: theme.imageUrl } : undefined,
