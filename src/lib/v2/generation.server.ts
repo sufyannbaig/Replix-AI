@@ -21,6 +21,7 @@ import { brandFontsForPlan } from "@/v2/data/pricing";
 import { isSafePublicUrl } from "./page-meta";
 import {
   ANIMATION_MOTION,
+  FRAME_COMPOSITION,
   FRAME_NOTE,
   SHORT_RECIPES,
   VIDEO_MODEL,
@@ -659,8 +660,14 @@ async function shortPlan(ctx: Ctx, job: GenerationRequest, inputs: GenerationInp
       aspect: job.aspect,
       recipe:
         mode === "diy"
-          ? { notes: FRAME_NOTE }
-          : { set: recipe.set, light: recipe.light, camera: recipe.camera, notes: FRAME_NOTE },
+          ? { notes: FRAME_NOTE, composition: FRAME_COMPOSITION }
+          : {
+              set: recipe.set,
+              light: recipe.light,
+              camera: recipe.camera,
+              notes: FRAME_NOTE,
+              composition: FRAME_COMPOSITION,
+            },
       mode,
       note: job.note,
       label: read.label,

@@ -4,6 +4,8 @@ import { describe, test } from "node:test";
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import {
   ANIMATION_MOTION,
+  FRAME_COMPOSITION,
+  FRAME_NOTE,
   SHORT_RECIPES,
   VIDEO_MODEL,
   falUrls,
@@ -14,6 +16,7 @@ import {
   shortSlug,
   videoProgress,
 } from "./shorts.ts";
+import { photoPrompt } from "./recipes.ts";
 
 describe("Shorts recipes", () => {
   test("every catalog template has a full recipe", () => {
@@ -35,6 +38,27 @@ describe("Shorts recipes", () => {
     for (const a of ["Auto", "Camera pan", "Zoom in", "Zoom out", "Orbit", "Floating"]) {
       ok(ANIMATION_MOTION[a], a);
     }
+  });
+
+  test("fixes from the live test: upright floating, centred frame, more morning motion", () => {
+    ok(SHORT_RECIPES.floating.set.includes("never lying on its side"));
+    ok(SHORT_RECIPES.floating.motion.includes("stays upright"));
+    ok(SHORT_RECIPES["morning-light"].motion.includes("visible movement"));
+    ok(FRAME_NOTE.includes("centred left to right"));
+    ok(FRAME_COMPOSITION.includes("centred"));
+  });
+
+  test("a Short's frame is centred, a photo keeps the rule of thirds", () => {
+    const base = {
+      product: { name: "X" },
+      refs: [{ role: "product" as const, name: "X" }],
+      aspect: "9:16" as const,
+      mode: "templates" as const,
+    };
+    const short = photoPrompt({ ...base, recipe: { composition: FRAME_COMPOSITION } }, 0, 1);
+    ok(short.includes(FRAME_COMPOSITION));
+    ok(!short.includes("rule of thirds"));
+    ok(photoPrompt({ ...base, recipe: {} }, 0, 1).includes("rule of thirds"));
   });
 
   test("the template slug comes from the id", () => {

@@ -34,11 +34,11 @@ export const SHORT_RECIPES: Record<string, ShortRecipe> = {
       "The product turns slowly on the spot, about a quarter turn, as if on a hidden turntable, then settles back to face the camera. The camera stays still. Soft light glides across its surface.",
   },
   floating: {
-    set: "a bright, airy white studio, the product floating in mid-air just above a soft shadow on the floor.",
+    set: "a bright, airy white studio, the product standing upright (as it would stand on a shelf) and floating in mid-air just above a soft shadow on the floor, never lying on its side.",
     light: "bright, even soft light from above, a gentle shadow below the product.",
     camera: "eye level, the product centred with plenty of air around it.",
     motion:
-      "The product floats weightlessly, bobbing gently up and down and tilting a few degrees, while the camera pushes in very slowly. Calm, smooth, premium.",
+      "The product floats weightlessly and stays upright, bobbing gently up and down and tilting no more than a few degrees, while the camera pushes in very slowly. Calm, smooth, premium.",
   },
   "360-spin": {
     set: "a minimal white studio, the product standing on a small white marble plinth.",
@@ -60,7 +60,7 @@ export const SHORT_RECIPES: Record<string, ShortRecipe> = {
     light: "warm morning sun through the window, soft leaf shadows across the surface.",
     camera: "50mm lens at counter height, background softly blurred.",
     motion:
-      "Gentle morning: soft leaf shadows sway slowly across the product and counter, dust motes drift in the sunbeam, and the camera dollies sideways a little. Calm and real.",
+      "Morning comes alive: the camera glides slowly sideways and pushes in, leaf shadows sway clearly across the product and counter as a breeze moves the plant, the sunlight brightens and dust motes drift through the beam. Warm, calm and real, with visible movement from start to end.",
   },
   splash: {
     set: "a bright aqua backdrop, the product standing in a shallow pool of clear water, droplets on it.",
@@ -73,7 +73,11 @@ export const SHORT_RECIPES: Record<string, ShortRecipe> = {
 
 /** Added to the first frame's photo prompt, so the still leaves room for the motion. */
 export const FRAME_NOTE =
-  "This still is the first frame of a short product video: show the whole product, sharp and upright, with clear space around it for the camera to move; nothing important near the edges; no text, captions or logos added.";
+  "This still is the first frame of a short product video: show the whole product, sharp and upright, centred left to right in the frame (the video is watched on phones, so it must not sit off to one side), with clear space around it for the camera to move; nothing important near the edges; no text, captions or logos added.";
+
+/** Replaces the photo prompt's rule-of-thirds line: a Short's product sits in the middle. */
+export const FRAME_COMPOSITION =
+  "product centred left to right, standing in the middle of the frame";
 
 /** Motion for the Custom mode's animation choice. */
 export const ANIMATION_MOTION: Record<string, string> = {

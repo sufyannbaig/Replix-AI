@@ -90,7 +90,7 @@ export type PhotoBrief = {
   refs: PromptRef[];
   aspect: AspectRatio;
   /** Template recipe text (set, light, camera), when the template has one. */
-  recipe?: { set?: string; light?: string; camera?: string; notes?: string };
+  recipe?: { set?: string; light?: string; camera?: string; notes?: string; composition?: string };
   mode: "templates" | "piece" | "diy";
   note?: string | null;
   /** The words printed on the product, read from its photo (photo-check.ts). */
@@ -120,7 +120,7 @@ export function photoPrompt(brief: PhotoBrief, index: number, total: number) {
     `- Set: ${recipe?.set ?? (fromTemplate ? "as in the TEMPLATE." : brief.refs.some((r) => r.role === "prop") ? "the SCENE, styled with the props provided." : "the SCENE, styled with one or two small, tasteful props that suit this product and this place (never another product or brand), kept secondary to the product.")}`,
     `- Light: ${recipe?.light ?? shotLight(brief.shot) ?? scene?.light ?? (fromTemplate ? "match the TEMPLATE's light direction, softness and colour temperature." : "soft directional key light matching the SCENE, gentle fill, clean natural shadows.")}`,
     `- Camera: ${recipe?.camera ?? scene?.camera ?? "85mm product lens look, shallow depth of field on the background, product tack sharp."}`,
-    `- Composition: ${ASPECT_TEXT[brief.aspect]}, product placed by the rule of thirds or centred as the set suggests, nothing important near the edges.`,
+    `- Composition: ${ASPECT_TEXT[brief.aspect]}, ${recipe?.composition ?? "product placed by the rule of thirds or centred as the set suggests"}, nothing important near the edges.`,
     framing ? `- Framing: ${framing}` : "",
     ...(fromTemplate ? [] : shotLines(brief.shot)),
     labelLine(brief.label ?? []),
