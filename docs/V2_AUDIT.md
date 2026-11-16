@@ -1,6 +1,19 @@
 # Replix 2.0 audit: loopholes, gaps and the B2B / B2C ad idea (2026-11-16)
 
-A review of everything built for v2 so far (Photo Studio, Ad Studio, Product Shorts, brand kits, credits), against the code, the plans in `docs/`, competitor tools and current ad-platform and legal rules. Nothing here is built yet; each item says what to change.
+A review of everything built for v2 so far (Photo Studio, Ad Studio, Product Shorts, brand kits, credits), against the code, the plans in `docs/`, competitor tools and current ad-platform and legal rules. Each item says what to change.
+
+**Fixed the same day (db53c91), no database changes:**
+
+- **Free AI calls are capped per user per day** (section 1, item 3): product insights 60, label reads 60, product-page imports 60, brand-kit extracts 20. Each use is logged in `usage_events`, which is also what is counted (`spendDailyAllowance` in `generation.server.ts`).
+- **Short length is checked** (item 5): the server accepts only 5, 8 or 10 s.
+- **The `?model=` test switch is gone** (item 9): every Short uses Kling 3 Pro. Still to do by hand: reset the test account and delete the old `FAl_AI_KEY` secret.
+- **Regenerate shows today's price** (item 10).
+- **Consent for people** (item 8): adding a character (Library, the Library picker, Piece By Piece, and the character slot in Build It Yourself and UGC) opens "Is this a real person?" with a required tick box; Library uploads store `consent_confirmed_at`. Moderation of uploads is still open.
+- **Testimonials are never invented** (section 2, item 1): picking the Testimonial theme shows "Paste a real customer review (optional)". With a review, the ad quotes it word for word (`reviewHeadline` replaces any rewording by the model with the review's own opening words). Without one, the ad uses the Showcase layouts and the brand's own voice, with no quotation marks.
+- **Before / After** (section 2, item 2): for health, weight, skin, hair and cosmetic products the copy may not show or promise a change to someone's body. Health, medical and financial claims are banned in all ad copy.
+- **AI mark** (section 2, item 3): every photo and ad downloaded from the result page or Assets carries the IPTC "made with AI" source type in the file (`src/lib/v2/ai-metadata.ts`; JPEG and PNG). Videos don't carry it yet. The result page says "Made with AI…" with a link to Help, which has two new answers (AI labels; uploading real people).
+
+Still open from section 1: items 1, 2, 4, 6, 7 and 11 (they need decisions or database changes).
 
 How to read the priority: **A** = fix before launch (money or legal risk), **B** = users will expect it, **C** = later.
 

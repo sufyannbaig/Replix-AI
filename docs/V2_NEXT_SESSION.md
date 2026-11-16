@@ -192,3 +192,7 @@ Research (competitors plus one live test) found the label already comes out righ
 | Tests                        | `node --test src/lib/v2/*.test.ts` (39 pass)                                                                                      |
 | Models                       | Image `google/gemini-3.1-flash-image`, text `google/gemini-3.8-flash`, via Lovable's AI gateway                                   |
 | Storage                      | Private buckets `uploads`, `outputs`, `catalog` (catalog art read by `bundledArt`; new catalog images must be uploaded there too) |
+
+## 8. Audit and first fixes (2026-11-16)
+
+`docs/V2_AUDIT.md` lists the loopholes, the legal and ad-platform risks, what users expect from competing tools, and the design for a B2B ad type (today's Ad Studio is B2C only). The cheap fixes are done (db53c91, listed at the top of the audit): daily caps on the free AI helpers, the Short length check, the model switch removed, real-review testimonials, the Before / After rule, the consent step for uploaded people, and the AI mark in downloaded pictures. Open: plan wording and credit sizes, credit packs, video on the Free plan, deleting assets and accounts, the stuck-video sweeper (the last two need database changes), then Edit text and B2B ads.
