@@ -46,7 +46,11 @@ About $10 of fal credit: 3 Shorts templates × Kling 3 Pro, Kling 4 and Seedance
 
 ## 5. Status: Product Shorts written (2026-11-16)
 
-Built and tested with no fal key; not yet run against fal.
+Built, and the first real Short works on the preview (2026-11-16).
+
+**First live test:** Studio Turn, Acme Glow Serum, 5 s, 9:16. About 4.5 minutes from Generate to the finished video: the first frame took about 30 s and fal the rest. Result: a 1076×1924 mp4 of 8.9 MB, 5.04 s long. The bottle turns about a quarter and comes back, and the label ("ACME GLOW SERUM · 30 ml") is sharp and unchanged at the start and the end. It plays on the result page and in the Assets viewer, and the file can be fetched for Download (`video/mp4`). 10 credits were charged. Estimated cost to us: about $0.56 for the video ($0.112 × 5 s) plus about $0.15 for the frame and checks. One thing to watch: the bottle sat right of centre, not in the middle.
+
+The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KEY` (lowercase l), which the server couldn't find. That old secret can be deleted.
 
 - **Recipes** (`src/lib/v2/shorts.ts`, tested in `shorts.test.ts`): a set, light, camera and motion for each of the six templates (Studio Turn, Floating, 360 Spin, Dramatic Light, Morning Light, Splash), motion for the Custom animations (Auto, Camera pan, Zoom in, Zoom out, Orbit, Floating), and rules that keep the product, its shape and its label unchanged. Model: `fal-ai/kling-video/v3/pro/image-to-video`, audio off, the Short's length (5, 8 or 10 s).
 - **Running a Short** (`runShortJob` in `generation.server.ts`): checks the fal key first (the Lovable secret `FAL_AI_KEY`, or `FAL_KEY`) (no key: the job fails at once and the credits come back). Then the first frame through the Photo Studio prompt (template poster or the user's scene, label lock, true size, the check and one retry), stored as `outputs/<uid>/<job>/1-frame.png`. Then a fal queue submit with a signed link to the frame. The fal request id goes in `generation_jobs.provider_job_ids`, the model in `provider`, and the job stays "running" at 40%.
@@ -54,7 +58,7 @@ Built and tested with no fal key; not yet run against fal.
 - **No sweeper needed for now:** a Short still running after 15 minutes is failed and refunded the next time anyone opens it (the same lazy recovery as photos). A job no one opens again keeps its credits reserved until then. A `pg_cron` sweeper would close those too; it still needs approval.
 - **Front end:** Shorts go to the server (`useStartGeneration`). The result page and the Assets viewer play the video (muted, looping, with controls) with the first frame as the poster. Download saves the mp4. The motion-reference upload is kept with the Short but not used yet; the screen says the motion comes from the animation picked.
 - **Webhook on the preview:** the preview host only serves signed-in Lovable users, so fal's webhook may not reach it. The poll covers that; on the published site the webhook works.
-- **To do once the key is in:** one Short per template on a real product, scored for label fidelity and motion. Then the model test in section 3, and the credit prices.
+- **Next:** one Short for each of the other five templates and a Custom one, scored for label fidelity and motion. Then the model test in section 3, and the credit prices.
 
 ## 6. What needs no one
 

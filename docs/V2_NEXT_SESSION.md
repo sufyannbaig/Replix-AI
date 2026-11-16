@@ -168,7 +168,7 @@ Research (competitors plus one live test) found the label already comes out righ
 
 - Benjamin has to create the fal.ai account and add `FAL_KEY` as a project secret (D4). Then run the video test, which decides D1 (credit unit and plan sizes).
 - Order: Product Shorts, then AI UGC (the priority feature), then Concept ads.
-- **Product Shorts is written (2026-11-16), waiting on `FAL_KEY`.** See "Status" in `V2_VIDEO_PLAN.md`. Without the key a Short fails at once with "Video generation isn't switched on yet. Your credits are back." (no frame is made, nothing is charged). With it: first frame, then Kling 3 Pro on fal, then the mp4 on the result page and in Assets. No migration and no cron job were needed.
+- **Product Shorts works live (2026-11-16):** the first real Short (Studio Turn, 5 s) finished in about 4.5 minutes with the label intact, and plays on the result page and in Assets. The fal key is the Lovable secret `FAL_AI_KEY`. Results and next steps: "Status" in `V2_VIDEO_PLAN.md`.
 
 **Waiting on other people**
 

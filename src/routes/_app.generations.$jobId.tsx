@@ -79,6 +79,13 @@ const STAGES: Record<GenerationKind, string[]> = {
     "Adding sound and transitions",
   ],
 };
+/* Shorts, by the server's own steps: frame to 40%, fal to 95%, saving at 99%. No sound. */
+function shortsStage(progress: number) {
+  if (progress < 0.15) return "Reading your product";
+  if (progress < 0.4) return "Making the first frame";
+  if (progress < 0.99) return "Animating your product";
+  return "Saving your video";
+}
 
 /* 16:9 is sized by width; the taller ratios by the stage height (from sm up). */
 const FRAME: Record<AspectRatio, string> = {
@@ -373,7 +380,9 @@ function Progress({ job }: { job: GenerationJob }) {
   const stage =
     status === "queued"
       ? "In the queue"
-      : stages[Math.min(stages.length - 1, Math.floor(progress * stages.length))];
+      : request.studio === "shorts"
+        ? shortsStage(progress)
+        : stages[Math.min(stages.length - 1, Math.floor(progress * stages.length))];
   const percent = Math.round(progress * 100);
   return (
     <div
