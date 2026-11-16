@@ -454,6 +454,7 @@ export function usePhotoTemplates() {
 export {
   adGenerationCost,
   photoGenerationCost,
+  shortsGenerationCost,
   ugcGenerationCost,
   videoGenerationCost,
 } from "./pricing";

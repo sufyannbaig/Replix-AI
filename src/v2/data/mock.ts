@@ -154,7 +154,12 @@ export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
 
 /* Prices live in ./pricing.ts (the server uses the same table). */
 export { AD_CREDITS_PER_IMAGE, PHOTO_CREDITS_PER_IMAGE, VIDEO_CREDITS_PER_15S } from "./pricing";
-import { PHOTO_CREDITS_PER_IMAGE, UGC_CREDITS_BY_SECONDS, VIDEO_CREDITS_PER_15S } from "./pricing";
+import {
+  PHOTO_CREDITS_PER_IMAGE,
+  SHORTS_CREDITS_BY_SECONDS,
+  UGC_CREDITS_BY_SECONDS,
+  VIDEO_CREDITS_PER_15S,
+} from "./pricing";
 
 export const products: Product[] = [
   {
@@ -491,7 +496,7 @@ export const helpFaqs: HelpFaq[] = [
     id: "credits",
     category: "credits-billing",
     question: "How do credits work?",
-    answer: `Each generation shows its cost on the Generate button before you commit: ${PHOTO_CREDITS_PER_IMAGE} credits per photo or ad, ${VIDEO_CREDITS_PER_15S} credits per started 15 seconds of Product Short or Concept video, and ${UGC_CREDITS_BY_SECONDS[8]} credits for an 8 second or ${UGC_CREDITS_BY_SECONDS[15]} for a 15 second AI UGC video. If a generation fails, the credits come back automatically.`,
+    answer: `Each generation shows its cost on the Generate button before you commit: ${PHOTO_CREDITS_PER_IMAGE} credits per photo or ad, ${SHORTS_CREDITS_BY_SECONDS[5]}, ${SHORTS_CREDITS_BY_SECONDS[8]} or ${SHORTS_CREDITS_BY_SECONDS[10]} credits for a 5, 8 or 10 second Product Short, ${VIDEO_CREDITS_PER_15S} credits per started 15 seconds of Concept video, and ${UGC_CREDITS_BY_SECONDS[8]} credits for an 8 second or ${UGC_CREDITS_BY_SECONDS[15]} for a 15 second AI UGC video. If a generation fails, the credits come back automatically.`,
   },
   {
     id: "plans",

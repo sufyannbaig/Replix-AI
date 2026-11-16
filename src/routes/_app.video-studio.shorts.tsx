@@ -22,7 +22,7 @@ import {
   UploadTip,
   type UploadedImage,
 } from "@/v2/components/studio/UploadCard";
-import { useShortTemplates, videoGenerationCost } from "@/v2/data/api";
+import { shortsGenerationCost, useShortTemplates } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
 import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, Product, ShortStyle, ShortTemplate } from "@/v2/data/types";
@@ -172,7 +172,7 @@ function ShortsPage() {
     () => templates.filter((t) => style === "all" || t.styles.includes(style)),
     [templates, style],
   );
-  const cost = videoGenerationCost(seconds);
+  const cost = shortsGenerationCost(seconds);
 
   return (
     <AppShell

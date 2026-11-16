@@ -7,8 +7,16 @@ import type { GenerationKind } from "./types";
 
 export const PHOTO_CREDITS_PER_IMAGE = 2;
 export const AD_CREDITS_PER_IMAGE = 2;
-/** Charged per started 15 seconds of video. */
+/** Charged per started 15 seconds of video (Concept ads). */
 export const VIDEO_CREDITS_PER_15S = 10;
+/**
+ * Product Shorts are priced by length: about 1 credit a second plus 3 for the first frame
+ * (decided 2026-11-16 after the model test). On Kling 3 Pro this keeps at least half of what
+ * the user pays on every plan, Scale included (docs/V2_GENERATION_COSTS.md section 4).
+ * Lengths not listed fall back to the same rule.
+ */
+export const SHORTS_CREDITS_BY_SECONDS: Record<number, number> = { 5: 8, 8: 11, 10: 13 };
+export const SHORTS_FRAME_CREDITS = 3;
 /**
  * AI UGC is talking video with a voice, the most expensive model call (about $0.16 a
  * second). It is priced at about 2 credits a second so it earns money on every plan,
@@ -78,6 +86,10 @@ export function videoGenerationCost(seconds: number) {
   return Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
 }
 
+export function shortsGenerationCost(seconds: number) {
+  return SHORTS_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds) + SHORTS_FRAME_CREDITS;
+}
+
 export function ugcGenerationCost(seconds: number) {
   return UGC_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds * UGC_CREDITS_PER_SECOND);
 }
@@ -89,7 +101,9 @@ export function generationCost(
   studio?: string,
 ) {
   if (kind === "video") {
-    return studio === "ugc" ? ugcGenerationCost(seconds ?? 15) : videoGenerationCost(seconds ?? 15);
+    if (studio === "ugc") return ugcGenerationCost(seconds ?? 15);
+    if (studio === "shorts") return shortsGenerationCost(seconds ?? 5);
+    return videoGenerationCost(seconds ?? 15);
   }
   return kind === "ad" ? adGenerationCost(count) : photoGenerationCost(count);
 }
