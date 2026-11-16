@@ -223,7 +223,7 @@ export const AD_THEME_RECIPES: Record<
   },
   "before-after": {
     story:
-      "Show the transformation: the headline contrasts life before and after the product, in words.",
+      "Show the transformation: the headline contrasts life before and after the product, in words. For health, weight, skin, hair or cosmetic products, never show or promise a change to someone's body: contrast the routine or the feeling instead.",
     layout: "The 'after' moment: the product in use and the result looking great.",
   },
   stats: {
@@ -233,7 +233,7 @@ export const AD_THEME_RECIPES: Record<
   },
   testimonial: {
     story:
-      "A short customer quote: the headline reads like something a real customer would say, in quotation marks. No invented names, star counts or statistics.",
+      "What customers love about it, said in the brand's own voice. Not a quote: no quotation marks, no 'I' or 'my', nothing written as a customer's words. No invented names, star counts or statistics.",
     layout: "A warm, human, everyday set with the product in real use.",
   },
   "us-vs-them": {
@@ -272,6 +272,44 @@ export function adThemeOrder(themeIds: (string | null)[], count: number): (strin
  * A testimonial headline in curly quotation marks, so it reads as a customer's words
  * (parseAdCopy strips straight quotes, so they're added here, once).
  */
+/**
+ * The Testimonial theme's story. An invented customer quote is a fake review (banned by the
+ * US FTC rule of 2024, the UK's DMCC Act and Meta), so a quote is only used when the user
+ * pasted a real review; otherwise the ad speaks in the brand's own voice.
+ */
+export function testimonialStory(review?: string | null) {
+  const real = review?.replace(/\s+/g, " ").trim();
+  return real
+    ? `A real customer review. The headline is the strongest phrase taken word for word from this review, at most 9 words and 55 characters, with nothing added, changed or reordered: "${real.replace(/"/g, "'")}". The subline may say what it shows about the product. No invented names, star counts or statistics.`
+    : AD_THEME_RECIPES.testimonial.story;
+}
+
+const reviewWords = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/**
+ * The quote an ad may show: the model's pick when it really is a run of words from the
+ * review, else the start of the review itself. Never the model's own wording.
+ */
+export function reviewHeadline(headline: string, review: string) {
+  const picked = reviewWords(headline).join(" ");
+  if (picked && ` ${reviewWords(review).join(" ")} `.includes(` ${picked} `)) {
+    return headline.trim();
+  }
+  const all = review.replace(/\s+/g, " ").trim().split(" ");
+  let out = "";
+  for (const w of all.slice(0, 9)) {
+    if (`${out} ${w}`.trim().length > 55) break;
+    out = `${out} ${w}`.trim();
+  }
+  out ||= all[0].slice(0, 55);
+  return out.split(" ").length < all.length ? `${out.replace(/[.,;:!?]+$/, "")}…` : out;
+}
+
 export function quoteHeadline(headline: string) {
   const bare = headline.replace(/^["'‘“\s]+|["'’”\s]+$/g, "");
   return bare ? `“${bare}”` : headline;
@@ -313,6 +351,8 @@ export type AdCopyBrief = {
   brand: BrandHints;
   count: number;
   note?: string | null;
+  /** A real customer review the user pasted (Testimonial theme). */
+  review?: string | null;
   insights?: { painPoints: string[]; adAngles: string[] } | null;
   /** What the photo must leave room for (LAYOUT_PHOTO_BRIEF), so each scene suits the layout. */
   layoutBrief?: string;
@@ -350,7 +390,7 @@ export function adCopyMessages(brief: AdCopyBrief) {
   const theme = brief.themeId ? AD_THEME_RECIPES[brief.themeId] : undefined;
   const photo = brief.product.dataUrl;
   const text = `${photo ? "The attached photo shows the product. Work out what it is from the photo and details, not from the name alone.\n" : ""}Product: ${brief.product.name}
-${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${theme.story})` : ""}
+${brief.product.description ? `Details: ${clip(brief.product.description, 600)}\n` : ""}${brief.product.price ? `Price: ${brief.product.price}\n` : ""}Ad theme: ${brief.themeName}${theme ? ` (${brief.themeId === "testimonial" ? testimonialStory(brief.review) : theme.story})` : ""}
 ${brief.insights?.painPoints.length ? `Customer pain points: ${brief.insights.painPoints.join("; ")}\n` : ""}${brief.insights?.adAngles.length ? `Angles that could work: ${brief.insights.adAngles.join("; ")}\n` : ""}${brief.brand.tone ? `Brand voice: ${clip(brief.brand.tone, 300)}\n` : ""}${brief.brand.toneTags?.length ? `Tone tags: ${brief.brand.toneTags.join(", ")}\n` : ""}${brief.note ? `Customer note: ${clip(brief.note, 400)}\n` : ""}
 ${compositionText(brief)}
 ${
@@ -364,7 +404,7 @@ Return {"product": what the product is and does, in under 15 words, judged from 
     {
       role: "system",
       content:
-        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji (except up to 2 in the post's primary text), no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees or claims that aren't in the brief. Reply with JSON only.",
+        "You are a world-class direct-response copywriter for paid social. Specific, human, short. No emoji (except up to 2 in the post's primary text), no invented statistics, reviews, prices, discounts, shipping or delivery promises, guarantees, health, medical or financial claims, or any claim that isn't in the brief. Reply with JSON only.",
     },
     {
       role: "user",

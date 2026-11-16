@@ -1,3 +1,4 @@
+import { askPersonConsent } from "@/v2/data/consent";
 import { Upload, X } from "lucide-react";
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -75,7 +76,7 @@ export function UploadCard({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
 
-  const accept = (file: File | undefined) => {
+  const accept = async (file: File | undefined) => {
     if (!file) return;
     const isVideo = file.type.startsWith("video/");
     if (!(file.type.startsWith("image/") || (acceptVideo && isVideo))) {
@@ -88,6 +89,8 @@ export function UploadCard({
       toast.error(isVideo ? "That video is over 100 MB." : "That image is over 10 MB.");
       return;
     }
+    /* A character is a person's photo: confirm permission before it's used. */
+    if (libraryKind === "character" && !(await askPersonConsent())) return;
     onChange({ name: file.name, url: URL.createObjectURL(file), isVideo });
   };
 

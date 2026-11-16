@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { PillButton } from "@/v2/components/primitives";
 import { StepBar } from "@/v2/components/studio/StudioSteps";
 import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
+import { CONSENT_DECLINED } from "@/v2/data/consent";
 import type { PieceKind, PieceOption, ShotSettings } from "@/v2/data/types";
 import plusSmall from "@/assets/v2/pieces/plus-small.svg";
 import artBack from "@/assets/v2/catalog/scene/marble-kitchen.webp";
@@ -311,7 +312,10 @@ export function PieceByPiece({
       { file, kind: pieceKind },
       {
         onSuccess: toggle,
-        onError: () => toast.error("Upload failed. Please try again."),
+        onError: (error) => {
+          /* Cancelling the permission step isn't a failure. */
+          if (error.message !== CONSENT_DECLINED) toast.error("Upload failed. Please try again.");
+        },
       },
     );
 

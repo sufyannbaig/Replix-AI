@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
+import { CONSENT_DECLINED } from "@/v2/data/consent";
 import type { PieceKind } from "@/v2/data/types";
 import artBack from "@/assets/v2/catalog/scene/marble-kitchen.webp";
 import artMiddle from "@/assets/v2/catalog/character/sara.webp";
@@ -50,7 +51,10 @@ function LibraryPage() {
       { file, kind: current.kind },
       {
         onSuccess: () => toast.success(`${current.singular} added to your library`),
-        onError: () => toast.error("Upload failed. Please try again."),
+        onError: (error) => {
+          /* Cancelling the permission step isn't a failure. */
+          if (error.message !== CONSENT_DECLINED) toast.error("Upload failed. Please try again.");
+        },
       },
     );
 

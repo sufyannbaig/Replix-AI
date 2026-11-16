@@ -5,7 +5,6 @@ import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import {
   ANIMATION_MOTION,
   VIDEO_MODELS,
-  canPickVideoModel,
   videoUsdPerSecond,
   FRAME_COMPOSITION,
   FRAME_NOTE,
@@ -119,13 +118,6 @@ describe("fal queue", () => {
     );
     strictEqual(videoUsdPerSecond(VIDEO_MODELS.kling4.id), 0.157);
     strictEqual(videoUsdPerSecond("unknown/model"), 0.112);
-  });
-
-  test("only the Lovable preview can pick a model", () => {
-    ok(canPickVideoModel("https://id-preview--0a083220-8ffb-4ce6-b754-315b07d1704f.lovable.app"));
-    ok(!canPickVideoModel("https://replix.lovable.app"));
-    ok(!canPickVideoModel("https://id-preview--x.lovable.app.evil.com"));
-    ok(!canPickVideoModel("http://id-preview--x.lovable.app"));
   });
 
   test("status reply", () => {

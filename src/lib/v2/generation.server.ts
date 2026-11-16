@@ -24,8 +24,7 @@ import {
   FRAME_COMPOSITION,
   FRAME_NOTE,
   SHORT_RECIPES,
-  VIDEO_MODELS,
-  canPickVideoModel,
+  VIDEO_MODEL,
   videoUsdPerSecond,
   falUrls,
   falVideoInput,
@@ -50,6 +49,7 @@ import {
   adCopyMessages,
   adThemeOrder,
   quoteHeadline,
+  reviewHeadline,
   SCENE_MOODS,
   adPhotoPrompt,
   editPrompt,
@@ -133,6 +133,36 @@ async function bundledArt(url: string, site: Site) {
 }
 
 type Ctx = { userId: string; plan: string; site: Site };
+
+/**
+ * The free AI helpers (product insights, label read, brand extract, page import) charge no
+ * credits but cost us money, so each user gets a daily allowance. Every use is logged in
+ * `usage_events`, which is also what's counted. Throws once the day's allowance is spent.
+ */
+export async function spendDailyAllowance(
+  userId: string,
+  eventType: string,
+  allowance: number,
+  costUsd = EST_USD.text,
+) {
+  const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const { count } = await admin
+    .from("usage_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("event_type", eventType)
+    .gte("created_at", since);
+  if ((count ?? 0) >= allowance) {
+    throw new Error("You've reached today's limit for this. Please try again tomorrow.");
+  }
+  await admin.from("usage_events").insert({
+    user_id: userId,
+    event_type: eventType,
+    model: TEXT_MODEL,
+    variant_count: 1,
+    estimated_cost_usd: costUsd,
+  });
+}
 
 function assertPlan(ctx: Ctx, isPro: boolean, name: string) {
   if (isPro && ctx.plan === "free") {
@@ -504,6 +534,9 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
   const seed = Math.floor(Math.random() * 1000);
   const layouts: AdLayoutId[] = new Array(job.count);
+  /* A testimonial is only set as a quote when the user pasted a real review. */
+  const review = inputs.review?.trim() || undefined;
+  const quoted = (id: string | null) => id === "testimonial" && !!review;
 
   /* One copy call per theme, for that theme's ads, run side by side. */
   const groups = picked.map((id) => ({
@@ -515,7 +548,13 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
   await Promise.all(
     groups.map(async ({ id, ads }) => {
       /* Each ad takes one of the theme's layouts (A or B), in turns from a random start. */
-      const own = layoutsFor(id, job.aspect, ads.length, seed);
+      /* Without a real review the Testimonial theme has no quote marks or quote layouts. */
+      const own = layoutsFor(
+        id === "testimonial" && !review ? "showcase" : id,
+        job.aspect,
+        ads.length,
+        seed,
+      );
       ads.forEach((ad, k) => (layouts[ad] = own[k]));
       const raw = await gatewayChat({
         model: TEXT_MODEL,
@@ -527,6 +566,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
           brand,
           count: ads.length,
           note: job.note,
+          review,
           layoutBriefs: own.map((l) => LAYOUT_PHOTO_BRIEF[l]),
           moods: ads.map((ad) => SCENE_MOODS[(seed + ad) % SCENE_MOODS.length]),
         }),
@@ -538,7 +578,10 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
         /* fall back to safe default copy */
       }
       seen ??= (parsed as { product?: unknown } | null)?.product;
-      parseAdCopy(parsed, ads.length, product.name).forEach((c, k) => (copies[ads[k]] = c));
+      parseAdCopy(parsed, ads.length, product.name).forEach((c, k) => {
+        /* The quote must be the customer's own words, never the model's. */
+        copies[ads[k]] = quoted(id) ? { ...c, headline: reviewHeadline(c.headline, review!) } : c;
+      });
     }),
   );
   // What the copywriter saw in the photo, so the image model doesn't guess from the name either.
@@ -563,7 +606,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
       copy: {
         /* Quote and Note draw their own big quotation mark, so only other layouts add them. */
         headline:
-          themeId === "testimonial" && layouts[i] !== "quote" && layouts[i] !== "note"
+          quoted(themeId) && layouts[i] !== "quote" && layouts[i] !== "note"
             ? quoteHeadline(c.headline)
             : c.headline,
         subline: c.subline,
@@ -738,9 +781,7 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
       .createSignedUrl(framePath, 60 * 60);
     if (!signed?.signedUrl) throw new Error("Couldn't sign the first frame.");
     const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
-    const modelKey =
-      request.videoModel && canPickVideoModel(site.origin) ? request.videoModel : "kling3";
-    const model = VIDEO_MODELS[modelKey].id;
+    const model = VIDEO_MODEL;
     const submit = `${falUrls(model).submit}?fal_webhook=${encodeURIComponent(hook)}`;
     const res = await fetch(submit, {
       method: "POST",
@@ -750,7 +791,6 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
           prompt: motion,
           imageUrl: signed.signedUrl,
           seconds: jobRow.seconds ?? 5,
-          model: modelKey,
         }),
       ),
       signal: AbortSignal.timeout(30_000),

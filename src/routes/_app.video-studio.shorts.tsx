@@ -338,8 +338,6 @@ function ShortsPage() {
                 seconds,
                 note: note.trim() || undefined,
                 cost,
-                /* Model test only: ?model=kling4 or seedance2, honoured on the Lovable preview. */
-                ...testVideoModel(),
               })
             }
             generating={generating}
@@ -381,13 +379,4 @@ function ShortsPage() {
       </Dialog>
     </AppShell>
   );
-}
-
-/** `?model=` on this page picks the video model for the Shorts model test. */
-function testVideoModel(): { videoModel?: "kling3" | "kling4" | "seedance2" } {
-  if (typeof window === "undefined") return {};
-  const model = new URLSearchParams(window.location.search).get("model");
-  return model === "kling3" || model === "kling4" || model === "seedance2"
-    ? { videoModel: model }
-    : {};
 }

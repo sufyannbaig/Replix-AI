@@ -57,6 +57,9 @@ function AdStudioPage() {
   const themeLabel =
     picked.length > 1 ? `Themes: ${picked.map((t) => t.name).join(", ")}` : `Theme: ${theme?.name}`;
   const [note, setNote] = useState("");
+  /* Testimonial ads quote a real review only; without one they speak in the brand's voice. */
+  const [review, setReview] = useState("");
+  const wantsReview = picked.some((t) => t.id === "testimonial");
   const insights = useProductInsights(product);
   const { data: themes = [] } = useAdThemes();
   const brand = useStudioBrand(product);
@@ -141,6 +144,25 @@ function AdStudioPage() {
               );
             })}
           </div>
+          {wantsReview ? (
+            <label className="flex flex-col gap-2 rounded-[12px] bg-v2-surface p-5">
+              <span className="type-label text-black night:text-v2-ink">
+                Paste a real customer review (optional)
+              </span>
+              <span className="font-inter-tight text-xs text-v2-muted">
+                Testimonial ads quote it word for word. Without one, the ad speaks in your brand's
+                own voice, because ad platforms and the law don't allow made-up reviews.
+              </span>
+              <textarea
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                maxLength={300}
+                rows={2}
+                placeholder="Best serum I've used. My skin felt softer within a week."
+                className="resize-none rounded-[8px] bg-v2-canvas px-3 py-2 font-inter-tight text-sm leading-[1.4] text-v2-ink outline-none placeholder:text-v2-muted"
+              />
+            </label>
+          ) : null}
         </section>
       </div>
 
@@ -176,6 +198,7 @@ function AdStudioPage() {
                   studio: "ad",
                   themeId: theme?.id ?? null,
                   ...(picked.length > 1 ? { themeIds: picked.map((t) => t.id) } : {}),
+                  ...(wantsReview && review.trim() ? { review: review.trim() } : {}),
                 },
                 product: product!,
                 style: theme ? { label: themeLabel, imageUrl: theme.imageUrl } : undefined,

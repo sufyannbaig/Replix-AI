@@ -19,6 +19,8 @@ import {
   adThemeOrder,
   parseAdCopy,
   quoteHeadline,
+  reviewHeadline,
+  testimonialStory,
 } from "./recipes.ts";
 
 const copy = { headline: "Cold brew, zero wait", subline: "Ready when you are", cta: "Shop now" };
@@ -239,6 +241,61 @@ describe("testimonial quotes", () => {
     strictEqual(quoteHeadline("Replaced my second coffee"), "“Replaced my second coffee”");
     strictEqual(quoteHeadline("“Already quoted”"), "“Already quoted”");
     strictEqual(quoteHeadline("'Single'"), "“Single”");
+  });
+});
+
+describe("testimonials are never invented", () => {
+  const review = "Best serum I have used. My skin felt softer within a week!";
+
+  test("without a review the theme speaks in the brand's voice, with no quote", () => {
+    const story = testimonialStory();
+    ok(story.includes("brand's own voice"));
+    ok(story.includes("no quotation marks"));
+    strictEqual(testimonialStory("   "), story);
+  });
+
+  test("with a review the copy call is told to quote it word for word", () => {
+    const story = testimonialStory(review);
+    ok(story.includes("word for word"));
+    ok(story.includes(review));
+    const text = JSON.stringify(
+      adCopyMessages({
+        product: { name: "X" },
+        themeName: "Testimonial",
+        themeId: "testimonial",
+        brand: {},
+        count: 1,
+        review,
+      }),
+    );
+    ok(text.includes("My skin felt softer within a week"));
+    ok(!text.includes("brand's own voice"));
+  });
+
+  test("a headline taken from the review is kept", () => {
+    strictEqual(reviewHeadline("My skin felt softer", review), "My skin felt softer");
+    strictEqual(reviewHeadline("best serum I have used", review), "best serum I have used");
+  });
+
+  test("a reworded headline is replaced by the review's own opening words", () => {
+    const got = reviewHeadline("The softest skin of my life", review);
+    strictEqual(got, "Best serum I have used. My skin felt softer…");
+    ok(got.length <= 56);
+    strictEqual(reviewHeadline("Wow", "Love it"), "Love it");
+  });
+
+  test("Before / After never promises a body change for health and beauty", () => {
+    const text = JSON.stringify(
+      adCopyMessages({
+        product: { name: "X" },
+        themeName: "Before / After",
+        themeId: "before-after",
+        brand: {},
+        count: 1,
+      }),
+    );
+    ok(text.includes("never show or promise a change to someone's body"));
+    ok(text.includes("health, medical or financial claims"));
   });
 });
 

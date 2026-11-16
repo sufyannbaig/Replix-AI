@@ -109,7 +109,9 @@ export function AssetViewer({
   const download = async () => {
     setBusy(true);
     try {
-      await saveFile(item.videoUrl ?? item.thumbnailUrl, stem);
+      /* Generated pictures carry the "made with AI" mark; the user's own uploads don't. */
+      const ai = generated ? (item.kind === "ad" ? "composite" : "generated") : null;
+      await saveFile(item.videoUrl ?? item.thumbnailUrl, stem, ai);
     } finally {
       setBusy(false);
     }

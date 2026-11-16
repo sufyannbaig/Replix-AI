@@ -13,7 +13,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { GenerationJobRow, GenerationOutputRow, V2Database } from "@/v2/data/db-types";
-import { generationCost, MAX_IMAGES_PER_JOB } from "@/v2/data/pricing";
+import { generationCost, MAX_IMAGES_PER_JOB, VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type {
   AdDesign,
   AspectRatio,
@@ -36,6 +36,9 @@ const STALE_RUNNING_MS = 6 * 60_000;
 /** Shorts: the first frame, then fal's queue (one to three minutes, sometimes more). */
 const STALE_VIDEO_MS = 15 * 60_000;
 const MAX_JOBS_PER_MINUTE = 6;
+/** Free AI helpers cost us money too, so each has a generous daily allowance per user. */
+const DAILY_INSIGHTS = 60;
+const DAILY_LABEL_READS = 60;
 
 const str = (max: number) => z.string().max(max);
 const Piece = z.object({ id: str(200), kind: str(20), name: str(200), imageUrl: str(4000) });
@@ -96,6 +99,8 @@ const Inputs = z.union([
     studio: z.literal("ad"),
     themeId: str(60).nullable(),
     themeIds: z.array(str(60)).max(10).optional(),
+    /** A real customer review the user pasted, for the Testimonial theme. */
+    review: z.string().trim().max(300).optional(),
   }),
   z.object({ studio: z.literal("shorts"), mode: z.literal("templates"), templateId: str(120) }),
   z.object({
@@ -119,7 +124,6 @@ const Request = z.object({
   cost: z.number().int().min(0),
   brandKitId: z.string().uuid().optional(),
   showLogo: z.boolean().optional(),
-  videoModel: z.enum(["kling3", "kling4", "seedance2"]).optional(),
 });
 
 function userDb(context: { supabase: unknown }) {
@@ -151,6 +155,10 @@ export const startGeneration = createServerFn({ method: "POST" })
     /* One Short per job; its length is what's charged and what fal is asked for. */
     const seconds = kind === "video" ? (data.seconds ?? 5) : null;
     if (kind === "video" && data.count !== 1) throw new Error("One video at a time.");
+    /* Only the lengths the studio offers: each is priced and tested. */
+    if (seconds !== null && !(VIDEO_LENGTHS.shorts as readonly number[]).includes(seconds)) {
+      throw new Error("Pick 5, 8 or 10 seconds.");
+    }
     const { admin } = await import("./generation.server");
 
     const since = new Date(Date.now() - 60_000).toISOString();
@@ -458,7 +466,8 @@ export const readProductLabel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => InsightsInput.parse(data))
   .handler(async ({ data, context }): Promise<string[]> => {
-    const { productLabel } = await import("./generation.server");
+    const { productLabel, spendDailyAllowance } = await import("./generation.server");
+    await spendDailyAllowance(context.userId, "v2_label", DAILY_LABEL_READS);
     return productLabel(context.userId, data.product, requestSite());
   });
 
@@ -467,7 +476,9 @@ export const getProductInsights = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => InsightsInput.parse(data))
   .handler(async ({ data, context }): Promise<ProductInsights> => {
-    const { loadProductForInsights, TEXT_MODEL } = await import("./generation.server");
+    const { loadProductForInsights, spendDailyAllowance, TEXT_MODEL } =
+      await import("./generation.server");
+    await spendDailyAllowance(context.userId, "v2_insights", DAILY_INSIGHTS);
     const { gatewayChat, parseJsonBlock } = await import("@/lib/ai-gateway.server");
     const product = await loadProductForInsights(context.userId, data.product, requestSite());
     const raw = await gatewayChat({

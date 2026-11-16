@@ -27,6 +27,8 @@ import { AppShell } from "@/v2/components/shell/AppShell";
 import { PillButton, PillLink, pillClass } from "@/v2/components/primitives";
 import { ASPECT_OPTIONS } from "@/v2/components/studio/ComposerBar";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
+import { markAi } from "@/v2/components/saveFile";
+import { generationCost } from "@/v2/data/pricing";
 import { cn } from "@/lib/utils";
 import creditCoin from "@/assets/v2/credit-coin.png";
 
@@ -119,6 +121,13 @@ function GenerationResultPage() {
 
 function Result({ job }: { job: GenerationJob }) {
   const { request, status } = job;
+  /* Today's price, not the one stored with the job: the server charges today's price. */
+  const regenerateCost = generationCost(
+    request.kind,
+    request.count,
+    request.seconds,
+    request.studio,
+  );
   const studio = STUDIOS[request.studio];
   const noun = NOUN[request.kind];
   const plural = request.count > 1;
@@ -273,10 +282,10 @@ function Result({ job }: { job: GenerationJob }) {
                 variant="outline"
                 className="w-full"
                 disabled={pending}
-                onClick={() => generate(request)}
+                onClick={() => generate({ ...request, cost: regenerateCost })}
               >
                 <RefreshCw className={cn("size-4", pending && "animate-spin")} />
-                Regenerate · {request.cost} credits
+                Regenerate · {regenerateCost} credits
               </PillButton>
               <Link
                 to={studio.to}
@@ -284,6 +293,12 @@ function Result({ job }: { job: GenerationJob }) {
               >
                 Change settings in {studio.label}
               </Link>
+              <p className="text-center font-inter-tight text-xs text-v2-muted">
+                Made with AI. Some platforms ask you to say so when you post.{" "}
+                <Link to="/help" className="text-v2-blue hover:underline">
+                  Learn more
+                </Link>
+              </p>
             </section>
           ) : null}
 
@@ -616,10 +631,12 @@ async function downloadOutput(job: GenerationJob, output: GenerationOutput) {
     .replace(/^-|-$/g, "");
   const url = output.videoUrl ?? output.imageUrl;
   try {
-    const blob = await fetch(url).then((r) => {
+    const fetched = await fetch(url).then((r) => {
       if (!r.ok) throw new Error(String(r.status));
       return r.blob();
     });
+    /* Every generated picture is saved with the "made with AI" mark in the file. */
+    const blob = await markAi(fetched, job.request.kind === "ad" ? "composite" : "generated");
     const ext = blob.type.includes("jpeg")
       ? "jpg"
       : blob.type.includes("webp")

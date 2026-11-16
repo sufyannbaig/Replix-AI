@@ -1,14 +1,17 @@
+import { withAiMetadata, type AiSource } from "@/lib/v2/ai-metadata";
+
 /**
  * Save a picture or video as a file. Generated files live on the storage domain, where the
  * browser ignores `download` and opens the file instead, so it is fetched first and saved
  * from a local blob. If the fetch fails it opens in a new tab, to save from there.
  */
-export async function saveFile(url: string, stem: string) {
+export async function saveFile(url: string, stem: string, ai?: AiSource | null) {
   try {
-    const blob = await fetch(url).then((r) => {
+    const fetched = await fetch(url).then((r) => {
       if (!r.ok) throw new Error(String(r.status));
       return r.blob();
     });
+    const blob = ai ? await markAi(fetched, ai) : fetched;
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = href;
@@ -19,6 +22,21 @@ export async function saveFile(url: string, stem: string) {
     window.setTimeout(() => URL.revokeObjectURL(href), 10_000);
   } catch {
     window.open(url, "_blank", "noopener");
+  }
+}
+
+/**
+ * Write the "made with AI" mark into a generated picture before it's saved (JPEG and PNG;
+ * videos and other files are returned as they are). See src/lib/v2/ai-metadata.ts.
+ */
+export async function markAi(blob: Blob, source: AiSource): Promise<Blob> {
+  if (blob.type !== "image/jpeg" && blob.type !== "image/png") return blob;
+  try {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const marked = withAiMetadata(bytes, source);
+    return marked === bytes ? blob : new Blob([marked.slice().buffer], { type: blob.type });
+  } catch {
+    return blob;
   }
 }
 

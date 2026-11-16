@@ -18,6 +18,7 @@ import {
 } from "@/lib/v2/generation.functions";
 import { notifyCreditsChanged, useCredits } from "@/hooks/use-credits";
 import { brandKitLimit } from "./pricing";
+import { askPersonConsent, CONSENT_DECLINED } from "./consent";
 import {
   backendUser,
   db,
@@ -724,12 +725,21 @@ export function useAddLibraryUpload() {
   return useMutation({
     mutationFn: async ({ file, kind }: { file: File; kind: PieceKind }): Promise<PieceOption> => {
       const name = nameFromFile(file, "Your upload");
+      /* A character is a person's photo: the user confirms they have permission first. */
+      const person = kind === "character";
+      if (person && !(await askPersonConsent())) throw new Error(CONSENT_DECLINED);
       const userId = await backendUser("library_items");
       if (userId) {
         const path = await uploadUserFile(userId, `library/${kind}`, file);
         const { data, error } = await db
           .from("library_items")
-          .insert({ user_id: userId, kind, name, image_path: path })
+          .insert({
+            user_id: userId,
+            kind,
+            name,
+            image_path: path,
+            ...(person ? { consent_confirmed_at: new Date().toISOString() } : {}),
+          })
           .select()
           .single();
         if (error) throw new Error(error.message);

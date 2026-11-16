@@ -1,3 +1,4 @@
+import { PersonConsentHost } from "@/v2/components/PersonConsent";
 import { Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
@@ -186,6 +187,7 @@ export function AppShell({
           {children}
         </main>
       </div>
+      <PersonConsentHost />
     </div>
   );
 }

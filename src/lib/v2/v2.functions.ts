@@ -59,7 +59,9 @@ const UrlInput = z.object({ url: z.string().trim().min(4).max(2000) });
 export const readProductPage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => UrlInput.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { spendDailyAllowance } = await import("./generation.server");
+    await spendDailyAllowance(context.userId, "v2_page_read", 60, 0);
     const { html, url } = await fetchPublicHtml(data.url);
     const product = readProduct(html, url);
     if (!product.name || !product.imageUrl) {
@@ -97,6 +99,8 @@ export const extractBrandKit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => BrandInput.parse(data))
   .handler(async ({ data, context }): Promise<BrandKitRow> => {
+    const { spendDailyAllowance } = await import("./generation.server");
+    await spendDailyAllowance(context.userId, "v2_brand_extract", 20);
     const site = /^https?:\/\//i.test(data.website) ? data.website : `https://${data.website}`;
     const { html, url } = await fetchPublicHtml(site);
     const brand = readBrand(html, url);

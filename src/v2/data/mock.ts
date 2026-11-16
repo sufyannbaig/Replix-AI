@@ -526,6 +526,20 @@ export const helpFaqs: HelpFaq[] = [
     answer:
       "Each result opens on its own page where you can download it, regenerate, or save it to Assets to find and reuse later. Characters and scenes you upload live in the Library.",
   },
+  {
+    id: "ai-label",
+    category: "studios",
+    question: "Do I have to say my ads are made with AI?",
+    answer:
+      "Often, yes. Facebook and Instagram add an AI label to ads with realistic AI-made people, TikTok and YouTube ask you to tick an AI box when you upload, and EU rules ask for realistic AI images and video to be labelled. To help, every photo and ad you download from Replix carries the standard made-with-AI mark inside the file, which those platforms can read. Videos don't carry it yet, so tick the platform's AI option yourself. If you sell in the EU or UK, check the rules for your market.",
+  },
+  {
+    id: "people",
+    category: "studios",
+    question: "Can I upload a photo of a real person?",
+    answer:
+      "Yes, if it's you or someone who has agreed to it. We ask you to confirm that each time you add a character. Don't upload celebrities or other public figures. Testimonial ads only quote a review you paste in yourself; Replix never invents customer quotes.",
+  },
 ];
 
 /** Seconds a fake generation takes, so the loading state can be designed and tested. */

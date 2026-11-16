@@ -127,8 +127,8 @@ export function falUrls(model: string, requestId?: string) {
 }
 
 /**
- * The video models Shorts can use. Kling 3 Pro is the default; the others are for the model
- * test (docs/V2_VIDEO_PLAN.md section 3). Prices are fal's list prices on 2026-11-16.
+ * The video models Shorts can use. Shorts use Kling 3 Pro; the others were tried in the model
+ * test (docs/V2_VIDEO_PLAN.md section 5) and are kept for their prices. Prices are fal's list prices on 2026-11-16.
  */
 export type VideoModelKey = "kling3" | "kling4" | "seedance2";
 export const VIDEO_MODELS: Record<
@@ -150,14 +150,6 @@ export function videoUsdPerSecond(modelId: string) {
   return (
     Object.values(VIDEO_MODELS).find((m) => m.id === modelId)?.usdPerSecond ?? VIDEO_USD_PER_SECOND
   );
-}
-
-/**
- * Picking a model is a test switch: it only works on the Lovable preview, which only the
- * project's own members can open. Everywhere else a Short uses Kling 3 Pro.
- */
-export function canPickVideoModel(origin: string) {
-  return /^https:\/\/id-preview--[a-z0-9-]+\.lovable\.app$/.test(origin);
 }
 
 /** The submit body for each model; each names the start frame and the length its own way. */

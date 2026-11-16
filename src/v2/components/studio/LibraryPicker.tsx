@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { useCredits } from "@/hooks/use-credits";
 import { cn } from "@/lib/utils";
 import { useAddLibraryUpload, usePieceOptions } from "@/v2/data/api";
+import { CONSENT_DECLINED } from "@/v2/data/consent";
 import type { PieceKind, PieceOption } from "@/v2/data/types";
 
 const TITLES: Record<PieceKind, string> = {
@@ -175,7 +176,11 @@ export function LibraryPicker({
                   onSelect(piece);
                   onOpenChange(false);
                 },
-                onError: () => toast.error("Upload failed. Please try again."),
+                onError: (error) => {
+                  /* Cancelling the permission step isn't a failure. */
+                  if (error.message !== CONSENT_DECLINED)
+                    toast.error("Upload failed. Please try again.");
+                },
               },
             );
           }}
