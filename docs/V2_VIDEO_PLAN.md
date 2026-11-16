@@ -58,7 +58,19 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 - **No sweeper needed for now:** a Short still running after 15 minutes is failed and refunded the next time anyone opens it (the same lazy recovery as photos). A job no one opens again keeps its credits reserved until then. A `pg_cron` sweeper would close those too; it still needs approval.
 - **Front end:** Shorts go to the server (`useStartGeneration`). The result page and the Assets viewer play the video (muted, looping, with controls) with the first frame as the poster. Download saves the mp4. The motion-reference upload is kept with the Short but not used yet; the screen says the motion comes from the animation picked.
 - **Webhook on the preview:** the preview host only serves signed-in Lovable users, so fal's webhook may not reach it. The poll covers that; on the published site the webhook works.
-- **Next:** one Short for each of the other five templates and a Custom one, scored for label fidelity and motion. Then the model test in section 3, and the credit prices.
+- **All six templates, live (2026-11-16):** Acme Glow Serum, 5 s, 9:16, Kling 3 Pro. Each was checked at the start, middle and end. All six finished with no failures, each 1076×1924 and 5.04 s, 10 credits each (60 in total). The label stayed the same in every one.
+
+  | Template | Motion | Label | Notes |
+  |---|---|---|---|
+  | Studio Turn | quarter turn and back | sharp at start and end | bottle right of centre |
+  | Floating | floats on its side and bobs | readable throughout (sideways) | near the left edge; a serum lying on its side is an odd pose |
+  | 360 Spin | turns on the marble plinth, the back shows mid-clip | unchanged when it comes back | good |
+  | Dramatic Light | spotlight, glossy reflection, slow push-in | sharp in every frame | the most premium look |
+  | Morning Light | window light, very gentle drift | perfect | calm, almost too still |
+  | Splash | water bursts up, droplets settle | unchanged (a droplet sits over one letter at the end) | the most eye-catching |
+
+- **What to improve:** framing is sometimes off-centre (the first-frame prompt could ask for the product centred in 9:16), Floating should keep the product upright, and Morning Light could move a little more. None of these is a failure.
+- **Next:** a Custom Short (own scene plus an animation), then the model test in section 3 (Kling 4, Seedance 2.0 for Splash) and the credit prices.
 
 ## 6. What needs no one
 
