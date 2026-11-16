@@ -424,7 +424,9 @@ function Failed({
       </span>
       <h2 className="type-card-title text-v2-ink">We couldn't finish this one</h2>
       <p className="font-inter-tight text-sm text-v2-muted">
-        Something went wrong on our side. Your {job.request.cost} credits have been refunded.
+        {job.error && /credits are back/i.test(job.error)
+          ? job.error
+          : `Something went wrong on our side. Your ${job.request.cost} credits have been refunded.`}
       </p>
       <PillButton onClick={onRetry} disabled={pending}>
         <RefreshCw className="size-4" /> Try again

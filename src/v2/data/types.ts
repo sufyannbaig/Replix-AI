@@ -397,4 +397,6 @@ export type GenerationJob = {
   progress: number;
   createdAt: string;
   outputs: GenerationOutput[];
+  /** Server jobs that failed: why, in words safe to show. */
+  error?: string | null;
 };
