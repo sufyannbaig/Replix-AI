@@ -343,6 +343,8 @@ export type GenerationRequest = {
   brandKitId?: string;
   /** Draw the brand's logo on designed ads (on by default; off when the brand has none). */
   showLogo?: boolean;
+  /** Shorts model test only (Lovable preview): which video model to use. */
+  videoModel?: "kling3" | "kling4" | "seedance2";
 };
 
 export type GenerationStatus = "queued" | "running" | "done" | "failed";

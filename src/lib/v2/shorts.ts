@@ -126,12 +126,74 @@ export function falUrls(model: string, requestId?: string) {
   };
 }
 
-/** The submit body for the video model. Kling takes 3 to 15 seconds. */
-export function falVideoInput(opts: { prompt: string; imageUrl: string; seconds: number }) {
+/**
+ * The video models Shorts can use. Kling 3 Pro is the default; the others are for the model
+ * test (docs/V2_VIDEO_PLAN.md section 3). Prices are fal's list prices on 2026-11-16.
+ */
+export type VideoModelKey = "kling3" | "kling4" | "seedance2";
+export const VIDEO_MODELS: Record<
+  VideoModelKey,
+  { id: string; name: string; usdPerSecond: number }
+> = {
+  kling3: { id: VIDEO_MODEL, name: "Kling 3 Pro", usdPerSecond: VIDEO_USD_PER_SECOND },
+  kling4: { id: "fal-ai/kling-video/v4/image-to-video", name: "Kling 4", usdPerSecond: 0.157 },
+  seedance2: {
+    id: "bytedance/seedance-2.0/image-to-video",
+    name: "Seedance 2.0",
+    usdPerSecond: 0.3034,
+  },
+};
+export const VIDEO_MODEL_KEYS = Object.keys(VIDEO_MODELS) as VideoModelKey[];
+
+/** The price per second for a stored fal model id (Kling 3 Pro's when unknown). */
+export function videoUsdPerSecond(modelId: string) {
+  return (
+    Object.values(VIDEO_MODELS).find((m) => m.id === modelId)?.usdPerSecond ?? VIDEO_USD_PER_SECOND
+  );
+}
+
+/**
+ * Picking a model is a test switch: it only works on the Lovable preview, which only the
+ * project's own members can open. Everywhere else a Short uses Kling 3 Pro.
+ */
+export function canPickVideoModel(origin: string) {
+  return /^https:\/\/id-preview--[a-z0-9-]+\.lovable\.app$/.test(origin);
+}
+
+/** The submit body for each model; each names the start frame and the length its own way. */
+export function falVideoInput(opts: {
+  prompt: string;
+  imageUrl: string;
+  seconds: number;
+  model?: VideoModelKey;
+}) {
+  const prompt = opts.prompt.slice(0, 2400);
+  const seconds = Math.round(opts.seconds);
+  if (opts.model === "kling4") {
+    /* Kling 4: 3 to 30 s as a number, no negative prompt or audio setting. */
+    return {
+      prompt,
+      start_image_url: opts.imageUrl,
+      duration: Math.min(30, Math.max(3, seconds)),
+      resolution: "1080p",
+    };
+  }
+  if (opts.model === "seedance2") {
+    /* Seedance 2.0: 4 to 15 s as a string; audio costs the same, but Shorts are silent. */
+    return {
+      prompt,
+      image_url: opts.imageUrl,
+      duration: String(Math.min(15, Math.max(4, seconds))),
+      resolution: "720p",
+      aspect_ratio: "auto",
+      generate_audio: false,
+    };
+  }
+  /* Kling 3 Pro: 3 to 15 s as a string. */
   return {
-    prompt: opts.prompt.slice(0, 2400),
+    prompt,
     start_image_url: opts.imageUrl,
-    duration: String(Math.min(15, Math.max(3, Math.round(opts.seconds)))),
+    duration: String(Math.min(15, Math.max(3, seconds))),
     negative_prompt: NEGATIVE_PROMPT,
     generate_audio: false,
   };

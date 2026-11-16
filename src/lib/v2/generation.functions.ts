@@ -119,6 +119,7 @@ const Request = z.object({
   cost: z.number().int().min(0),
   brandKitId: z.string().uuid().optional(),
   showLogo: z.boolean().optional(),
+  videoModel: z.enum(["kling3", "kling4", "seedance2"]).optional(),
 });
 
 function userDb(context: { supabase: unknown }) {

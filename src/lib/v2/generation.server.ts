@@ -24,8 +24,9 @@ import {
   FRAME_COMPOSITION,
   FRAME_NOTE,
   SHORT_RECIPES,
-  VIDEO_MODEL,
-  VIDEO_USD_PER_SECOND,
+  VIDEO_MODELS,
+  canPickVideoModel,
+  videoUsdPerSecond,
   falUrls,
   falVideoInput,
   motionPrompt,
@@ -737,12 +738,20 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
       .createSignedUrl(framePath, 60 * 60);
     if (!signed?.signedUrl) throw new Error("Couldn't sign the first frame.");
     const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
-    const submit = `${falUrls(VIDEO_MODEL).submit}?fal_webhook=${encodeURIComponent(hook)}`;
+    const modelKey =
+      request.videoModel && canPickVideoModel(site.origin) ? request.videoModel : "kling3";
+    const model = VIDEO_MODELS[modelKey].id;
+    const submit = `${falUrls(model).submit}?fal_webhook=${encodeURIComponent(hook)}`;
     const res = await fetch(submit, {
       method: "POST",
       headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify(
-        falVideoInput({ prompt: motion, imageUrl: signed.signedUrl, seconds: jobRow.seconds ?? 5 }),
+        falVideoInput({
+          prompt: motion,
+          imageUrl: signed.signedUrl,
+          seconds: jobRow.seconds ?? 5,
+          model: modelKey,
+        }),
       ),
       signal: AbortSignal.timeout(30_000),
     });
@@ -754,7 +763,7 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
     await admin
       .from("generation_jobs")
       .update({
-        provider: `fal:${VIDEO_MODEL}`,
+        provider: `fal:${model}`,
         provider_job_ids: [body.request_id],
         provider_cost_usd: Number(cost.toFixed(5)),
         progress: 0.4,
@@ -838,7 +847,8 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
       .eq("job_id", row.id)
       .eq("position", 0);
     if (saved.error) throw new Error(saved.error.message);
-    const cost = frameCost + VIDEO_USD_PER_SECOND * (row.seconds ?? 5);
+    const model = row.provider.slice(4);
+    const cost = frameCost + videoUsdPerSecond(model) * (row.seconds ?? 5);
     await admin.rpc("v2_settle_generation_job", {
       _job_id: row.id,
       _ok: 1,
@@ -848,7 +858,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
     await admin.from("usage_events").insert({
       user_id: row.user_id,
       event_type: "v2_shorts",
-      model: VIDEO_MODEL,
+      model,
       variant_count: 1,
       estimated_cost_usd: Number(cost.toFixed(5)),
     });
