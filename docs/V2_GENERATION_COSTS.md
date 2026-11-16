@@ -39,7 +39,7 @@ For Sufyan and Benjamin. Prices checked 2026-11-06 from provider list prices (so
 | Ad Studio insights (once per product) | 1 Gemini vision call                                                                                               | ≈ $0.005                                                                           |
 | Brand Kit extract                     | Website read (free) + 1 Gemini call                                                                                | ≈ $0.01                                                                            |
 | Product import from a URL             | Website read only                                                                                                  | $0                                                                                 |
-| Product Short, 8 s                    | 1 first frame (Nano Banana) + image-to-video                                                                       | ≈ $0.63 (Kling 2.5 Turbo) to $1.99 (Seedance 2.0 Fast); Veo 3.1 Fast ≈ $0.87       |
+| Product Short, 8 s                    | 11                                                                                                                 | $2.17 to $3.66                                                                     | $1.05 (Kling 3 Pro) | Keeps about half on Scale |
 | AI UGC, 8 s with voice                | Script + frame + talking video with audio (+ voice / lip-sync if separate)                                         | ≈ $1.30 (Veo 3.1 Fast audio) to $3.30 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $1.44 |
 | AI UGC, 15 s with voice               | Same, about two clips                                                                                              | ≈ $2.35 (Veo 3.1 Fast audio) to $6.10 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $2.62 |
 | Concept ad, 15 s (several shots)      | Script and shot list + 2 to 3 frames + clips + stitching                                                           | ≈ $1.30 (Kling 2.5 Turbo) to $3.30 (Veo 3.1, no audio)                             |
@@ -49,7 +49,7 @@ Failed generations: the credits go back to the user, but the provider may still 
 
 ## 4. Against what the user pays
 
-v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, 10 credits per started 15 s of Product Short or Concept video, and AI UGC at 15 credits for 8 s or 30 credits for 15 s** (about 2 credits a second, changed 2026-11-06). What a credit is worth depends on the plan (current plans in `src/lib/pricing-plans.ts`):
+v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, Product Shorts at 8 / 11 / 13 credits for 5 / 8 / 10 s (changed 2026-11-16), 10 credits per started 15 s of Concept video, and AI UGC at 15 credits for 8 s or 30 credits for 15 s** (about 2 credits a second, changed 2026-11-06). What a credit is worth depends on the plan (current plans in `src/lib/pricing-plans.ts`):
 
 | Plan    | Price / credits | Value of 1 credit |
 | ------- | --------------- | ----------------- |
@@ -78,7 +78,7 @@ v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, 10 c
 
 At today's flat 10 credits, every Kling 3 Short earns money on every plan, but a 10 s Short on Scale keeps only about a third. Seedance would lose money at 8 and 10 s.
 
-**Proposal (not applied; needs Benjamin's call):** price Shorts by length, like UGC: **8 / 11 / 13 credits for 5 / 8 / 10 s** (about 1 credit a second plus 3 for the frame). On Scale that keeps at least 50% at every length; on Starter, about 70% or more. If a "Pro motion" Seedance option is added later for Splash-style shots, charge about double (18 credits for 5 s keeps about 53% on Scale). Changing the price is one table in `src/v2/data/pricing.ts` (`videoGenerationCost` for the `shorts` studio).
+**Applied 2026-11-16 (`SHORTS_CREDITS_BY_SECONDS` in `src/v2/data/pricing.ts`, tested in `src/lib/v2/pricing.test.ts`):** Shorts are priced by length, like UGC: **8 / 11 / 13 credits for 5 / 8 / 10 s** (about 1 credit a second plus 3 for the frame). On Scale that keeps at least 50% at every length; on Starter, about 70% or more. If a "Pro motion" Seedance option is added later for Splash-style shots, charge about double (18 credits for 5 s keeps about 53% on Scale). The server charges from the same table; the Generate button shows 8, 11 or 13 credits on the preview. Older Shorts' Regenerate button still shows the 10 they were charged, but the server charges the new price.
 
 **Video lengths (changed 2026-11-06, Benjamin's call):** UGC is now 8 or 15 s (was 15 to 60 s), Concept ads 15 or 30 s (was 15 to 60 s), Product Shorts stay 5, 8 or 10 s. The table is `VIDEO_LENGTHS` in `src/v2/data/pricing.ts`. Shorter videos cost less and need fewer stitched clips, which also lowers the risk of a bad result.
 

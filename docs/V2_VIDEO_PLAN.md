@@ -36,7 +36,7 @@ The ad-film method (master shot, shot list, storyboard, ending, music) writes th
 
 ## 3. The model test (before pricing)
 
-About $10 of fal credit: 3 Shorts templates × Kling 3 Pro, Kling 4 and Seedance 2.0, and 2 UGC scripts × the talking models. Score product fidelity (label readable, shape unchanged), motion quality, time to result and cost per second. The winner per template sets the credit price (D1). Today's prices in `pricing.ts` (10 credits per 15 s Short, 15/30 credits for 8/15 s UGC) are checked against it.
+About $10 of fal credit: 3 Shorts templates × Kling 3 Pro, Kling 4 and Seedance 2.0, and 2 UGC scripts × the talking models. Score product fidelity (label readable, shape unchanged), motion quality, time to result and cost per second. The winner per template sets the credit price (D1). Prices in `pricing.ts`: Shorts 8 / 11 / 13 credits for 5 / 8 / 10 s (set from this test on 2026-11-16), UGC 15/30 credits for 8/15 s (to be checked in the UGC test).
 
 ## 4. What's needed from people
 
@@ -85,7 +85,8 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 
   **Price to confirm:** fal's Kling 4 page shows $0.157 a second with 1080p selected, so the "$0.235 at 1080p" in section 1 looks wrong. Check the fal usage page for the three Kling 4 jobs (eca417e9, b7783073, 381c80b3) before relying on either figure.
 
-- **Next:** decide the Shorts credit price (proposal in `V2_GENERATION_COSTS.md` section 4), re-run Morning Light after its motion fix, then AI UGC (step 2).
+- **Price (2026-11-16):** Shorts now cost 8 / 11 / 13 credits for 5 / 8 / 10 s (was a flat 10), so every length keeps at least half on Scale with Kling 3 Pro (`V2_GENERATION_COSTS.md` section 4).
+- **Next:** re-run Morning Light after its motion fix, then AI UGC (step 2).
 
 ## 6. What needs no one
 
