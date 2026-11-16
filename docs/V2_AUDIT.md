@@ -98,6 +98,18 @@ From the current leaders (AdCreative.ai, Creatify, Arcads, Photoroom, Claid, Peb
 
 **Build order.** Step 1 is mostly prompts and reuses layouts that are already built and tested (Problem → Hook, Proof number → Magazine, Quote → Quote, Old way vs us → Split): the switch, B2B insights, copy and buttons, four themes, the landscape size. Step 2 is new layout work: the screenshot-in-a-device layout, the guide cover, the event card. Step 3: carousels.
 
+**Step 1 built (2026-11-17, `92a4e4f`), no database change.** In Lovable, byte-for-byte; 332 tests pass. Not yet tested live (the preview needs a Lovable sign-in).
+
+- **Switch:** "Selling to shoppers" / "Selling to businesses" at the top of Ad Studio. It is remembered in the browser (`ad-audience`), not with the brand kit yet, and travels as `inputs.audience`.
+- **Themes:** Problem First, Proof Number, Customer Quote, Old Way vs Us (`b2bAdThemes` in `mock.ts`, in code only, no `templates` rows). Each reuses a consumer theme's layouts (`B2B_LAYOUT_THEME` in `recipes.ts`) and, for now, its picker art. The server rejects a theme that doesn't match the audience.
+- **Insights:** the buyer's work problems and business angles, cached per product and audience.
+- **Copy:** plain and specific for business buyers; the post copy is LinkedIn's intro text (hook in the first 150 characters, no emoji).
+- **Button:** the user picks one of six (`B2B_CTAS`); the server sets it on every ad, so the model never words it.
+- **Proof Number:** uses a figure only if the user types one, exactly as typed; otherwise a hard fact about the product.
+- **Customer Quote:** quotes only a pasted review, like Testimonial.
+- **Preview:** "Preview in the feed" opens on LinkedIn for B2B ads.
+- **Not in step 1:** a product photo is still required; no 1.91:1 size (16:9 is the landscape option); B2B themes have no art of their own.
+
 **B2C improvements at the same time:** real-review testimonials (section 2), edit text, one ad in every size.
 
 ## 5. Suggested order
