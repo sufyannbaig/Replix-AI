@@ -22,6 +22,7 @@ import type {
   GenerationJob,
   GenerationRequest,
   ProductInsights,
+  StudioKey,
 } from "@/v2/data/types";
 
 /** This request's origin and cookie, so the runner can load the app's own bundled art. */
@@ -409,7 +410,11 @@ export const listGenerations = createServerFn({ method: "POST" })
           thumbnailUrl: urls.get(o.image_path) ?? "",
           createdAt: o.created_at,
           outputId: o.id,
+          jobId: j.id,
+          studio: j.studio as StudioKey,
+          aspect: j.aspect as AspectRatio,
           ...(design ? { design } : {}),
+          ...(o.copy?.post ? { post: { ...o.copy.post, cta: o.copy.cta } } : {}),
         },
       ];
     });

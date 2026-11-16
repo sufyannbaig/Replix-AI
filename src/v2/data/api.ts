@@ -982,6 +982,9 @@ async function ownAssets(
         title: job.request.product.name,
         thumbnailUrl: job.outputs[0].imageUrl,
         createdAt: job.createdAt,
+        jobId: job.id,
+        studio: job.request.studio,
+        aspect: job.request.aspect,
       })),
   ];
   const uploads: AssetItem[] = [

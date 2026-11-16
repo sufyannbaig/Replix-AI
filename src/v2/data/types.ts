@@ -202,6 +202,11 @@ export type AssetItem = {
   /** Generated ads only: the output, and its layout while it isn't composed yet. */
   outputId?: string;
   design?: AdDesign;
+  /** Generations: the job (its result page), studio, frame and, for ads, the post copy. */
+  jobId?: string;
+  studio?: StudioKey;
+  aspect?: AspectRatio;
+  post?: GenerationOutput["post"];
 };
 
 export type HelpCategory = "getting-started" | "credits-billing" | "studios";

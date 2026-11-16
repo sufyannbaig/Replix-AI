@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { pillClass, SectionTitle } from "@/v2/components/primitives";
 import { useAssets } from "@/v2/data/api";
+import { AssetViewer } from "@/v2/components/AssetViewer";
 import type { AssetItem, AssetKind } from "@/v2/data/types";
 import playIcon from "@/assets/v2/icons/play.svg";
 
@@ -58,6 +59,10 @@ function AssetsPage() {
 
   const generations = visible.filter((a) => a.origin === "generation");
   const uploads = visible.filter((a) => a.origin === "upload");
+  /* The viewer steps through the list in the order shown: generations, then uploads. */
+  const shown = useMemo(() => [...generations, ...uploads], [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [viewing, setViewing] = useState<number | null>(null);
+  const openAsset = (item: AssetItem) => setViewing(shown.indexOf(item));
 
   return (
     <AppShell title="Assets" subtitle="Everything you've generated and uploaded">
@@ -129,14 +134,22 @@ function AssetsPage() {
             <EmptyAssets hasAny={assets.length > 0} />
           ) : (
             <>
-              {generations.length ? <AssetSection title="Generations" items={generations} /> : null}
+              {generations.length ? (
+                <AssetSection title="Generations" items={generations} onOpen={openAsset} />
+              ) : null}
               {uploads.length ? (
-                <AssetSection title="Your Uploads" items={uploads} rounded />
+                <AssetSection title="Your Uploads" items={uploads} rounded onOpen={openAsset} />
               ) : null}
             </>
           )}
         </div>
       </div>
+      <AssetViewer
+        items={shown}
+        index={viewing}
+        onIndex={setViewing}
+        onClose={() => setViewing(null)}
+      />
     </AppShell>
   );
 }
@@ -172,20 +185,25 @@ function AssetSection({
   title,
   items,
   rounded,
+  onOpen,
 }: {
   title: string;
   items: AssetItem[];
   rounded?: boolean;
+  onOpen: (item: AssetItem) => void;
 }) {
   return (
     <section className="flex flex-col gap-[17px]">
       <SectionTitle>{title}</SectionTitle>
       <div className="grid grid-cols-2 gap-x-[20px] gap-y-[30px] sm:grid-cols-3">
         {items.map((item) => (
-          <figure
+          <button
             key={item.id}
+            type="button"
+            onClick={() => onOpen(item)}
+            aria-label={`Open ${item.title}`}
             className={cn(
-              "group relative aspect-[235/237] overflow-hidden",
+              "group relative aspect-[235/237] overflow-hidden outline-none ring-offset-2 ring-offset-v2-canvas focus-visible:ring-2 focus-visible:ring-v2-blue",
               rounded ? "rounded-[18px]" : "rounded-[12px]",
             )}
           >
@@ -200,10 +218,10 @@ function AssetSection({
                 <img src={playIcon} alt="" className="h-[15.9px] w-[14.3px]" />
               </span>
             ) : null}
-            <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-3 font-inter-tight text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-3 text-left font-inter-tight text-xs capitalize text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
               {item.title}
-            </figcaption>
-          </figure>
+            </span>
+          </button>
         ))}
       </div>
     </section>
