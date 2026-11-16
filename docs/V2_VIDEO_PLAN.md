@@ -62,15 +62,18 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 
   | Template | Motion | Label | Notes |
   |---|---|---|---|
-  | Studio Turn | quarter turn and back | sharp at start and end | bottle right of centre |
-  | Floating | floats on its side and bobs | readable throughout (sideways) | near the left edge; a serum lying on its side is an odd pose |
+  | Studio Turn | quarter turn and back | sharp at start and end | good |
+  | Floating | floats on its side and bobs | readable throughout (sideways) | a serum lying on its side is an odd pose (fixed, see below) |
   | 360 Spin | turns on the marble plinth, the back shows mid-clip | unchanged when it comes back | good |
   | Dramatic Light | spotlight, glossy reflection, slow push-in | sharp in every frame | the most premium look |
   | Morning Light | window light, very gentle drift | perfect | calm, almost too still |
   | Splash | water bursts up, droplets settle | unchanged (a droplet sits over one letter at the end) | the most eye-catching |
 
-- **What to improve:** framing is sometimes off-centre (the first-frame prompt could ask for the product centred in 9:16), Floating should keep the product upright, and Morning Light could move a little more. None of these is a failure.
-- **Next:** a Custom Short (own scene plus an animation), then the model test in section 3 (Kling 4, Seedance 2.0 for Splash) and the credit prices.
+- **Fixes (207970b):** Floating now keeps the product upright, Morning Light asks for visible movement (the camera glides and pushes in, the leaf shadows sway), and the first frame asks for the product centred left to right (a Short's recipe replaces the photo prompt's rule-of-thirds line through `recipe.composition`; Photo Studio is unchanged).
+- **Correction:** the off-centre framing first reported for Studio Turn and Floating came from a wrong screenshot crop (the page is 902 px wide, the screenshots 800), not from the videos. Checked again with the right crop: Studio Turn was centred. The centring rule stays as a safeguard.
+- **Re-test after the fixes (2026-11-16):** Floating came out upright and centred, floating and bobbing while the camera pushes in, with the label sharp throughout. Morning Light has not been re-run.
+- **Custom, live (2026-11-16):** the Library scene "Bathroom vanity" with the Orbit animation, 5 s. The first frame put the bottle in the middle of the vanity (marble counter, mirror, shells) with the label exact, and the video finished like the templates. The Orbit motion itself wasn't checked frame by frame. Credits: 10 each, 80 in total across all the Shorts tests.
+- **Next:** the model test in section 3 (Kling 4, Seedance 2.0 for Splash) and the credit prices.
 
 ## 6. What needs no one
 
