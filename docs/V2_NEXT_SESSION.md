@@ -164,7 +164,7 @@ Research (competitors plus one live test) found the label already comes out righ
 - **Step 7** (Shopify store to brand) is written and tested (migration `20261108120000_v2_store_brands.sql`, notes in section 6 of the brand plan). Not tested live: it needs an account with 2+ brands (Pro) and a connected Shopify store.
 - Photo Studio has no brand pill on purpose (the photo pipeline doesn't read the brand). Open questions are in section 7 of the brand plan.
 
-**Phase 2+ (video)**: `docs/V2_BACKEND_PLAN.md` sections 4, 8 and 9.
+**Phase 2+ (video)**: `docs/V2_VIDEO_PLAN.md` (2026-11-16, current), and `docs/V2_BACKEND_PLAN.md` sections 4, 8 and 9.
 
 - Benjamin has to create the fal.ai account and add `FAL_KEY` as a project secret (D4). Then run the video test, which decides D1 (credit unit and plan sizes).
 - Order: Product Shorts (image-to-video, webhook, cron sweeper), then AI UGC (the priority feature), then Concept ads.
