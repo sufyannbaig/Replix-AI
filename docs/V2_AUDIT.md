@@ -98,7 +98,7 @@ From the current leaders (AdCreative.ai, Creatify, Arcads, Photoroom, Claid, Peb
 
 **Build order.** Step 1 is mostly prompts and reuses layouts that are already built and tested (Problem → Hook, Proof number → Magazine, Quote → Quote, Old way vs us → Split): the switch, B2B insights, copy and buttons, four themes, the landscape size. Step 2 is new layout work: the screenshot-in-a-device layout, the guide cover, the event card. Step 3: carousels.
 
-**Step 1 built (2026-11-17, `92a4e4f`), no database change.** In Lovable, byte-for-byte; 332 tests pass. Not yet tested live (the preview needs a Lovable sign-in).
+**Step 1 built (2026-11-17, `92a4e4f`), no database change.** In Lovable, byte-for-byte; 332 tests pass. **Tested live 2026-11-17** (solar post light, Problem First + Proof Number, "Get a quote", 4 credits): both ads composed; the button was "Get a quote" on both; the proof figure appeared exactly as typed; the post copy was LinkedIn-style with no emoji; the feed preview opened on LinkedIn. Two fixes from the test: Proof Number now uses the Poster and Banner layouts (Magazine's button sat on the product), and the post copy note names LinkedIn for B2B. The fixes are not re-tested live.
 
 - **Switch:** "Selling to shoppers" / "Selling to businesses" at the top of Ad Studio. It is remembered in the browser (`ad-audience`), not with the brand kit yet, and travels as `inputs.audience`.
 - **Themes:** Problem First, Proof Number, Customer Quote, Old Way vs Us (`b2bAdThemes` in `mock.ts`, in code only, no `templates` rows). Each reuses a consumer theme's layouts (`B2B_LAYOUT_THEME` in `recipes.ts`) and, for now, its picker art. The server rejects a theme that doesn't match the audience.

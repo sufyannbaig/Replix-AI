@@ -312,7 +312,8 @@ export const QUOTE_THEMES = ["testimonial", "b2b-quote"];
 /** The four B2B themes and the consumer theme whose layouts each one uses. */
 export const B2B_LAYOUT_THEME: Record<string, string> = {
   "b2b-problem": "problem-solution",
-  "b2b-proof": "stats",
+  /* Poster and Banner keep the text clear of the product (Magazine's button sat on it, live 2026-11-17). */
+  "b2b-proof": "bold-claim",
   "b2b-quote": "testimonial",
   "b2b-old-way": "us-vs-them",
 };

@@ -284,12 +284,11 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksFalRoute =
-  ApiPublicHooksFalRouteImport.update({
-    id: '/api/public/hooks/fal',
-    path: '/api/public/hooks/fal',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ApiPublicHooksFalRoute = ApiPublicHooksFalRouteImport.update({
+  id: '/api/public/hooks/fal',
+  path: '/api/public/hooks/fal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksWeeklyDigestRoute =
   ApiPublicHooksWeeklyDigestRouteImport.update({
     id: '/api/public/hooks/weekly-digest',

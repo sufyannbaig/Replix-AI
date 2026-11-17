@@ -302,7 +302,12 @@ function Result({ job }: { job: GenerationJob }) {
             </section>
           ) : null}
 
-          {status === "done" && selected?.post ? <PostCopy post={selected.post} /> : null}
+          {status === "done" && selected?.post ? (
+            <PostCopy
+              post={selected.post}
+              b2b={request.inputs?.studio === "ad" && request.inputs.audience === "b2b"}
+            />
+          ) : null}
           <Details job={job} />
         </aside>
       </div>
@@ -555,7 +560,7 @@ function NotFound() {
 }
 
 /** The words to post with an ad (Meta's Ads Manager fields), each one copyable. */
-function PostCopy({ post }: { post: NonNullable<GenerationOutput["post"]> }) {
+function PostCopy({ post, b2b }: { post: NonNullable<GenerationOutput["post"]>; b2b?: boolean }) {
   const fields: [string, string][] = [
     ["Primary text", post.primary],
     ["Headline", post.headline],
@@ -591,7 +596,9 @@ function PostCopy({ post }: { post: NonNullable<GenerationOutput["post"]> }) {
         </button>
       </div>
       <p className="-mt-2 font-inter-tight text-xs text-v2-muted">
-        Paste these into Meta Ads Manager, Instagram or TikTok with this ad.
+        {b2b
+          ? "Paste these into LinkedIn Campaign Manager or Meta Ads Manager with this ad."
+          : "Paste these into Meta Ads Manager, Instagram or TikTok with this ad."}
       </p>
       <dl className="flex flex-col gap-3">
         {fields
