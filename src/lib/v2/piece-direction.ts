@@ -72,6 +72,43 @@ const SCENES: Record<string, SceneDirection> = {
     light: "hard midday sun from above-side, crisp graphic shadows on the terrazzo.",
     camera: "high three-quarter 50mm view, terrazzo chips sharp near the product.",
   },
+  "forest-stone-podium": {
+    light:
+      "soft hazy forest daylight from behind and above, a gentle rim on the product, misty depth.",
+    camera:
+      "50mm lens at podium height, the product standing on the flat stone, forest in soft bokeh.",
+  },
+  "lush-grass": {
+    light:
+      "bright overcast daylight from above, fresh dewy highlights, a soft shadow in the grass.",
+    camera: "top-down 50mm view, the product lying in the grass, blades sharp around it.",
+  },
+  "golden-sand": {
+    light: "warm low sun from one side, crisp long shadows across the sand ripples.",
+    camera: "top-down or high three-quarter 50mm view, the product resting on the sand.",
+  },
+  "crushed-ice": {
+    light: "cool bright light from above and behind, sparkling highlights through the ice.",
+    camera: "85mm lens just above the ice, the product half set into it, frost and drops on it.",
+  },
+  "pink-stucco": {
+    light: "hard bright midday sun, sharp palm-leaf shadows falling across the wall and product.",
+    camera: "50mm lens at ledge height, the product on the white ledge against the pink wall.",
+  },
+  "mossy-branch": {
+    light: "soft diffused studio light with a pale sage glow behind, gentle shadows.",
+    camera:
+      "85mm lens at branch height, the product resting on the moss, background a smooth sage blur.",
+  },
+  "black-sand-driftwood": {
+    light: "low-key: a single soft top light on the driftwood, smoky dark backdrop, deep blacks.",
+    camera: "85mm lens at driftwood height, the product standing on the driftwood like a plinth.",
+  },
+  "sunset-rocks": {
+    light:
+      "dramatic sunset backlight, glowing orange sky, a warm rim on the product, fill kept low.",
+    camera: "35mm lens low between the rocks, the product as a bold silhouette-lit hero.",
+  },
 };
 
 /**

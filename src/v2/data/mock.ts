@@ -140,6 +140,10 @@ const PHOTO_TEMPLATE_META: [string, string, PhotoTemplateCategory[], boolean][] 
   ["satin-wave", "Satin Wave", ["studio", "without-model"], true],
   ["mirror-floor", "Mirror Floor", ["studio", "without-model"], true],
   ["trail-dawn", "Trail Dawn", ["lifestyle", "without-model"], true],
+  /* Figma "new temps" (node 768:141), added 2026-11-17. */
+  ["dewy-grass", "Dewy Grass", ["flat-lay", "without-model"], true],
+  ["green-wave", "Green Wave", ["studio", "without-model"], true],
+  ["sand-noir", "Sand Noir", ["flat-lay", "without-model"], true],
 ];
 
 export const photoTemplates: PhotoTemplate[] = PHOTO_TEMPLATE_META.map(
@@ -221,6 +225,15 @@ export const pieceOptions: PieceOption[] = [
     ["beach-at-golden-hour", "Beach at golden hour", true],
     ["linen-tabletop", "Linen tabletop"],
     ["terrazzo-top", "Terrazzo top", true],
+    /* Figma "new temps" backgrounds (node 768:141), 4:5, added 2026-11-17. */
+    ["forest-stone-podium", "Forest stone podium"],
+    ["lush-grass", "Lush grass"],
+    ["golden-sand", "Golden sand"],
+    ["crushed-ice", "Crushed ice"],
+    ["pink-stucco", "Pink stucco with palm shadows"],
+    ["mossy-branch", "Mossy branch on sage", true],
+    ["black-sand-driftwood", "Black sand and driftwood", true],
+    ["sunset-rocks", "Sunset rocks", true],
   ]),
   ...pieces("prop", [
     ["city-bike", "City bike"],
