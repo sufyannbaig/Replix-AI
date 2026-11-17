@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import logoMark from "@/assets/v2/logo-mark.png";
 import logoWordmark from "@/assets/v2/logo-wordmark.svg";
-import heroImage from "@/assets/v2/auth/hero.jpg";
+import { AuthHeroMotion } from "./AuthHeroMotion";
 
 /**
  * Split layout of the 2.0 login (Figma 543:168449): form column on the left (643px at
@@ -53,11 +53,7 @@ export function AuthLayout({
       </div>
 
       <div className="relative hidden min-h-screen flex-1 overflow-hidden lg:block">
-        <img
-          src={heroImage}
-          alt="A Replix product shot: a phone photo of a drink can turned into a studio ad"
-          className="absolute inset-0 size-full object-cover object-[20%_center]"
-        />
+        <AuthHeroMotion />
       </div>
     </div>
   );

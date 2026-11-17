@@ -26,11 +26,15 @@ const KEYFRAMES = `
 @keyframes sm-dash { to { stroke-dashoffset: -20 } }
 @keyframes sm-progress { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 @keyframes sm-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes sm-wave { 0%, 100% { transform: scaleY(.3) } 50% { transform: scaleY(1) } }
+@keyframes sm-spin { from { transform: translate(-50%, -50%) rotate(0) } to { transform: translate(-50%, -50%) rotate(360deg) } }
+@keyframes sm-scroll-up { from { transform: translateY(0) } to { transform: translateY(-50%) } }
+@keyframes sm-scroll-down { from { transform: translateY(-50%) } to { transform: translateY(0) } }
 @keyframes sm-float { 0%, 100% { transform: translateY(-50%) } 50% { transform: translateY(-54%) } }
 `;
 
 /** Counts 0..steps-1 for ever, one step every `ms`. Stays on 0 with reduced motion. */
-function useTick(steps: number, ms: number) {
+export function useTick(steps: number, ms: number) {
   const [step, setStep] = useState(0);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -40,7 +44,7 @@ function useTick(steps: number, ms: number) {
   return step;
 }
 
-function Stage({ className, children }: { className: string; children: React.ReactNode }) {
+export function Stage({ className, children }: { className: string; children: React.ReactNode }) {
   return (
     <span
       aria-hidden
@@ -55,7 +59,7 @@ function Stage({ className, children }: { className: string; children: React.Rea
   );
 }
 
-function Chip({ className, children }: { className?: string; children: React.ReactNode }) {
+export function Chip({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <span
       className={cn(
