@@ -48,7 +48,7 @@ From the current leaders (AdCreative.ai, Creatify, Arcads, Photoroom, Claid, Peb
 
 | Expectation                                         | Who sets it                                         | Replix today                                                          | Priority |
 | --------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------- | -------- |
-| **Edit the text of an ad** after it's made          | Canva, AdCreative.ai                                | Planned (ad plan step 8), not built. The clean photo is already kept. | B (top)  |
+| **Edit the text of an ad** after it's made          | Canva, AdCreative.ai                                | Built 2026-11-17 (ad plan step 8): free, not yet tried live.          | B (top)  |
 | **One ad in every size** (feed, story, landscape)   | AdCreative.ai, Canva                                | Each size is a new paid generation                                    | B        |
 | **Many variants to test** (different hooks)         | Creatify "batch mode"; LinkedIn advises 5+ variants | Up to 4 per job, themes can mix                                       | B        |
 | **Paste a product link, get ads**                   | Creatify                                            | URL import exists, but it's a separate step                           | B        |

@@ -383,6 +383,17 @@ export type GenerationOutput = {
    * browser composes the finished ad from this (src/v2/data/compose-ad.ts).
    */
   design?: AdDesign;
+  /**
+   * Composed designed ads: what Edit text needs to set new words over the clean photo
+   * (`photoUrl`), and the layouts this ad may switch to (src/lib/v2/ad-edit.ts).
+   */
+  edit?: {
+    design: AdDesign;
+    photoUrl: string;
+    themeId: string | null;
+    review: string | null;
+    layouts: import("@/lib/v2/ad-layouts").AdLayoutId[];
+  };
   /** Ads: the words to post with it (Meta's primary text, headline, description, button). */
   post?: { primary: string; headline: string; description: string; cta: string };
 };

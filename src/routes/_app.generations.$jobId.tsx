@@ -9,9 +9,11 @@ import {
   Play,
   RefreshCw,
   TriangleAlert,
+  Type,
   Wand2,
 } from "lucide-react";
 import { EditPhotoDialog } from "@/v2/components/studio/EditPhotoDialog";
+import { EditAdDialog } from "@/v2/components/studio/EditAdDialog";
 import { toast } from "sonner";
 import { useBrandKits, useGenerationJob } from "@/v2/data/api";
 import { ChannelPreviewDialog } from "@/v2/components/studio/ChannelPreview";
@@ -136,6 +138,8 @@ function Result({ job }: { job: GenerationJob }) {
   const selected = job.outputs.find((o) => o.id === selectedId) ?? job.outputs[0];
   /* Fix after: real Photo Studio photos only (sample results have no stored photo). */
   const [editing, setEditing] = useState(false);
+  /* Ads: change the words or layout over the same photo, for free. */
+  const [editingText, setEditingText] = useState(false);
   const [downloading, setDownloading] = useState(false);
   /* Ads: see the ad in Facebook, Instagram, Stories, Reddit, X and LinkedIn feeds. */
   const [previewing, setPreviewing] = useState(false);
@@ -143,6 +147,7 @@ function Result({ job }: { job: GenerationJob }) {
   const kit = kits.find((k) => k.id === request.brandKitId) ?? kits[0];
   const canPreview = request.kind === "ad" && !!selected;
   const canEdit = request.studio === "photo" && !!selected && /^[0-9a-f-]{36}$/i.test(selected.id);
+  const canEditText = request.kind === "ad" && !!selected?.edit;
 
   /* Announce completion only when it happens here, not when reopening a finished result. */
   const previousStatus = useRef(status);
@@ -264,6 +269,15 @@ function Result({ job }: { job: GenerationJob }) {
                   Open
                 </Link>
               </div>
+              {canEditText ? (
+                <PillButton
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setEditingText(true)}
+                >
+                  <Type className="size-4" /> Edit text · free
+                </PillButton>
+              ) : null}
               {canPreview ? (
                 <PillButton
                   variant="outline"
@@ -336,6 +350,15 @@ function Result({ job }: { job: GenerationJob }) {
             logo: kit ? brandLogo(kit) : null,
             website: kit?.website,
           }}
+        />
+      ) : null}
+      {canEditText && selected ? (
+        <EditAdDialog
+          key={`${selected.id}-${editingText}`}
+          job={job}
+          output={selected}
+          open={editingText}
+          onOpenChange={setEditingText}
         />
       ) : null}
       {canEdit && selected ? (

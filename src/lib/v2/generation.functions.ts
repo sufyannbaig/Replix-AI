@@ -14,6 +14,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { GenerationJobRow, GenerationOutputRow, V2Database } from "@/v2/data/db-types";
 import { generationCost, MAX_IMAGES_PER_JOB, VIDEO_LENGTHS } from "@/v2/data/pricing";
+import { AD_LAYOUT_IDS } from "./ad-layouts";
+import { adThemeAt, editCopy, editLayouts } from "./ad-edit";
 import type {
   AdDesign,
   AspectRatio,
@@ -216,7 +218,12 @@ export const runGeneration = createServerFn({ method: "POST" })
   });
 
 async function signOutputs(db: SupabaseClient<V2Database>, rows: GenerationOutputRow[]) {
-  const paths = rows.flatMap((r) => [r.image_path, r.video_path].filter((p): p is string => !!p));
+  /* Composed ads also sign their text-free photo, for Edit text. */
+  const paths = rows.flatMap((r) =>
+    [r.image_path, r.video_path, r.copy?.composed ? r.copy.photo : null].filter(
+      (p): p is string => !!p,
+    ),
+  );
   if (!paths.length) return new Map<string, string>();
   const { data } = await db.storage.from("outputs").createSignedUrls(paths, 60 * 60 * 6);
   return new Map(
@@ -226,7 +233,12 @@ async function signOutputs(db: SupabaseClient<V2Database>, rows: GenerationOutpu
 
 /** The layout of a designed ad whose type isn't set yet; undefined once it's composed. */
 function adDesign(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | undefined {
-  return o.copy?.layout && !o.copy.composed
+  return o.copy?.composed ? undefined : designOf(job, o);
+}
+
+/** A designed ad's layout, words and colours, composed or not. */
+function designOf(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | undefined {
+  return o.copy?.layout
     ? {
         layout: o.copy.layout,
         aspect: job.aspect as AspectRatio,
@@ -239,6 +251,25 @@ function adDesign(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | und
         ...(o.copy.logo ? { logo: o.copy.logo } : {}),
       }
     : undefined;
+}
+
+/** Edit text: a composed ad's design, its clean photo and the layouts it may switch to. */
+function adEdit(job: GenerationJobRow, o: GenerationOutputRow, urls: Map<string, string>) {
+  const design = o.copy?.composed ? designOf(job, o) : undefined;
+  const photoUrl = o.copy?.photo ? urls.get(o.copy.photo) : undefined;
+  if (!design || !photoUrl) return {};
+  const inputs = (job.request as GenerationRequest).inputs;
+  const ad = inputs?.studio === "ad" ? inputs : undefined;
+  const themeId = adThemeAt(ad, job.count, o.position);
+  return {
+    edit: {
+      design,
+      photoUrl,
+      themeId,
+      review: ad?.review?.trim() || null,
+      layouts: editLayouts(themeId, ad?.review, design.aspect, design.layout),
+    },
+  };
 }
 
 function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<string, string>) {
@@ -258,6 +289,7 @@ function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<
         ...(o.video_path ? { videoUrl: urls.get(o.video_path) ?? "" } : {}),
         savedToAssets: o.saved_to_assets,
         ...(design(o) ? { design: design(o) } : {}),
+        ...adEdit(row, o, urls),
         ...(o.copy?.post ? { post: { ...o.copy.post, cta: o.copy.cta } } : {}),
       })),
     error: row.error,
@@ -355,6 +387,85 @@ export const saveComposedAd = createServerFn({ method: "POST" })
       .eq("id", row.id)
       .eq("user_id", context.userId);
     if (error) throw new Error("Couldn't save the ad. Please try again.");
+    return { saved: true };
+  });
+
+const EditAd = z.object({
+  outputId: z.string().uuid(),
+  headline: z.string().min(1).max(200),
+  subline: z.string().max(200),
+  cta: z.string().min(1).max(60),
+  layout: z.enum(AD_LAYOUT_IDS),
+  image: z.string().min(100).max(11_000_000),
+});
+
+/**
+ * Edit text: store an ad the browser set again over its own clean photo, with new words or
+ * the theme's other layout. Free, since no AI runs. The words must be exactly what the shared
+ * rules (ad-edit.ts) allow, so a quote stays the customer's own words.
+ */
+export const editAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => EditAd.parse(data))
+  .handler(async ({ data, context }) => {
+    const { admin } = await import("./generation.server");
+    const { data: row } = await admin
+      .from("generation_outputs")
+      .select("*")
+      .eq("id", data.outputId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!row?.copy?.layout || !row.copy.photo || !row.copy.composed) {
+      throw new Error("This ad can't be edited.");
+    }
+    const { data: job } = await admin
+      .from("generation_jobs")
+      .select("*")
+      .eq("id", row.job_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!job) throw new Error("This ad can't be edited.");
+    const inputs = (job.request as GenerationRequest).inputs;
+    const ad = inputs?.studio === "ad" ? inputs : undefined;
+    const themeId = adThemeAt(ad, job.count, row.position);
+    const allowed = editLayouts(themeId, ad?.review, job.aspect as AspectRatio, row.copy.layout);
+    if (!allowed.includes(data.layout)) throw new Error("That layout doesn't suit this ad.");
+    const copy = editCopy(data, { themeId, review: ad?.review, layout: data.layout });
+    if (
+      !copy.headline ||
+      !copy.cta ||
+      copy.headline !== data.headline.trim() ||
+      copy.subline !== data.subline.trim() ||
+      copy.cta !== data.cta.trim()
+    ) {
+      throw new Error("Those words can't be used on this ad.");
+    }
+    const bin = atob(data.image);
+    if (bin.length > 8 * 1024 * 1024) throw new Error("That image is too large.");
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+      throw new Error("That isn't a JPEG.");
+    }
+    /* A new name each time, so no browser or link shows the old picture. */
+    const path = `${context.userId}/${row.job_id}/${row.position + 1}-e${Date.now()}.jpg`;
+    const up = await admin.storage
+      .from("outputs")
+      .upload(path, bytes, { contentType: "image/jpeg", upsert: true });
+    if (up.error) throw new Error("Couldn't save the ad. Please try again.");
+    const { error } = await admin
+      .from("generation_outputs")
+      .update({ image_path: path, copy: { ...row.copy, ...copy, layout: data.layout } })
+      .eq("id", row.id)
+      .eq("user_id", context.userId);
+    if (error) {
+      await admin.storage.from("outputs").remove([path]);
+      throw new Error("Couldn't save the ad. Please try again.");
+    }
+    /* The previous edit's file; the first composed ad ({n}.jpg) is left as it was. */
+    if (row.image_path && /-e\d+\.jpg$/.test(row.image_path)) {
+      await admin.storage.from("outputs").remove([row.image_path]);
+    }
     return { saved: true };
   });
 

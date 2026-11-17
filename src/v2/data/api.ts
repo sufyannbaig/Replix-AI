@@ -14,6 +14,7 @@ import {
   listGenerations,
   runGeneration,
   saveComposedAd,
+  editAd,
   startGeneration,
 } from "@/lib/v2/generation.functions";
 import { notifyCreditsChanged, useCredits } from "@/hooks/use-credits";
@@ -59,6 +60,7 @@ import type {
   GenerationInputs,
   GenerationJob,
   GenerationKind,
+  GenerationOutput,
   GenerationRequest,
   HelpFaq,
   PhotoTemplate,
@@ -1445,6 +1447,70 @@ export function useGenerationJob(jobId: string) {
       if (!UUID.test(jobId)) return 500;
       /* Videos take minutes; the server checks fal at most every few seconds anyway. */
       return query.state.data?.request.kind === "video" ? 4000 : 1500;
+    },
+  });
+}
+
+/** Edit text's live preview: the ad with these words, as a local picture (no upload). */
+export async function previewEditedAd(
+  output: GenerationOutput,
+  copy: { headline: string; subline: string; cta: string },
+  layout: AdDesign["layout"],
+) {
+  if (!output.edit) throw new Error("This ad can't be edited.");
+  const { composeAd } = await import("./compose-ad");
+  const design: AdDesign = { ...output.edit.design, layout, copy };
+  return composeAd(await withFileLinks(design), output.edit.photoUrl);
+}
+
+/**
+ * Edit text: set new words (or the theme's other layout) over an ad's clean photo here in
+ * the browser, store it, and show it at once. Free: no AI runs.
+ */
+export function useEditAd(jobId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      output,
+      copy,
+      layout,
+    }: {
+      output: GenerationOutput;
+      copy: { headline: string; subline: string; cta: string };
+      layout: AdDesign["layout"];
+    }) => {
+      const edit = output.edit;
+      if (!edit) throw new Error("This ad can't be edited.");
+      const { composeAd, blobToBase64 } = await import("./compose-ad");
+      const design: AdDesign = { ...edit.design, layout, copy };
+      const blob = await composeAd(await withFileLinks(design), edit.photoUrl);
+      await editAd({
+        data: { outputId: output.id, ...copy, layout, image: await blobToBase64(blob) },
+      });
+      return { id: output.id, url: URL.createObjectURL(blob), design };
+    },
+    onSuccess: ({ id, url, design }) => {
+      /* Show the new picture now; the refetch brings its stored link. */
+      queryClient.setQueryData<GenerationJob | null>(queryKeys.job(jobId), (job) =>
+        job
+          ? {
+              ...job,
+              outputs: job.outputs.map((o) =>
+                o.id === id && o.edit
+                  ? {
+                      ...o,
+                      imageUrl: url,
+                      edit: { ...o.edit, design },
+                      ...(o.post ? { post: { ...o.post, cta: design.copy.cta } } : {}),
+                    }
+                  : o,
+              ),
+            }
+          : job,
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) });
+      void queryClient.invalidateQueries({ queryKey: ["v2", "recent"] });
+      void queryClient.invalidateQueries({ queryKey: ["v2", "assets"] });
     },
   });
 }
