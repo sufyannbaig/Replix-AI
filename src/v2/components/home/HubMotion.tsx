@@ -1,15 +1,16 @@
 import { cn } from "@/lib/utils";
 import { Chip, Stage, useTick } from "./StudioMotion";
 import posterReview from "@/assets/v2/catalog/ugc/honest-review.webp";
-import posterUnboxing from "@/assets/v2/catalog/ugc/first-unboxing.webp";
-import posterReveal from "@/assets/v2/catalog/ugc/the-reveal.webp";
 import posterSplash from "@/assets/v2/catalog/short/splash.webp";
+import actMorning from "@/assets/v2/catalog/photo/morning-routine.webp";
+import actBurst from "@/assets/v2/catalog/photo/fruit-burst.webp";
+import actGlow from "@/assets/v2/catalog/photo/hold-out.webp";
 
 /*
  * The moving pictures on Video Studio's three cards (same idea as Home's, StudioMotion.tsx):
  *   UGC: a creator clip with the beats of a UGC ad ticking off.
  *   Shorts: the product moving, one camera move after another.
- *   Concept: a storyboard, hook to climax to ending.
+ *   Concept: a tiny film. Three shots tell a story, then the end card lands the line.
  */
 
 /* ---------- AI UGC Ads ---------- */
@@ -124,51 +125,110 @@ export function ShortsMotion() {
   );
 }
 
-/* ---------- Concept Ads ---------- */
+/* ---------- Concept Ads: a story told in pictures, like a TV spot ---------- */
 
-const PANELS = [
-  { src: posterUnboxing, name: "Hook" },
-  { src: posterSplash, name: "Climax" },
-  { src: posterReveal, name: "Ending" },
+/* Three shots and an end card. The subtitle is the story; the picture does the selling. */
+const SHOTS = [
+  { act: "Hook", src: actMorning, at: "50% 22%", line: "6:40 am. Again." },
+  { act: "Turn", src: actBurst, at: "50% 45%", line: "One drop." },
+  { act: "Payoff", src: actGlow, at: "50% 20%", line: "And the day is yours." },
+  { act: "End card", src: null, at: "", line: "" },
 ];
+const SHOT_MS = 2500;
 
 export function ConceptMotion() {
-  const i = useTick(PANELS.length, 1700);
+  const i = useTick(SHOTS.length, SHOT_MS);
+  const shot = SHOTS[i];
   return (
-    <Stage className="bg-[linear-gradient(150deg,#171040_0%,#35238a_60%,#5a3fd0_100%)]">
-      <Chip className="left-[6cqh] top-[6cqh] bg-white/12 text-white">Storyboard</Chip>
-
-      <span className="absolute inset-x-0 top-[22cqh] flex items-start justify-center gap-[4cqh]">
-        {PANELS.map((panel, k) => (
+    <Stage className="bg-[radial-gradient(110%_90%_at_50%_45%,#2a1418_0%,#120a0c_60%,#080506_100%)]">
+      {/* Slate: which shot, and the running time. */}
+      <span className="absolute inset-x-[6cqh] top-[7cqh] flex items-center justify-between text-[3.6cqh] font-medium uppercase leading-none tracking-[0.16em] text-[#f3c969]">
+        <span key={i} style={{ animation: "sm-rise .4s ease-out" }}>
+          {i < 3 ? `Shot ${i + 1} · ${shot.act}` : shot.act}
+        </span>
+        <span className="flex items-center gap-[1.4cqh] text-white/70">
           <span
-            key={panel.name}
-            className="flex flex-col items-center gap-[3cqh] transition-all duration-500"
+            className="size-[1.8cqh] rounded-full bg-[#ff5a4f] motion-reduce:!animate-none"
+            style={{ animation: "sm-pulse 1.2s ease-in-out infinite" }}
+          />
+          0:{String(i * 5 + 5).padStart(2, "0")}
+        </span>
+      </span>
+
+      {/* The screen: widescreen, like a cinema frame. */}
+      <span className="absolute inset-x-[6cqh] top-[19cqh] block h-[50cqh] overflow-hidden rounded-[2cqh] bg-black shadow-[0_4cqh_12cqh_rgba(0,0,0,0.6)]">
+        {SHOTS.slice(0, 3).map((s, k) => (
+          <img
+            key={s.act}
+            src={s.src!}
+            alt=""
+            className="absolute inset-0 size-full object-cover transition-opacity duration-500 motion-reduce:!animate-none"
             style={{
-              transform: k === i ? "translateY(-3cqh) scale(1.08)" : "scale(1)",
-              opacity: k === i ? 1 : 0.45,
+              objectPosition: s.at,
+              opacity: k === i ? 1 : 0,
+              animation: k === i ? `sm-kb ${SHOT_MS + 600}ms ease-out both` : undefined,
             }}
+          />
+        ))}
+        <span className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,.7)_0%,transparent_45%)]" />
+
+        {/* Subtitle. */}
+        {i < 3 ? (
+          <span
+            key={i}
+            className="absolute inset-x-[4cqh] bottom-[4cqh] text-center font-serif text-[5.4cqh] italic leading-[1.15] text-white"
+            style={{ animation: "sm-rise .6s ease-out .25s both" }}
           >
+            {shot.line}
+          </span>
+        ) : (
+          /* End card: the line the whole film was for. */
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-[2.6cqh] bg-[#0b0708]">
+            <span
+              className="font-serif text-[7.4cqh] italic leading-[1.1] text-white"
+              style={{ animation: "sm-rise .7s ease-out both" }}
+            >
+              Wake up your skin.
+            </span>
+            <span
+              className="h-[0.4cqh] w-[14cqh] origin-center rounded-full bg-[#f3c969]"
+              style={{ animation: "sm-progress .8s ease-out .3s both" }}
+            />
+            <span
+              className="text-[3.2cqh] font-medium uppercase leading-none tracking-[0.3em] text-white/70"
+              style={{ animation: "sm-rise .6s ease-out .6s both" }}
+            >
+              Your brand here
+            </span>
+          </span>
+        )}
+      </span>
+
+      {/* The film's four beats, filling as it plays. */}
+      <span className="absolute inset-x-[6cqh] bottom-[8cqh] flex gap-[1.6cqh]">
+        {SHOTS.map((s, k) => (
+          <span key={s.act} className="flex flex-1 flex-col gap-[2cqh]">
+            <span className="block h-[1cqh] overflow-hidden rounded-full bg-white/15">
+              <span
+                key={k === i ? `on-${i}` : "off"}
+                className="block size-full origin-left rounded-full bg-[#f3c969]"
+                style={
+                  k === i
+                    ? { animation: `sm-progress ${SHOT_MS}ms linear both` }
+                    : { transform: k < i ? "none" : "scaleX(0)" }
+                }
+              />
+            </span>
             <span
               className={cn(
-                "block aspect-[9/16] h-[48cqh] overflow-hidden rounded-[3cqh] border-[0.7cqh] transition-colors duration-500",
-                k === i ? "border-white" : "border-white/30",
+                "text-[3.2cqh] font-medium leading-none transition-colors duration-300",
+                k === i ? "text-white" : "text-white/40",
               )}
             >
-              <img src={panel.src} alt="" className="size-full object-cover" />
-            </span>
-            <span className="text-[4.6cqh] font-medium leading-none text-white">
-              {k + 1}. {panel.name}
+              {s.act}
             </span>
           </span>
         ))}
-      </span>
-
-      {/* The story line, filling as it plays. */}
-      <span className="absolute inset-x-[10cqh] bottom-[7cqh] block h-[1.2cqh] overflow-hidden rounded-full bg-white/15">
-        <span
-          className="block h-full rounded-full bg-gradient-to-r from-[#d0ffb6] to-[#ffebc9] transition-[width] duration-700"
-          style={{ width: `${((i + 1) / PANELS.length) * 100}%` }}
-        />
       </span>
     </Stage>
   );

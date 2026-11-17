@@ -30,6 +30,7 @@ const KEYFRAMES = `
 @keyframes sm-spin { from { transform: translate(-50%, -50%) rotate(0) } to { transform: translate(-50%, -50%) rotate(360deg) } }
 @keyframes sm-scroll-up { from { transform: translateY(0) } to { transform: translateY(-50%) } }
 @keyframes sm-scroll-down { from { transform: translateY(-50%) } to { transform: translateY(0) } }
+@keyframes sm-kb { from { transform: scale(1.04) } to { transform: scale(1.18) } }
 @keyframes sm-float { 0%, 100% { transform: translateY(-50%) } 50% { transform: translateY(-54%) } }
 `;
 

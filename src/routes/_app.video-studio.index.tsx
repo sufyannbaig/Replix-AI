@@ -32,7 +32,7 @@ const STUDIOS = [
   {
     to: "/video-studio/concept",
     title: "Concept Ads",
-    description: "A short story ad with a hook, climax and ending",
+    description: "A TV-style story ad that sells through pictures",
     tag: "Custom · New",
     Motion: ConceptMotion,
   },
