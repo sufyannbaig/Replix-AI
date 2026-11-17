@@ -9,12 +9,9 @@ import { Masonry } from "@/v2/components/Masonry";
 import { FilterTabs, PillLink, SectionTitle } from "@/v2/components/primitives";
 import { useBrandKits, useCommunityCreations, useRecentGenerations } from "@/v2/data/api";
 import type { CommunityCreation, CreationKind } from "@/v2/data/types";
-import createPhoto from "@/assets/v2/catalog/loops/home-photo.webp";
-import createAd from "@/assets/v2/catalog/loops/home-ad.webp";
-import createVideo from "@/assets/v2/catalog/loops/home-video.webp";
 import playIcon from "@/assets/v2/icons/play.svg";
 import { HoverVideo } from "@/v2/components/HoverVideo";
-import { LoopingPreview } from "@/v2/components/LoopingPreview";
+import { AdMotion, PhotoMotion, VideoMotion } from "@/v2/components/home/StudioMotion";
 import promoBack from "@/assets/v2/catalog/product/acme-charge.webp";
 import promoMiddle from "@/assets/v2/catalog/product/acme-glow-serum.webp";
 import promoFront from "@/assets/v2/catalog/product/acme-buds.webp";
@@ -90,22 +87,19 @@ const CREATE_CARDS = [
     to: "/photo-studio",
     title: "Photo Studio",
     description: "Product photoshoots from templates or your own scene.",
-    image: createPhoto,
-    videoSrc: "/v2/videos/loops/home-photo.mp4",
+    Motion: PhotoMotion,
   },
   {
     to: "/ad-studio",
     title: "Ad Studio",
     description: "Static ad creatives from one product.",
-    image: createAd,
-    videoSrc: "/v2/videos/loops/home-ad.mp4",
+    Motion: AdMotion,
   },
   {
     to: "/video-studio",
     title: "Video Studio",
     description: "UGC ads, product shorts and story ads.",
-    image: createVideo,
-    videoSrc: "/v2/videos/loops/home-video.mp4",
+    Motion: VideoMotion,
   },
 ] as const;
 
@@ -121,7 +115,7 @@ function CreateSection() {
             className="group flex flex-col overflow-hidden rounded-[14px] border border-transparent bg-v2-surface pb-5 transition-[border-color,box-shadow] duration-200 hover:border-v2-border hover:shadow-[var(--v2-shadow-card)] focus-visible:border-v2-border focus-visible:outline-none"
           >
             <div className="aspect-video overflow-hidden rounded-[10px]">
-              <LoopingPreview frames={[card.image]} videoSrc={card.videoSrc} />
+              <card.Motion />
             </div>
             <div className="mx-5 mt-5 flex flex-col gap-1">
               <h3 className="type-card-title text-v2-ink">{card.title}</h3>
