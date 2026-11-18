@@ -241,6 +241,7 @@ function designOf(job: GenerationJobRow, o: GenerationOutputRow): AdDesign | und
   return o.copy?.layout
     ? {
         layout: o.copy.layout,
+        ...(o.copy.photoLayout ? { photoLayout: o.copy.photoLayout } : {}),
         aspect: job.aspect as AspectRatio,
         copy: { headline: o.copy.headline, subline: o.copy.subline, cta: o.copy.cta },
         colors: o.copy.colors,
@@ -455,7 +456,15 @@ export const editAd = createServerFn({ method: "POST" })
     if (up.error) throw new Error("Couldn't save the ad. Please try again.");
     const { error } = await admin
       .from("generation_outputs")
-      .update({ image_path: path, copy: { ...row.copy, ...copy, layout: data.layout } })
+      .update({
+        image_path: path,
+        copy: {
+          ...row.copy,
+          ...copy,
+          layout: data.layout,
+          photoLayout: row.copy.photoLayout ?? row.copy.layout,
+        },
+      })
       .eq("id", row.id)
       .eq("user_id", context.userId);
     if (error) {

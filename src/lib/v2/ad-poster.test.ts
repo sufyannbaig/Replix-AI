@@ -69,3 +69,35 @@ describe("poster", () => {
     strictEqual(tree.props.style?.background, "#C0392B");
   });
 });
+
+describe("poster over a photo made for another layout (Edit text)", () => {
+  test("the header is a see-through scrim, never solid", () => {
+    const { tree } = buildAdLayout({
+      layout: "poster",
+      aspect: "1:1",
+      photo: "data:,",
+      copy,
+      colors: ["#111111"],
+      backdrop: "#0A28A0",
+      photoFor: "magazine",
+    });
+    const wash = String((tree.props.children as AdNode[])[1].props.style?.backgroundImage);
+    ok(!wash.includes(",1)"), "no fully opaque stop");
+    ok(wash.includes("rgba(0,0,0,0.62)"));
+  });
+  test("its own photo keeps the solid colour field", () => {
+    const { tree } = buildAdLayout({
+      layout: "poster",
+      aspect: "1:1",
+      photo: "data:,",
+      copy,
+      backdrop: "#0A28A0",
+      photoFor: "poster",
+    });
+    ok(
+      String((tree.props.children as AdNode[])[1].props.style?.backgroundImage).includes(
+        "rgba(10,40,160,1)",
+      ),
+    );
+  });
+});

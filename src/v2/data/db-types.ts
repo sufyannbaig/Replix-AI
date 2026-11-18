@@ -129,6 +129,8 @@ export type OutputCopy = {
   subline: string;
   cta: string;
   layout?: import("@/lib/v2/ad-layouts").AdLayoutId;
+  /** Edit text: the layout the photo was made for, once the ad was switched to another. */
+  photoLayout?: import("@/lib/v2/ad-layouts").AdLayoutId;
   /** Brand colours (older ads: brand colours plus the accent). */
   colors?: string[];
   /** The copywriter's product colour; the browser refines it from the photo. */

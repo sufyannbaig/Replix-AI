@@ -54,6 +54,12 @@ export type AdLayoutInput = {
    */
   backdrop?: string;
   /**
+   * The layout the photo was composed for, when it differs from `layout` (Edit text switched
+   * it). The photo's calm area is then elsewhere, so a layout that would cover part of the
+   * frame with solid colour lets the photo show through instead.
+   */
+  photoFor?: AdLayoutId;
+  /**
    * The Banner's type voice, picked per product: heavy grotesk capitals, tall condensed
    * capitals or an elegant serif. Default "bold".
    */
@@ -708,6 +714,19 @@ export function posterFade(accent: string, solidTo: number, height: number) {
   };
 }
 
+/**
+ * The Poster's header over a photo made for another layout: a dark see-through scrim instead
+ * of solid colour, so a product standing in that area stays visible. Exported for tests.
+ */
+export function posterScrim(solidTo: number, height: number) {
+  const total = Math.min(height, Math.round(solidTo + height * 0.14));
+  const stop = Math.round((solidTo / total) * 100);
+  return {
+    height: total,
+    gradient: `linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.5) ${stop}%, rgba(0,0,0,0) 100%)`,
+  };
+}
+
 /** Extra space above the Poster CTA, which sits in the colour field under the copy. */
 const POSTER_CTA_GAP = 10;
 
@@ -742,11 +761,14 @@ function poster(ctx: Ctx): AdNode {
   const field = textTop + lines * size * (ctx.fit ? 0.98 : 0.9) + sub + cta + 28;
   /* The photo's own backdrop colour when it has a plain one, so the type field and the photo
      read as one picture (live, a black brand colour over a blue set looked pasted on). */
-  const wash = ctx.backdrop ?? ctx.accent;
+  /* Edit text: a photo made for another layout may have the product up here (live, Poster
+     over a Magazine photo hid the lamp head), so the field turns into a see-through scrim. */
+  const seeThrough = !!ctx.photoFor && ctx.photoFor !== "poster";
+  const wash = seeThrough ? "#000000" : (ctx.backdrop ?? ctx.accent);
   const ink = inkOn(wash);
   /* The photo fills the frame. The colour is solid behind the type and fades into the photo
      just below it. */
-  const fade = posterFade(wash, field, ctx.height);
+  const fade = seeThrough ? posterScrim(field, ctx.height) : posterFade(wash, field, ctx.height);
   return el(
     "div",
     {
@@ -794,6 +816,7 @@ function poster(ctx: Ctx): AdNode {
               color: ink,
               textAlign: "center",
               letterSpacing: ctx.fit ? 0 : 1,
+              ...(seeThrough ? { textShadow: "0 2px 14px rgba(0,0,0,0.5)" } : {}),
             },
             words,
           ),

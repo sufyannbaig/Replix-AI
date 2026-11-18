@@ -400,6 +400,8 @@ export type GenerationOutput = {
 
 export type AdDesign = {
   layout: import("@/lib/v2/ad-layouts").AdLayoutId;
+  /** The layout the photo was composed for, when Edit text switched to another. */
+  photoLayout?: import("@/lib/v2/ad-layouts").AdLayoutId;
   aspect: AspectRatio;
   copy: { headline: string; subline: string; cta: string };
   /** The Banner's type voice for this product (see AdLayoutInput.typeStyle). */
