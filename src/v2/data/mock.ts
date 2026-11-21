@@ -483,10 +483,8 @@ export const communityCreations: CommunityCreation[] = (
   [
     ["ugc", "honest-review"],
     ["photoshoot", "golden-skin"],
-    ["ad", "offer-sale"],
     ["product-short", "dramatic-light"],
     ["photoshoot", "splash-burst"],
-    ["ad", "testimonial"],
     ["ugc", "the-reveal"],
     ["product-short", "floating"],
     ["photoshoot", "monolith"],
@@ -494,13 +492,10 @@ export const communityCreations: CommunityCreation[] = (
     ["product-short", "splash"],
     ["photoshoot", "two-tone-set"],
     ["ugc", "first-unboxing"],
-    ["ad", "before-after"],
     ["product-short", "morning-light"],
     ["photoshoot", "levitation"],
-    ["ad", "showcase"],
     ["photoshoot", "linen-morning"],
     ["ugc", "try-on-check"],
-    ["ad", "problem-solution"],
     ["ugc", "gym-quick-take"],
     ["product-short", "360-spin"],
     ["product-short", "studio-turn"],
@@ -520,14 +515,14 @@ export const helpFaqs: HelpFaq[] = [
     category: "getting-started",
     question: "How do I get started with Replix AI?",
     answer:
-      "Sign up free, add a product (connect Shopify or upload a photo), pick a studio and generate. New accounts get 10 free credits, no card required.",
+      "Paste your website to build your brand kit, add a product photo, pick a studio and generate. New accounts get 10 free credits to try it, no card required.",
   },
   {
     id: "shopify",
     category: "getting-started",
-    question: "Do I need a Shopify store?",
+    question: "Do I need an online store?",
     answer:
-      "No. Connecting Shopify imports your catalogue in one click, but you can upload product photos or import a product URL from the Products page instead.",
+      "No. Upload product photos or import a product link from the Products page. If you sell on Shopify, you can also connect your store to import your catalogue.",
   },
   {
     id: "brand-kit",

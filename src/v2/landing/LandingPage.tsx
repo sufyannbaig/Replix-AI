@@ -20,7 +20,6 @@ import {
   Globe,
   Link2,
   Menu,
-  ShoppingBag,
   Sparkles,
   Wand2,
   X,
@@ -28,7 +27,7 @@ import {
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { PAID_PRICING_PLANS } from "@/lib/pricing-plans";
-import { ReplixLogo } from "@/v2/components/brand/ReplixLogo";
+import { ReplixLogo, ReplixMark } from "@/v2/components/brand/ReplixLogo";
 import { EASE, LazyVideo, Magnetic, Reveal, SplitWords } from "./motion";
 import concept1 from "@/assets/v2/landing/concept-1.webp";
 import concept2 from "@/assets/v2/landing/concept-2.webp";
@@ -45,9 +44,6 @@ const glob = (files: Record<string, string>) =>
   );
 const photo = glob(
   import.meta.glob("/src/assets/v2/catalog/photo/*.webp", { eager: true, import: "default" }),
-);
-const adTheme = glob(
-  import.meta.glob("/src/assets/v2/catalog/ad-theme/*.webp", { eager: true, import: "default" }),
 );
 const ugc = glob(
   import.meta.glob("/src/assets/v2/catalog/ugc/*.webp", { eager: true, import: "default" }),
@@ -93,7 +89,13 @@ function trackLead() {
   }
 }
 
-function StartFree({ className, label = "Start free" }: { className?: string; label?: string }) {
+function StartFree({
+  className,
+  label = "Get my brand kit",
+}: {
+  className?: string;
+  label?: string;
+}) {
   return (
     <Magnetic>
       <Link to="/login" onClick={trackLead} className={cn(CTA_DARK, className)}>
@@ -173,7 +175,13 @@ function Tabs<T extends string>({
 }
 
 /** Store-link box: goes to sign-up (the brand is captured once they're in). */
-function LinkBox({ dark = false, button = "Show me my ads" }: { dark?: boolean; button?: string }) {
+function LinkBox({
+  dark = false,
+  button = "Get my brand kit",
+}: {
+  dark?: boolean;
+  button?: string;
+}) {
   const navigate = useNavigate();
   const [site, setSite] = useState("");
   const submit = (e: FormEvent) => {
@@ -270,7 +278,7 @@ function Nav() {
             onClick={trackLead}
             className="hidden rounded-full bg-[linear-gradient(135deg,#2f55a8,#162544)] px-5 py-2.5 font-archivo text-[15px] font-medium text-white shadow-[0_8px_20px_-8px_rgba(22,37,68,0.7)] transition-transform hover:-translate-y-px sm:inline-flex"
           >
-            Start free · 10 ads
+            Get my brand kit
           </Link>
           <button
             type="button"
@@ -309,7 +317,7 @@ function Nav() {
               Log in
             </Link>
             <Link to="/login" onClick={trackLead} className={cn(CTA_DARK, "mt-1")}>
-              Start free · 10 ads
+              Get my brand kit
             </Link>
           </motion.div>
         ) : null}
@@ -382,7 +390,7 @@ function Hero() {
             transition={{ duration: 0.6, ease: EASE }}
             className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-inter-tight text-xs font-medium uppercase tracking-[0.12em] text-[#3c4a66] shadow-sm ring-1 ring-black/5"
           >
-            <Sparkles className="size-3.5 text-[#2f55a8]" /> AI creative studio for Shopify
+            <Sparkles className="size-3.5 text-[#2f55a8]" /> AI creative studio for product brands
           </motion.span>
           <h1
             className={cn(
@@ -411,7 +419,7 @@ function Hero() {
               >
                 and video{" "}
                 <span className="bg-[linear-gradient(100deg,#2f55a8,#162544_60%,#2f55a8)] bg-clip-text text-transparent">
-                  your store needs.
+                  your brand needs.
                 </span>
               </motion.span>
             </span>
@@ -422,8 +430,8 @@ function Hero() {
             transition={{ duration: 0.8, ease: EASE, delay: 0.5 }}
             className="mt-6 max-w-[520px] font-inter-tight text-[17px] leading-[1.5] text-[#4b5568] sm:text-lg"
           >
-            Paste your store link and get your own ads in about a minute. No prompts, no design
-            skills.
+            Paste your website. Replix captures your logo, colours, fonts and voice, then turns your
+            product photos into on-brand photoshoots, ads and videos.
           </motion.p>
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 14 }}
@@ -439,7 +447,7 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.8 }}
             className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-inter-tight text-sm text-[#4b5568]"
           >
-            {["10 free ads", "No credit card", "Ad ready in about a minute"].map((t) => (
+            {["Free brand kit", "No credit card", "Ready in about a minute"].map((t) => (
               <li key={t} className="flex items-center gap-1.5">
                 <Check className="size-4 text-[#2f55a8]" /> {t}
               </li>
@@ -523,11 +531,11 @@ function BeforeAfter() {
       </div>
       <motion.div
         aria-hidden
-        className="mx-auto flex size-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2f55a8,#162544)] text-white shadow-lg max-sm:rotate-90"
+        className="mx-auto flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_12px_30px_-10px_rgba(22,37,68,0.45)] ring-1 ring-black/5"
         animate={reduce ? undefined : { scale: [1, 1.08, 1] }}
         transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
       >
-        <Sparkles className="size-5" />
+        <ReplixMark className="size-10" />
       </motion.div>
       <div className="relative aspect-[4/5] overflow-hidden rounded-[22px] bg-black sm:aspect-[16/12]">
         <LazyVideo
@@ -582,13 +590,7 @@ function ProductTrue() {
 /* ---------- 4. studios (tabs) ---------- */
 
 type Tile = { img: string; video?: string; label?: string };
-const STUDIO_TABS = [
-  "Product shoots",
-  "Ads",
-  "UGC videos",
-  "Product shorts",
-  "Concept ads",
-] as const;
+const STUDIO_TABS = ["Product shoots", "UGC videos", "Product shorts", "Concept ads"] as const;
 type StudioTab = (typeof STUDIO_TABS)[number];
 const STUDIOS: Record<StudioTab, { line: string; tiles: Tile[] }> = {
   "Product shoots": {
@@ -598,15 +600,6 @@ const STUDIOS: Record<StudioTab, { line: string; tiles: Tile[] }> = {
       { img: photo["fruit-burst"] },
       { img: photo["hold-out"] },
       { img: photo["blind-shadows"] },
-    ],
-  },
-  Ads: {
-    line: "Finished ads with your headline, offer and brand, ready for Meta and TikTok.",
-    tiles: [
-      { img: adTheme["bold-claim"] },
-      { img: adTheme["offer-sale"] },
-      { img: adTheme.stats },
-      { img: adTheme["us-vs-them"] },
     ],
   },
   "UGC videos": {
@@ -644,7 +637,7 @@ function Studios() {
   return (
     <Section id="studios" className="pt-24 sm:pt-36">
       <SplitWords
-        text="Everything your store needs,"
+        text="Everything your brand needs,"
         muted="from one photo."
         className={cn(
           "text-center font-inter-tight text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[44px]",
@@ -721,10 +714,10 @@ function StepConnect() {
           <Link2 className="size-4 text-[#3c4a66]" />
         </span>
         <span className="flex-1 truncate font-inter-tight text-sm text-[#8a8f98]">
-          <Typing text="yourstore.myshopify.com" />
+          <Typing text="yourbrand.com" />
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#2f55a8,#162544)] px-3.5 py-2 font-archivo text-xs font-medium text-white">
-          <ShoppingBag className="size-3.5" /> Connect store
+          <Wand2 className="size-3.5" /> Get brand kit
         </span>
       </motion.div>
     </div>
@@ -826,18 +819,18 @@ function StepGenerate() {
 
 const STEPS = [
   {
-    title: "Paste your link or connect Shopify",
-    body: "One click imports your products and photos.",
+    title: "Paste your website",
+    body: "Replix builds your brand kit: logo, colours, fonts and tone of voice.",
     art: <StepConnect />,
   },
   {
-    title: "Pick a template, or build it piece by piece",
-    body: "Choose a look, a creator, a scene. No prompts to write.",
+    title: "Add a product photo and pick a look",
+    body: "Choose a template, a creator and a scene. No prompts to write.",
     art: <StepTemplates />,
   },
   {
-    title: "Generate and download",
-    body: "Check every result, keep the ones you like, post them anywhere.",
+    title: "Check, download, post",
+    body: "Keep the results you like and post them to Meta, TikTok, Instagram or your store.",
     art: <StepGenerate />,
   },
 ];
@@ -857,8 +850,8 @@ function Steps() {
           />
           <Reveal delay={0.1}>
             <p className="mt-4 max-w-[380px] font-inter-tight text-[17px] leading-[1.5] text-[#4b5568]">
-              From your store link to finished ads, photos and videos, without a designer or a
-              prompt.
+              From your website to finished ads, photos and videos, without a designer, a
+              photographer or a prompt.
             </p>
             <div className="mt-7">
               <StartFree />
@@ -976,7 +969,7 @@ function BrandCapture() {
             <div className="mt-7">
               <Magnetic>
                 <Link to="/login" onClick={trackLead} className={CTA_LIGHT}>
-                  Start free <ArrowRight className="size-4" />
+                  Get my brand kit <ArrowRight className="size-4" />
                 </Link>
               </Magnetic>
             </div>
@@ -1045,7 +1038,7 @@ function StoryAd() {
           <Reveal delay={0.2} className="mt-8">
             <Magnetic>
               <Link to="/login" onClick={trackLead} className={CTA_LIGHT}>
-                Start free <ArrowRight className="size-4" />
+                Get my brand kit <ArrowRight className="size-4" />
               </Link>
             </Magnetic>
           </Reveal>
@@ -1124,7 +1117,7 @@ function Library() {
 
 /* ---------- 9. templates masonry ---------- */
 
-const TPL_TABS = ["All", "UGC ads", "Product shorts", "Photoshoots", "Ads", "Concept ads"] as const;
+const TPL_TABS = ["All", "UGC ads", "Product shorts", "Photoshoots", "Concept ads"] as const;
 type TplTab = (typeof TPL_TABS)[number];
 type Tpl = Tile & { kind: Exclude<TplTab, "All">; tall?: boolean; time?: string };
 const TEMPLATES: Tpl[] = [
@@ -1136,7 +1129,6 @@ const TEMPLATES: Tpl[] = [
     tall: true,
     time: "00:08",
   },
-  { kind: "Ads", img: adTheme["bold-claim"] },
   { kind: "Photoshoots", img: photo["ingredient-spread"], tall: true },
   { kind: "Concept ads", img: concept5, video: CONCEPT_VIDEO, tall: true, time: "00:15" },
   { kind: "Product shorts", img: short.splash, video: shortVideo("splash"), time: "00:05" },
@@ -1148,11 +1140,9 @@ const TEMPLATES: Tpl[] = [
     tall: true,
     time: "00:08",
   },
-  { kind: "Ads", img: adTheme.testimonial },
   { kind: "Photoshoots", img: photo["power-burst"], tall: true },
   { kind: "Product shorts", img: short["360-spin"], video: shortVideo("360-spin"), time: "00:05" },
   { kind: "Photoshoots", img: photo["sky-high"], tall: true },
-  { kind: "Ads", img: adTheme["problem-solution"] },
   {
     kind: "UGC ads",
     img: ugc["the-reveal"],
@@ -1163,7 +1153,6 @@ const TEMPLATES: Tpl[] = [
   { kind: "Photoshoots", img: photo["sand-noir"] },
   { kind: "Concept ads", img: concept3 },
   { kind: "Photoshoots", img: photo["trail-dawn"], tall: true },
-  { kind: "Ads", img: adTheme["before-after"] },
   { kind: "Photoshoots", img: photo["tennis-club"], tall: true },
   {
     kind: "Product shorts",
@@ -1248,14 +1237,14 @@ function Templates() {
 const WHY = [
   {
     icon: Eye,
-    title: "See your results before you pay",
-    body: "Try 10 free ads with your own products. No credit card.",
+    title: "See your brand before you pay",
+    body: "Your brand kit is free. See how Replix reads your brand before you pick a plan.",
     tone: "bg-[#f1f4fb]",
   },
   {
-    icon: ShoppingBag,
-    title: "Made for Shopify",
-    body: "Import your products and photos in one click.",
+    icon: Sparkles,
+    title: "Built for product brands",
+    body: "Upload a photo or paste a product link. Your label, shape and colour stay true.",
     tone: "bg-[#fff3d6]",
   },
   {
@@ -1267,7 +1256,7 @@ const WHY = [
   {
     icon: Globe,
     title: "Ready for where you sell",
-    body: "Sizes for Meta, Instagram, TikTok, Shopify and Amazon.",
+    body: "Sizes for Meta, Instagram, TikTok, Amazon and your own store.",
     tone: "bg-[#f3eefe]",
   },
 ];
@@ -1318,7 +1307,7 @@ function Pricing() {
       <div className="mx-auto max-w-[1265px]">
         <SplitWords
           text="Simple plans."
-          muted="Start free."
+          muted="Grow when you're ready."
           className={cn(
             "text-center font-inter-tight text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[44px]",
             INK,
@@ -1326,7 +1315,7 @@ function Pricing() {
         />
         <Reveal delay={0.1}>
           <p className="mt-4 text-center font-inter-tight text-[17px] text-[#4b5568]">
-            Every account starts with 10 free ads. Cancel any time.
+            Your brand kit is free. Pick a plan when you want to create. Cancel any time.
           </p>
         </Reveal>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
@@ -1422,13 +1411,20 @@ const FAQ = [
     "Product photoshoots, finished ads, UGC videos with a creator talking about your product, short product videos and story ads, all from one product photo.",
   ],
   [
-    "Do I need a Shopify store?",
-    "No. Shopify makes importing products one click, but you can paste any website or upload a product photo.",
+    "Do I need a website?",
+    "No. A website lets Replix build your brand kit in one go, but you can set your logo, colours and fonts by hand and upload product photos.",
   ],
-  ["Can I try it without paying?", "Yes. Every account gets 10 free ads, no credit card needed."],
+  [
+    "What's free?",
+    "Building your brand kit from your website is free, with no credit card. Photos, ads and videos use credits, which come with every plan.",
+  ],
   [
     "What does one credit get me?",
     "A photo or an ad is 2 credits. Product shorts are 8 to 13 credits, UGC videos 15 or 30 credits, and story ads 10 credits for every 15 seconds.",
+  ],
+  [
+    "Can I cancel any time?",
+    "Yes. Plans are monthly and you can cancel from Billing whenever you like.",
   ],
   [
     "Will my product look the same?",
@@ -1538,13 +1534,13 @@ function FinalCta() {
               Your next ad, photoshoot and video start with one link.
             </h2>
             <p className="mx-auto mt-5 max-w-[440px] font-inter-tight text-[17px] text-white/80">
-              Paste your store link and see your own ads in about a minute.
+              Paste your website and get your brand kit in about a minute.
             </p>
             <div className="mt-8">
               <LinkBox dark />
             </div>
             <p className="mt-4 font-inter-tight text-sm text-white/75">
-              10 free ads · No credit card
+              Free brand kit · No credit card
             </p>
           </div>
         </div>
@@ -1589,7 +1585,7 @@ function Footer() {
           <div className="flex flex-col gap-4">
             <ReplixLogo className="h-9 w-auto" />
             <p className="max-w-[280px] font-inter-tight text-sm text-[#5b6476]">
-              AI photoshoots, ads and videos for Shopify brands, from one product photo.
+              AI photoshoots, ads and videos for product brands, from one photo.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 sm:gap-20">

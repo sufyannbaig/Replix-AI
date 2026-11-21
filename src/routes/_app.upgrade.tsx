@@ -134,8 +134,7 @@ function UpgradePage() {
         {/* Carried over from the v1 pricing page's reassurance row. */}
         <p className="-mt-4 flex items-center gap-2 text-center font-inter-tight text-sm text-v2-muted">
           <ShieldCheck className="size-4 shrink-0" />
-          Cancel anytime. Billed through Shopify if your store is connected, otherwise securely
-          through Stripe.
+          Cancel anytime. Secure checkout.
         </p>
 
         <section className="mt-[34px] flex w-full flex-col gap-5 rounded-[16px] bg-v2-surface px-[30px] py-[30px]">

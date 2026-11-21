@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { welcomeKey } from "@/lib/v2/welcome";
 import { useAuth } from "@/hooks/use-auth";
 import { useCredits } from "@/hooks/use-credits";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,20 @@ function HomePage() {
   const { plan } = useCredits();
   const { data: kits } = useBrandKits();
   const needsBrandKit = !kits?.some((kit) => kit.isComplete);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { loading: creditsLoading } = useCredits();
+
+  /* A new free account without a brand kit starts on the welcome flow, once. */
+  useEffect(() => {
+    if (!user || !kits || creditsLoading || plan !== "free" || !needsBrandKit) return;
+    try {
+      if (localStorage.getItem(welcomeKey(user.id))) return;
+    } catch {
+      return;
+    }
+    void navigate({ to: "/welcome", replace: true });
+  }, [user, kits, creditsLoading, plan, needsBrandKit, navigate]);
 
   return (
     <AppShell

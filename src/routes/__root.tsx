@@ -15,7 +15,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { StaleModuleRecovery } from "@/components/stale-module-recovery";
 import { ApiHealthBanner } from "@/components/api-health-banner";
 import { ClientErrorLogger } from "@/components/client-error-logger";
-import { PromoPopup } from "@/components/PromoPopup";
 import { logClientError, type LoggedError } from "@/lib/client-error-logger";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
@@ -50,9 +49,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Something went wrong on our end.</p>
         {logged ? (
           <p className="mt-2 text-xs text-muted-foreground">
             Reference ID:{" "}
@@ -145,7 +142,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <noscript>
-          <img height="1" width="1" style={{ display: "none" }} alt="" src="https://www.facebook.com/tr?id=28605365312439799&ev=PageView&noscript=1" />
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            alt=""
+            src="https://www.facebook.com/tr?id=28605365312439799&ev=PageView&noscript=1"
+          />
         </noscript>
         {children}
         <Scripts />
@@ -158,7 +161,9 @@ function AuthInvalidator() {
   const router = useRouter();
   const queryClient = useQueryClient();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
@@ -192,7 +197,6 @@ function RootComponent() {
         <ClientErrorLogger />
         <StaleModuleRecovery />
         <ApiHealthBanner />
-        <PromoPopup />
         <Outlet />
         <Toaster theme="light" position="top-right" richColors />
       </AuthProvider>

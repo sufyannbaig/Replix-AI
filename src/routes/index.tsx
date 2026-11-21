@@ -5,20 +5,20 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Replix AI | Turn any product photo into scroll-stopping ads" },
+      { title: "Replix AI | On-brand product photos, ads and videos from one photo" },
       {
         name: "description",
         content:
-          "Upload a product photo and Replix AI turns it into polished, scroll-stopping ad creatives. Try 10 free ads. No credit card required.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Free brand kit, no credit card.",
       },
       {
         property: "og:title",
-        content: "Replix AI | Turn any product photo into scroll-stopping ads",
+        content: "Replix AI | On-brand product photos, ads and videos from one photo",
       },
       {
         property: "og:description",
         content:
-          "Upload a product photo and Replix AI turns it into polished, scroll-stopping ad creatives. Try 10 free ads. No credit card required.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Free brand kit, no credit card.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://replixai.co.uk/" },
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
       {
         name: "twitter:description",
         content:
-          "Upload a product photo and Replix AI turns it into polished, scroll-stopping ad creatives. Try 10 free ads. No credit card required.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Free brand kit, no credit card.",
       },
     ],
     links: [{ rel: "canonical", href: "https://replixai.co.uk/" }],
