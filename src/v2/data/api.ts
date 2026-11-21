@@ -19,6 +19,7 @@ import {
 } from "@/lib/v2/generation.functions";
 import { notifyCreditsChanged, useCredits } from "@/hooks/use-credits";
 import { brandKitLimit } from "./pricing";
+import { cleanFeedback, type FeedbackKind, type Rating } from "@/lib/v2/feedback";
 import { askPersonConsent, CONSENT_DECLINED } from "./consent";
 import {
   backendUser,
@@ -1546,5 +1547,59 @@ export function useSaveGenerationOutput(jobId: string) {
       return next;
     },
     onSuccess: (job) => queryClient.setQueryData(queryKeys.job(jobId), job),
+  });
+}
+
+/* ---------- Result feedback (thumbs up / down) ---------- */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The signed-in person's saved answer for one output, or null. Sample outputs have none. */
+export function useOutputFeedback(outputId: string | undefined) {
+  return useQuery({
+    queryKey: ["v2", "feedback", outputId],
+    enabled: !!outputId && UUID_RE.test(outputId),
+    queryFn: async () => {
+      const userId = await signedInUserId();
+      if (!userId) return null;
+      const { data } = await db
+        .from("output_feedback")
+        .select("rating, reasons, note")
+        .eq("output_id", outputId!)
+        .eq("user_id", userId)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+}
+
+/** Save (or change) the answer. Sample outputs are acknowledged without saving. */
+export function useSaveFeedback(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      outputId: string;
+      kind: FeedbackKind;
+      rating: Rating;
+      reasons?: string[];
+      note?: string | null;
+    }) => {
+      const clean = cleanFeedback(input.kind, input);
+      const userId = await signedInUserId();
+      if (!userId || !UUID_RE.test(input.outputId) || !UUID_RE.test(jobId)) return clean;
+      const { error } = await db.from("output_feedback").upsert(
+        {
+          user_id: userId,
+          output_id: input.outputId,
+          job_id: jobId,
+          ...clean,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,output_id" },
+      );
+      if (error) throw new Error("Couldn't send your feedback. Please try again.");
+      return clean;
+    },
+    onSuccess: (clean, input) => qc.setQueryData(["v2", "feedback", input.outputId], clean),
   });
 }

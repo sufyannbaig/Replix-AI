@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { EditPhotoDialog } from "@/v2/components/studio/EditPhotoDialog";
 import { EditAdDialog } from "@/v2/components/studio/EditAdDialog";
+import { FeedbackBar } from "@/v2/components/studio/FeedbackBar";
 import { toast } from "sonner";
 import { useBrandKits, useGenerationJob } from "@/v2/data/api";
 import { ChannelPreviewDialog } from "@/v2/components/studio/ChannelPreview";
@@ -269,6 +270,13 @@ function Result({ job }: { job: GenerationJob }) {
                   Open
                 </Link>
               </div>
+              {selected && status === "done" ? (
+                <FeedbackBar
+                  jobId={job.id}
+                  outputId={selected.id}
+                  kind={request.kind === "ad" ? "ad" : request.kind === "video" ? "video" : "photo"}
+                />
+              ) : null}
               {canEditText ? (
                 <PillButton
                   variant="outline"

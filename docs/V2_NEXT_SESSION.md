@@ -172,8 +172,20 @@ Research (competitors plus one live test) found the label already comes out righ
 - Order: Product Shorts, then AI UGC (the priority feature), then Concept ads.
 - **Product Shorts works live (2026-11-16):** the first real Short (Studio Turn, 5 s) finished in about 4.5 minutes with the label intact, and plays on the result page and in Assets. The fal key is the Lovable secret `FAL_AI_KEY`. Results and next steps: "Status" in `V2_VIDEO_PLAN.md`. The model test (Kling 4 and Seedance 2.0 against Kling 3 Pro) is done: keep Kling 3 Pro. Shorts are now priced by length: 8 / 11 / 13 credits for 5 / 8 / 10 s (`V2_GENERATION_COSTS.md` section 4).
 
+**January launch prep (agreed with Ben, 2026-11-19). To do, not started.** Meta ads are paused (Sufyan pauses them in Ads Manager); the focus is AI output and design until there's real customer feedback. Ben sends 5-10 store owners as testers by early December; aim to have them in the app by mid-December so there's time to fix what they find.
+
+1. **Done (2026-11-21): the $0.07 includes our own retries; a user's Regenerate is paid again.** From `generation_jobs` (all finished jobs): ads $0.073 per image (121 ads); photos $0.070 before the quality check and **$0.082 since 15 Nov** with the check and its free retry (1 of 12 photos retried, worst $0.15). Regenerate is a new job charged at full credits, so it keeps the same margin. Pricing page and `V2_GENERATION_COSTS.md` §5 updated.
+2. **Built (2026-11-21): feedback on results.** Thumbs up / down under each result (photo, ad, video), saved at once; then optional reason chips and a short note (`src/lib/v2/feedback.ts`, `FeedbackBar.tsx`, table `output_feedback` from migration `20261121120000_v2_output_feedback.sql`). One answer per person per output; changing it updates the row. To read it:
+   `select f.created_at, j.studio, j.request->'inputs'->>'templateId' template, j.request->'inputs'->>'themeId' theme, f.rating, f.reasons, f.note from output_feedback f join generation_jobs j on j.id = f.job_id order by f.created_at desc;`
+3. **Free credits for testers:** a way to give a tester account credits (and a plan if needed) without charging them, and to reset it after.
+4. Demo videos for TikTok, Reels and Shorts made in Replix itself (product photo → ads → Short), once the output is ready. Sufyan helps.
+5. Free sample ads for brands, made in the app from their own photos (≈ $0.07 an ad).
+6. Help out in Shopify and e-commerce communities.
+7. Paid Meta ads come back later, once conversion numbers are known; use the pricing page to set the budget.
+
 **Waiting on other people**
 
+- Benjamin: the tester list (early December); the video model for Concept ads (on Veo 3.1 they lose money at 10 credits per 15 s, so lock to Kling or raise to about 2 credits a second); keep the Lovable Cloud credit limit high (it paused the database once on 2026-11-17).
 - Benjamin: the real AI spend from Lovable **Settings → Cloud & AI balance**, to compare with the $1.09 estimate in `V2_GENERATION_COSTS.md` §5; and `FAL_KEY`.
 - The client: D2 (free offer), and a lawyer's read of the character-upload consent terms (D5).
 - Before launch: reset the test account's plan (back from Pro) and credits, and turn on Lovable's GitHub sync for `v2` if possible.

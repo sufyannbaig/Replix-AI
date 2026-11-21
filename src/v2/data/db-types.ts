@@ -107,6 +107,18 @@ export type StoreBrandRow = {
   updated_at: string;
 };
 
+export type OutputFeedbackRow = {
+  id: string;
+  user_id: string;
+  output_id: string;
+  job_id: string;
+  rating: number;
+  reasons: string[];
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type GenerationOutputRow = {
   id: string;
   job_id: string;
@@ -161,6 +173,7 @@ export type V2Database = {
         "user_id" | "studio" | "kind" | "request" | "aspect" | "cost"
       >;
       generation_outputs: Table<GenerationOutputRow, "job_id" | "user_id">;
+      output_feedback: Table<OutputFeedbackRow, "user_id" | "output_id" | "job_id" | "rating">;
       user_credits: Table<
         { user_id: string; credits: number; plan: string; updated_at: string },
         "user_id"

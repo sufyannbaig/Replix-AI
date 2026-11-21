@@ -107,6 +107,8 @@ Then compare the total with the drop in Lovable's **Run credits** for the same p
 
 **First test batch, 2026-11-07 (Lovable preview):** 3 photo jobs (3 images, $0.21) and 8 ad jobs (12 images, $0.88) finished. That is $0.07 per photo and about $0.073 per ad image including the copy call; 2 early photo jobs failed and were refunded at $0. These are the `EST_USD` estimates, not Lovable's bill. The project is in Benjamin's workspace, so only he can see the real spend under **Settings → Cloud & AI balance**. Compare that with $1.09 for the same day before changing `EST_USD`.
 
+**All finished jobs to 2026-11-18 (checked 2026-11-21):** ads $0.073 per image (121 ads, no retries in the ad pipeline); photos $0.070 before the quality check, **$0.082 per photo since 15 Nov** including the check and its free retry (1 of 12 retried, worst $0.15). A user's Regenerate is a new job charged full credits, so it doesn't lower the margin. On Scale a photo keeps about 79%.
+
 ## Sources
 
 - Lovable AI billing: [docs.lovable.dev/features/ai](https://docs.lovable.dev/features/ai)
