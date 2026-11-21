@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { captionCues, toVtt } from "@/lib/v2/captions";
 import {
@@ -9,6 +9,7 @@ import {
   Eye,
   Play,
   RefreshCw,
+  Trash2,
   TriangleAlert,
   Type,
   Wand2,
@@ -18,6 +19,7 @@ import { EditAdDialog } from "@/v2/components/studio/EditAdDialog";
 import { FeedbackBar } from "@/v2/components/studio/FeedbackBar";
 import { toast } from "sonner";
 import { useBrandKits, useGenerationJob } from "@/v2/data/api";
+import { useDeleteOutput } from "@/v2/data/account";
 import { ChannelPreviewDialog } from "@/v2/components/studio/ChannelPreview";
 import { brandLogo } from "@/v2/data/types";
 import type {
@@ -35,6 +37,9 @@ import { markAi } from "@/v2/components/saveFile";
 import { generationCost } from "@/v2/data/pricing";
 import { cn } from "@/lib/utils";
 import creditCoin from "@/assets/v2/credit-coin.png";
+
+/* Sample-data results have made-up ids and nothing to delete. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const Route = createFileRoute("/_app/generations/$jobId")({
   head: () => ({ meta: [{ title: "Your generation · Replix AI" }] }),
@@ -138,6 +143,23 @@ function Result({ job }: { job: GenerationJob }) {
   const { generate, pending } = useGenerate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = job.outputs.find((o) => o.id === selectedId) ?? job.outputs[0];
+  const navigate = useNavigate();
+  const remove = useDeleteOutput();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteSelected = () => {
+    if (!selected || !UUID_RE.test(selected.id)) return;
+    if (!confirmDelete) return setConfirmDelete(true);
+    remove.mutate(selected.id, {
+      onSuccess: () => {
+        toast.success("Deleted for good.");
+        setConfirmDelete(false);
+        const rest = job.outputs.filter((o) => o.id !== selected.id);
+        if (rest.length) setSelectedId(rest[0].id);
+        else void navigate({ to: "/assets" });
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't delete it."),
+    });
+  };
   /* Fix after: real Photo Studio photos only (sample results have no stored photo). */
   const [editing, setEditing] = useState(false);
   /* Ads: change the words or layout over the same photo, for free. */
@@ -261,6 +283,29 @@ function Result({ job }: { job: GenerationJob }) {
                   className="font-archivo text-sm text-v2-ink-70 hover:text-v2-ink disabled:opacity-60"
                 >
                   {downloading ? "Downloading…" : `Download all ${job.outputs.length}`}
+                </button>
+              ) : null}
+              {UUID_RE.test(selected.id) ? (
+                <button
+                  type="button"
+                  onClick={deleteSelected}
+                  onBlur={() => setConfirmDelete(false)}
+                  disabled={remove.isPending}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-[60px] px-4 py-2 font-archivo text-sm transition-colors disabled:opacity-60",
+                    confirmDelete
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "text-v2-ink-60 hover:bg-red-50 hover:text-red-600 night:hover:bg-red-950/40",
+                  )}
+                >
+                  <Trash2 className="size-4" />
+                  {remove.isPending
+                    ? "Deleting…"
+                    : confirmDelete
+                      ? "Click again to delete for good"
+                      : plural
+                        ? "Delete this one"
+                        : "Delete"}
                 </button>
               ) : null}
               {/* Every finished generation is listed in Assets (there's no separate history page). */}

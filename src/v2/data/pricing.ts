@@ -118,3 +118,28 @@ export const VIDEO_PLAN_MESSAGE =
 export function canMakeVideo(plan: string | null | undefined) {
   return (plan ?? "free") !== "free";
 }
+
+/**
+ * One-off credit packs (Stripe Checkout, payment mode). Each credit costs more than on Pro
+ * ($0.29), so a plan stays the better deal; prices proposed 2026-11-22, for Ben to confirm.
+ * Pack credits carry over a renewal (user_credits.pack_credits).
+ */
+export const CREDIT_PACKS = [
+  { credits: 100, usd: 39 },
+  { credits: 500, usd: 169 },
+  { credits: 1000, usd: 299 },
+] as const;
+export type CreditPackSize = (typeof CREDIT_PACKS)[number]["credits"];
+
+export function creditPack(credits: number) {
+  return CREDIT_PACKS.find((p) => p.credits === credits) ?? null;
+}
+
+/**
+ * Credits after a plan renewal or downgrade: the new plan's allowance plus what's left of
+ * bought packs. Plan credits are spent first, so the unused pack part is min(pack, credits).
+ */
+export function creditsAfterReset(planCredits: number, current: number, packCredits: number) {
+  const keep = Math.max(0, Math.min(packCredits, current));
+  return { credits: planCredits + keep, packCredits: keep };
+}

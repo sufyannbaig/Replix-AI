@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { PillButton, pillClass } from "@/v2/components/primitives";
 import { useThemePreference, type ThemePreference } from "@/v2/theme";
+import { useDeleteAccount } from "@/v2/data/account";
 import defaultAvatar from "@/assets/v2/home/avatar.png";
 
 type SettingsTab = "profile" | "billing" | "credits" | "security" | "appearance";
@@ -224,6 +225,52 @@ function SecurityTab() {
       <Link to="/forgot-password" className={pillClass("outline", "self-start")}>
         Reset password
       </Link>
+      <DeleteAccount />
+    </div>
+  );
+}
+
+/** Right to erasure: every photo, video, upload, brand and the sign-in itself. */
+function DeleteAccount() {
+  const navigate = useNavigate();
+  const remove = useDeleteAccount();
+  const [typed, setTyped] = useState("");
+  const ready = typed.trim() === "DELETE";
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-t border-v2-line pt-6">
+      <p className={label}>Delete account</p>
+      <p className="font-inter-tight text-sm text-v2-muted">
+        This deletes your account and everything in it for good: photos, ads, videos, uploads,
+        products and brand kits. It can&apos;t be undone. If you&apos;re on a paid plan, cancel it
+        in Billing first.
+      </p>
+      <label className="flex flex-col gap-1.5 font-inter-tight text-sm text-v2-ink-70">
+        Type DELETE to confirm
+        <input
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          autoComplete="off"
+          className="h-10 max-w-[260px] rounded-[10px] border border-v2-border bg-transparent px-3 text-v2-ink outline-none focus:border-red-500"
+        />
+      </label>
+      <button
+        type="button"
+        disabled={!ready || remove.isPending}
+        onClick={() =>
+          remove.mutate(undefined, {
+            onSuccess: () => {
+              toast.success("Your account and data are deleted.");
+              void navigate({ to: "/", replace: true });
+            },
+            onError: (e) =>
+              toast.error(e instanceof Error ? e.message : "Couldn't delete your account."),
+          })
+        }
+        className="flex h-10 items-center justify-center gap-2 self-start rounded-[40px] bg-red-600 px-5 font-archivo text-sm text-white transition-opacity hover:bg-red-700 disabled:opacity-40"
+      >
+        {remove.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+        Delete my account
+      </button>
     </div>
   );
 }

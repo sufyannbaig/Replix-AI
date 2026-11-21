@@ -3,8 +3,11 @@
 import { describe, test } from "node:test";
 import { strictEqual } from "node:assert";
 import {
+  CREDIT_PACKS,
   VIDEO_LENGTHS,
   canMakeVideo,
+  creditPack,
+  creditsAfterReset,
   generationCost,
   shortsGenerationCost,
   videoGenerationCost,
@@ -44,5 +47,25 @@ describe("video on plans", () => {
     strictEqual(canMakeVideo("starter"), true);
     strictEqual(canMakeVideo("pro"), true);
     strictEqual(canMakeVideo("scale"), true);
+  });
+});
+
+describe("credit packs", () => {
+  test("every pack costs more per credit than Pro ($29 / 100)", () => {
+    for (const p of CREDIT_PACKS) strictEqual(p.usd / p.credits > 0.29, true);
+    strictEqual(creditPack(500)?.usd, 169);
+    strictEqual(creditPack(42), null);
+  });
+
+  test("unused pack credits carry over a renewal, spent ones don't", () => {
+    strictEqual(
+      JSON.stringify(creditsAfterReset(100, 140, 100)),
+      '{"credits":200,"packCredits":100}',
+    );
+    strictEqual(
+      JSON.stringify(creditsAfterReset(100, 30, 100)),
+      '{"credits":130,"packCredits":30}',
+    );
+    strictEqual(JSON.stringify(creditsAfterReset(0, 50, 0)), '{"credits":0,"packCredits":0}');
   });
 });

@@ -108,6 +108,12 @@ function BrandStep({ onNext }: { onNext: () => void }) {
   const [kit, setKit] = useState<BrandKit | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /* Someone who already has a finished brand sees it and can move straight on. */
+  useEffect(() => {
+    const done = kits?.find((k) => k.isComplete && k.website);
+    if (done) setKit((current) => current ?? done);
+  }, [kits]);
+
   /* The landing page's link box keeps what the visitor typed. */
   useEffect(() => {
     try {
@@ -124,7 +130,8 @@ function BrandStep({ onNext }: { onNext: () => void }) {
     if (!website || !kits?.length) return;
     setError(null);
     extract.mutate(
-      { kitId: kits[0].id, website },
+      /* Fill an unfinished kit (or a new one); never overwrite a finished brand. */
+      { kitId: kits.find((k) => !k.isComplete)?.id ?? "new", website },
       {
         onSuccess: (k) => {
           setKit(k);

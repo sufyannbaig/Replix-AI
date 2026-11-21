@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { usePlanCheckout, type PaidPlanKey } from "@/v2/components/billing/usePlanCheckout";
 import checkIcon from "@/assets/v2/icons/check-circle-sm.svg";
+import { CREDIT_PACKS } from "@/v2/data/pricing";
+import { useBuyCreditPack } from "@/v2/data/account";
 
 export const Route = createFileRoute("/_app/upgrade")({
   /* Stripe returns here (via the old /pricing URL) when checkout is cancelled. */
@@ -16,9 +18,6 @@ export const Route = createFileRoute("/_app/upgrade")({
   head: () => ({ meta: [{ title: "Upgrade Plan · Replix AI" }] }),
   component: UpgradePage,
 });
-
-/* Credit pack sizes from the design; prices come with the backend checkout. */
-const CREDIT_PACKS = [100, 500, 1000];
 
 /**
  * Plans render from PRICING_PLANS (the single source of truth for prices and copy), not
@@ -29,6 +28,7 @@ function UpgradePage() {
   const { plan: currentPlan } = useCredits();
   const { checkout } = Route.useSearch();
   const { select, loadingPlan } = usePlanCheckout();
+  const buyPack = useBuyCreditPack();
 
   useEffect(() => {
     if (checkout === "cancelled") toast("Checkout cancelled. Your plan hasn't changed.");
@@ -141,15 +141,35 @@ function UpgradePage() {
           <h2 className="type-section-title text-black night:text-v2-ink">
             Need more credits? One-off credit packs
           </h2>
-          <div className="flex flex-wrap gap-2.5">
-            {CREDIT_PACKS.map((credits) => (
+          <p className="-mt-2 font-inter-tight text-sm text-v2-muted">
+            Top up any time. Pack credits never expire while your account is open, and they carry
+            over when your plan renews.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {CREDIT_PACKS.map((pack) => (
               <button
-                key={credits}
+                key={pack.credits}
                 type="button"
-                onClick={() => toast("Credit packs open checkout once billing is connected.")}
-                className="rounded-[50px] border-[0.7px] border-black/30 px-4 py-1.5 font-inter-tight text-xs tracking-[0.24px] text-[#616161] hover:border-black hover:text-black night:border-v2-border night:text-v2-ink-70"
+                disabled={buyPack.isPending}
+                onClick={() =>
+                  buyPack.mutate(pack.credits, {
+                    onError: (e) =>
+                      toast.error(e instanceof Error ? e.message : "Couldn't open checkout."),
+                  })
+                }
+                className="flex flex-col items-start gap-1 rounded-[14px] border border-v2-border bg-v2-canvas px-5 py-4 text-left transition-colors hover:border-v2-ink disabled:opacity-60 night:bg-v2-surface-2"
               >
-                {credits.toLocaleString()} Credits
+                <span className="font-archivo text-lg font-semibold text-v2-ink">
+                  {pack.credits.toLocaleString()} credits
+                </span>
+                <span className="font-inter-tight text-sm text-v2-ink-70">
+                  ${pack.usd} · about {Math.floor(pack.credits / 2)} photos or ads
+                </span>
+                {buyPack.isPending && buyPack.variables === pack.credits ? (
+                  <span className="flex items-center gap-1.5 font-inter-tight text-xs text-v2-muted">
+                    <Loader2 className="size-3 animate-spin" /> Opening checkout…
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>

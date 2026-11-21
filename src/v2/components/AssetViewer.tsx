@@ -10,6 +10,7 @@ import {
   Eye,
   ImagePlus,
   Megaphone,
+  Trash2,
   Wand2,
   X,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { PillButton } from "@/v2/components/primitives";
 import { ChannelPreviewDialog } from "@/v2/components/studio/ChannelPreview";
 import { copyImage, fileSlug, saveFile } from "@/v2/components/saveFile";
 import { useBrandKits } from "@/v2/data/api";
+import { useDeleteOutput } from "@/v2/data/account";
 import { brandLogo, type AssetItem, type AssetKind, type StudioKey } from "@/v2/data/types";
 
 /*
@@ -70,6 +72,22 @@ export function AssetViewer({
   const open = !!item;
   const [previewing, setPreviewing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const remove = useDeleteOutput();
+  useEffect(() => setConfirmDelete(false), [item?.id]);
+  const deleteItem = () => {
+    if (!item?.outputId) return;
+    if (!confirmDelete) return setConfirmDelete(true);
+    remove.mutate(item.outputId, {
+      onSuccess: () => {
+        toast.success("Deleted for good.");
+        setConfirmDelete(false);
+        if (items.length <= 1) onClose();
+        else if (index !== null && index >= items.length - 1) onIndex(index - 1);
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't delete it."),
+    });
+  };
   const { data: kits = [] } = useBrandKits();
   const kit = kits[0];
 
@@ -243,6 +261,28 @@ export function AssetViewer({
                 </PillButton>
               ) : null}
             </div>
+
+            {item.outputId ? (
+              <button
+                type="button"
+                onClick={deleteItem}
+                onBlur={() => setConfirmDelete(false)}
+                disabled={remove.isPending}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-[60px] px-4 py-2 font-archivo text-sm transition-colors disabled:opacity-60",
+                  confirmDelete
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "text-v2-ink-60 hover:bg-red-50 hover:text-red-600 night:hover:bg-red-950/40",
+                )}
+              >
+                <Trash2 className="size-4" />
+                {remove.isPending
+                  ? "Deleting…"
+                  : confirmDelete
+                    ? "Click again to delete for good"
+                    : "Delete"}
+              </button>
+            ) : null}
 
             {/* What to do next with it */}
             <div className="flex flex-col gap-1 border-t border-v2-line pt-4">

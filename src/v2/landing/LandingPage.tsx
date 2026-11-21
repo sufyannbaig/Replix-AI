@@ -169,7 +169,8 @@ function Tabs<T extends string>({
 }
 
 /** Store-link box: goes to sign-up (the brand is captured once they're in). */
-function LinkBox({ dark = false, button = "Start free" }: { dark?: boolean; button?: string }) {
+/** The button names what happens next: with a website it starts from their brand. */
+function LinkBox({ dark = false }: { dark?: boolean }) {
   const navigate = useNavigate();
   const [site, setSite] = useState("");
   const submit = (e: FormEvent) => {
@@ -206,11 +207,22 @@ function LinkBox({ dark = false, button = "Start free" }: { dark?: boolean; butt
       <button
         type="submit"
         className={cn(
-          "inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full px-6 font-archivo text-[15px] font-semibold transition-[transform,filter] duration-200 hover:brightness-105 active:scale-[0.98]",
+          "inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full px-6 sm:min-w-[210px] font-archivo text-[15px] font-semibold transition-[transform,filter] duration-200 hover:brightness-105 active:scale-[0.98]",
           dark ? "bg-[#0b1220] text-white" : "bg-[#ffc633] text-[#0b1220]",
         )}
       >
-        {button} <ArrowRight className="size-4" />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={site.trim() ? "brand" : "free"}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="inline-flex items-center gap-2"
+          >
+            {site.trim() ? "Start with my brand" : "Sign up free"} <ArrowRight className="size-4" />
+          </motion.span>
+        </AnimatePresence>
       </button>
     </form>
   );
