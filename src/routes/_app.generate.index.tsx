@@ -1,10 +1,8 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/* Old v1 route (v1 generate → Ad Studio), kept so links and bookmarks still land somewhere. */
 export const Route = createFileRoute("/_app/generate/")({
-  component: GenerateIndexRedirect,
+  beforeLoad: () => {
+    throw redirect({ to: "/ad-studio", replace: true });
+  },
 });
-
-// Legacy route — the generator now lives at /create.
-function GenerateIndexRedirect() {
-  return <Navigate to="/create" replace />;
-}

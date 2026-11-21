@@ -82,32 +82,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Replix AI — AI ad creatives for Shopify" },
+      { title: "Replix AI — AI ad creatives for any product" },
       {
         name: "description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
       },
       { property: "og:site_name", content: "Replix AI" },
-      { property: "og:title", content: "Replix AI — AI ad creatives for Shopify" },
-      { name: "twitter:title", content: "Replix AI — AI ad creatives for Shopify" },
+      { property: "og:title", content: "Replix AI — AI ad creatives for any product" },
+      { name: "twitter:title", content: "Replix AI — AI ad creatives for any product" },
       {
         property: "og:description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
       },
       {
         name: "twitter:description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/favicon.png?v=3" },
-      { rel: "apple-touch-icon", href: "/favicon.png?v=3" },
+      { rel: "icon", type: "image/png", href: "/favicon.png?v=4" },
+      { rel: "apple-touch-icon", href: "/favicon.png?v=4" },
     ],
   }),
   shellComponent: RootShell,
@@ -118,7 +118,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
@@ -126,8 +126,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+        />
+        {/* Apply the saved app theme before first paint so dark mode never flashes light. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('replix-theme');var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}catch(e){}`,
+          }}
         />
 
         <script
