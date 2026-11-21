@@ -89,13 +89,7 @@ function trackLead() {
   }
 }
 
-function StartFree({
-  className,
-  label = "Get my brand kit",
-}: {
-  className?: string;
-  label?: string;
-}) {
+function StartFree({ className, label = "Start free" }: { className?: string; label?: string }) {
   return (
     <Magnetic>
       <Link to="/login" onClick={trackLead} className={cn(CTA_DARK, className)}>
@@ -175,13 +169,7 @@ function Tabs<T extends string>({
 }
 
 /** Store-link box: goes to sign-up (the brand is captured once they're in). */
-function LinkBox({
-  dark = false,
-  button = "Get my brand kit",
-}: {
-  dark?: boolean;
-  button?: string;
-}) {
+function LinkBox({ dark = false, button = "Start free" }: { dark?: boolean; button?: string }) {
   const navigate = useNavigate();
   const [site, setSite] = useState("");
   const submit = (e: FormEvent) => {
@@ -211,7 +199,7 @@ function LinkBox({
           value={site}
           onChange={(e) => setSite(e.target.value)}
           inputMode="url"
-          placeholder="Paste your website link, e.g. acme.com"
+          placeholder="Your website (optional), e.g. acme.com"
           className="h-11 w-full min-w-0 bg-transparent font-inter-tight text-[15px] text-[#0b1220] outline-none placeholder:text-[#8a8f98]"
         />
       </label>
@@ -278,7 +266,7 @@ function Nav() {
             onClick={trackLead}
             className="hidden rounded-full bg-[linear-gradient(135deg,#2f55a8,#162544)] px-5 py-2.5 font-archivo text-[15px] font-medium text-white shadow-[0_8px_20px_-8px_rgba(22,37,68,0.7)] transition-transform hover:-translate-y-px sm:inline-flex"
           >
-            Get my brand kit
+            Start free
           </Link>
           <button
             type="button"
@@ -317,7 +305,7 @@ function Nav() {
               Log in
             </Link>
             <Link to="/login" onClick={trackLead} className={cn(CTA_DARK, "mt-1")}>
-              Get my brand kit
+              Start free
             </Link>
           </motion.div>
         ) : null}
@@ -447,7 +435,7 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.8 }}
             className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-inter-tight text-sm text-[#4b5568]"
           >
-            {["Free brand kit", "No credit card", "Ready in about a minute"].map((t) => (
+            {["10 free credits", "No credit card", "Results in about a minute"].map((t) => (
               <li key={t} className="flex items-center gap-1.5">
                 <Check className="size-4 text-[#2f55a8]" /> {t}
               </li>
@@ -717,7 +705,7 @@ function StepConnect() {
           <Typing text="yourbrand.com" />
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#2f55a8,#162544)] px-3.5 py-2 font-archivo text-xs font-medium text-white">
-          <Wand2 className="size-3.5" /> Get brand kit
+          <Wand2 className="size-3.5" /> Read my brand
         </span>
       </motion.div>
     </div>
@@ -820,7 +808,7 @@ function StepGenerate() {
 const STEPS = [
   {
     title: "Paste your website",
-    body: "Replix builds your brand kit: logo, colours, fonts and tone of voice.",
+    body: "Replix picks up your logo, colours, fonts and tone of voice. No website? Add them yourself.",
     art: <StepConnect />,
   },
   {
@@ -969,7 +957,7 @@ function BrandCapture() {
             <div className="mt-7">
               <Magnetic>
                 <Link to="/login" onClick={trackLead} className={CTA_LIGHT}>
-                  Get my brand kit <ArrowRight className="size-4" />
+                  Start free <ArrowRight className="size-4" />
                 </Link>
               </Magnetic>
             </div>
@@ -1038,7 +1026,7 @@ function StoryAd() {
           <Reveal delay={0.2} className="mt-8">
             <Magnetic>
               <Link to="/login" onClick={trackLead} className={CTA_LIGHT}>
-                Get my brand kit <ArrowRight className="size-4" />
+                Start free <ArrowRight className="size-4" />
               </Link>
             </Magnetic>
           </Reveal>
@@ -1237,8 +1225,8 @@ function Templates() {
 const WHY = [
   {
     icon: Eye,
-    title: "See your brand before you pay",
-    body: "Your brand kit is free. See how Replix reads your brand before you pick a plan.",
+    title: "Try it before you pay",
+    body: "10 free credits for product photos and ads. No credit card.",
     tone: "bg-[#f1f4fb]",
   },
   {
@@ -1307,7 +1295,7 @@ function Pricing() {
       <div className="mx-auto max-w-[1265px]">
         <SplitWords
           text="Simple plans."
-          muted="Grow when you're ready."
+          muted="Start free."
           className={cn(
             "text-center font-inter-tight text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[44px]",
             INK,
@@ -1315,7 +1303,8 @@ function Pricing() {
         />
         <Reveal delay={0.1}>
           <p className="mt-4 text-center font-inter-tight text-[17px] text-[#4b5568]">
-            Your brand kit is free. Pick a plan when you want to create. Cancel any time.
+            Start with 10 free credits for photos and ads. Plans add video and more every month.
+            Cancel any time.
           </p>
         </Reveal>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
@@ -1412,11 +1401,11 @@ const FAQ = [
   ],
   [
     "Do I need a website?",
-    "No. A website lets Replix build your brand kit in one go, but you can set your logo, colours and fonts by hand and upload product photos.",
+    "No. A website lets Replix pick up your logo, colours and fonts in one go, but you can add them by hand and upload product photos.",
   ],
   [
     "What's free?",
-    "Building your brand kit from your website is free, with no credit card. Photos, ads and videos use credits, which come with every plan.",
+    "Every new account gets 10 free credits for product photos and ads, with no credit card. Video (Shorts, UGC and Concept ads) comes with every paid plan.",
   ],
   [
     "What does one credit get me?",
@@ -1534,13 +1523,13 @@ function FinalCta() {
               Your next ad, photoshoot and video start with one link.
             </h2>
             <p className="mx-auto mt-5 max-w-[440px] font-inter-tight text-[17px] text-white/80">
-              Paste your website and get your brand kit in about a minute.
+              Start free and see your first on-brand photos in about a minute.
             </p>
             <div className="mt-8">
               <LinkBox dark />
             </div>
             <p className="mt-4 font-inter-tight text-sm text-white/75">
-              Free brand kit · No credit card
+              10 free credits · No credit card
             </p>
           </div>
         </div>

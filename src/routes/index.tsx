@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Free brand kit, no credit card.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       {
         property: "og:title",
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Free brand kit, no credit card.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://replixai.co.uk/" },
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
       {
         name: "twitter:description",
         content:
-          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Free brand kit, no credit card.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
     ],
     links: [{ rel: "canonical", href: "https://replixai.co.uk/" }],

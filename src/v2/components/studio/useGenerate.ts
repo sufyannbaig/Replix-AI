@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useCredits } from "@/hooks/use-credits";
 import { useStartGeneration } from "@/v2/data/api";
+import { canMakeVideo, VIDEO_PLAN_MESSAGE } from "@/v2/data/pricing";
 import type { GenerationRequest, StudioKey } from "@/v2/data/types";
 
 const WHAT: Record<StudioKey, string> = {
@@ -27,10 +28,18 @@ function isDevPreview() {
  */
 export function useGenerate() {
   const navigate = useNavigate();
-  const { credits } = useCredits();
+  const { credits, plan } = useCredits();
   const start = useStartGeneration();
 
   const generate = (request: GenerationRequest, options: { replace?: boolean } = {}) => {
+    const video =
+      request.studio === "ugc" || request.studio === "shorts" || request.studio === "concept";
+    if (video && !canMakeVideo(plan) && !isDevPreview()) {
+      toast.error(VIDEO_PLAN_MESSAGE, {
+        action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },
+      });
+      return;
+    }
     if (credits < request.cost && !isDevPreview()) {
       toast.error(`You need ${request.cost} credits for ${WHAT[request.studio]}.`, {
         action: { label: "Upgrade", onClick: () => navigate({ to: "/upgrade" }) },

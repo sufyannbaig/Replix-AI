@@ -107,3 +107,14 @@ export function generationCost(
   }
   return kind === "ad" ? adGenerationCost(count) : photoGenerationCost(count);
 }
+
+/**
+ * Video studios (Shorts, UGC, Concept) are for paid plans. Free accounts get their 10 credits
+ * for photos and ads only (decided 2026-11-22): a free video costs us about $0.71 or more.
+ */
+export const VIDEO_PLAN_MESSAGE =
+  "Video is on paid plans. Upgrade to make Shorts, UGC and Concept ads.";
+
+export function canMakeVideo(plan: string | null | undefined) {
+  return (plan ?? "free") !== "free";
+}

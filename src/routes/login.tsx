@@ -29,13 +29,13 @@ export const Route = createFileRoute("/login")({
       {
         name: "description",
         content:
-          "Get your free brand kit. No credit card required. Sign in or create your Replix AI account.",
+          "Start free with 10 credits. No credit card required. Sign in or create your Replix AI account.",
       },
       { property: "og:title", content: "Sign in or create an account | Replix AI" },
       {
         property: "og:description",
         content:
-          "Get your free brand kit. No credit card required. Sign in or create your Replix AI account.",
+          "Start free with 10 credits. No credit card required. Sign in or create your Replix AI account.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -296,7 +296,7 @@ function LoginPage() {
             </button>
           </p>
         ) : (
-          <p>Get your free brand kit. No credit card required.</p>
+          <p>Start free with 10 credits. No credit card required.</p>
         )}
         <p>
           Didn't get the confirmation email?{" "}

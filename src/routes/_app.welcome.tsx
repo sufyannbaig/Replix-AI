@@ -151,7 +151,7 @@ function BrandStep({ onNext }: { onNext: () => void }) {
           Step 1 · Your brand
         </p>
         <h1 className="mt-3 font-inter-tight text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[46px]">
-          Let&apos;s start with your brand.
+          Let&apos;s get Replix to know your brand.
         </h1>
         <p className="mt-4 max-w-[440px] font-inter-tight text-[17px] leading-[1.5] text-[#4b5568]">
           Paste your website. Replix captures your logo, colours, fonts and tone of voice, and uses
@@ -183,7 +183,7 @@ function BrandStep({ onNext }: { onNext: () => void }) {
             ) : (
               <Sparkles className="size-4" />
             )}
-            {kit ? "Read again" : "Get my brand kit"}
+            {kit ? "Read again" : "Read my website"}
           </button>
         </form>
         {error ? (
@@ -364,7 +364,8 @@ function PlanStep({ onFree }: { onFree: () => void }) {
           How much do you want to create?
         </h1>
         <p className="mx-auto mt-4 max-w-[520px] font-inter-tight text-[17px] text-[#4b5568]">
-          Pick a plan to make on-brand photos, ads and videos every month.
+          Your free credits cover photos and ads. Plans add Shorts, UGC and Concept videos, with
+          more credits every month.
         </p>
       </div>
       <div role="radiogroup" aria-label="Plans" className="mt-10 grid gap-4 lg:grid-cols-3">
@@ -494,7 +495,7 @@ function PlanStep({ onFree }: { onFree: () => void }) {
           onClick={onFree}
           className="font-inter-tight text-sm text-[#8a8f98] underline-offset-4 hover:text-[#0b1220] hover:underline"
         >
-          Not now, try it with my free credits
+          Not now, use my 10 free credits on photos and ads
         </button>
       </div>
     </div>

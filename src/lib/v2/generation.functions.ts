@@ -13,7 +13,13 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { GenerationJobRow, GenerationOutputRow, V2Database } from "@/v2/data/db-types";
-import { generationCost, MAX_IMAGES_PER_JOB, VIDEO_LENGTHS } from "@/v2/data/pricing";
+import {
+  canMakeVideo,
+  generationCost,
+  MAX_IMAGES_PER_JOB,
+  VIDEO_LENGTHS,
+  VIDEO_PLAN_MESSAGE,
+} from "@/v2/data/pricing";
 import { AD_LAYOUT_IDS } from "./ad-layouts";
 import { adThemeAt, editCopy, editLayouts } from "./ad-edit";
 import type {
@@ -215,6 +221,16 @@ export const startGeneration = createServerFn({ method: "POST" })
       throw new Error("Add a character for your video.");
     }
     const { admin } = await import("./generation.server");
+
+    /* Free credits are for photos and ads; video needs a paid plan. */
+    if (kind === "video") {
+      const { data: credits } = await admin
+        .from("user_credits")
+        .select("plan")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!canMakeVideo(credits?.plan)) throw new Error(VIDEO_PLAN_MESSAGE);
+    }
 
     const since = new Date(Date.now() - 60_000).toISOString();
     const { count: recent } = await admin

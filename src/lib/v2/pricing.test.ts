@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import { strictEqual } from "node:assert";
 import {
   VIDEO_LENGTHS,
+  canMakeVideo,
   generationCost,
   shortsGenerationCost,
   videoGenerationCost,
@@ -33,5 +34,15 @@ describe("video prices", () => {
   test("photos and ads stay at 2 credits each", () => {
     strictEqual(generationCost("photo", 3), 6);
     strictEqual(generationCost("ad", 2), 4);
+  });
+});
+
+describe("video on plans", () => {
+  test("free accounts can't make video, paid plans can", () => {
+    strictEqual(canMakeVideo("free"), false);
+    strictEqual(canMakeVideo(null), false);
+    strictEqual(canMakeVideo("starter"), true);
+    strictEqual(canMakeVideo("pro"), true);
+    strictEqual(canMakeVideo("scale"), true);
   });
 });

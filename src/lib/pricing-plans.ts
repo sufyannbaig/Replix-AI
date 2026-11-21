@@ -29,7 +29,7 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     ads: 10,
     features: [
       "10 free credits",
-      "AI ad creatives",
+      "Photos and ads (video on paid plans)",
       "AI captions & hooks",
       "Basic creative styles",
       "Instagram/Facebook preview",
