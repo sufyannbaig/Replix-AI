@@ -172,7 +172,11 @@ function Result({ job }: { job: GenerationJob }) {
       title={title}
       subtitle={`${studio.label} · ${request.product.name}`}
       actions={
-        <PillLink to={studio.to} variant="outline" className="h-11 px-4 text-sm">
+        <PillLink
+          to={studio.to}
+          variant="outline"
+          className="h-11 px-4 text-sm lg:h-[57px] lg:px-6 lg:text-base"
+        >
           <ArrowLeft className="size-4" /> Back to {studio.label}
         </PillLink>
       }
