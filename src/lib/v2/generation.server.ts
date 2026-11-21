@@ -255,6 +255,11 @@ async function loadUpload(ctx: Ctx, file: UploadRef, role: PromptRef["role"]): P
   if (file.pieceId) {
     return loadPiece(ctx, { id: file.pieceId, kind: "scene", name: file.name, imageUrl: "" }, role);
   }
+  /* Built-in characters and scenes are the app's own art, sent by URL. */
+  const url = (file as { url?: string }).url;
+  if (!file.path && typeof url === "string" && /^\/assets\/[\w.-]+$/.test(url)) {
+    return { role, name: file.name.slice(0, 80), dataUrl: await bundledArt(url, ctx.site) };
+  }
   if (!file.path || !file.path.startsWith(`${ctx.userId}/`) || file.isVideo) {
     throw new GenerationError("One of your uploads didn't finish. Add it again.");
   }
