@@ -337,6 +337,12 @@ export const b2bAdThemes: AdTheme[] = [
     description: "How it's done today, and the better way",
     imageUrl: themeUsVsThem,
   },
+  {
+    id: "b2b-screen",
+    name: "Product Screen",
+    description: "Your software's screenshot in a laptop",
+    imageUrl: themeFeatureBenefit,
+  },
 ];
 
 /* v1's ten ad themes (src/data/studio.ts on main), brought back on 2026-11-15. */

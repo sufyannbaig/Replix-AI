@@ -25,6 +25,7 @@ export const LAYOUT_NAMES: Record<AdLayoutId, string> = {
   stamp: "Stamp",
   magazine: "Magazine",
   banner: "Banner",
+  device: "Laptop",
 };
 
 export const EDIT_LIMITS = { headline: 60, subline: 90, cta: 24 } as const;

@@ -78,6 +78,7 @@ function AdStudioPage() {
   const [review, setReview] = useState("");
   const wantsReview = picked.some((t) => QUOTE_THEMES.includes(t.id));
   const wantsProof = picked.some((t) => t.id === "b2b-proof");
+  const wantsScreen = picked.some((t) => t.id === "b2b-screen");
   const setAudience = (next: AdAudience) => {
     setAudienceRaw(next);
     setPicked([]);
@@ -139,10 +140,7 @@ function AdStudioPage() {
             {multi ? `Creative themes · pick up to ${count}` : "Creative theme · pick one"}
           </SectionTitle>
           <div
-            className={cn(
-              "grid grid-cols-2 gap-[22px] md:grid-cols-3",
-              b2b ? "xl:grid-cols-4" : "xl:grid-cols-5",
-            )}
+            className={cn("grid grid-cols-2 gap-[22px] md:grid-cols-3", "xl:grid-cols-5")}
             role={multi ? "group" : "radiogroup"}
             aria-label={multi ? "Creative themes" : "Creative theme"}
           >
@@ -196,6 +194,13 @@ function AdStudioPage() {
                 className="resize-none rounded-[8px] bg-v2-canvas px-3 py-2 font-inter-tight text-sm leading-[1.4] text-v2-ink outline-none placeholder:text-v2-muted"
               />
             </label>
+          ) : null}
+          {wantsScreen ? (
+            <p className="rounded-[12px] bg-v2-surface p-5 font-inter-tight text-xs text-v2-muted">
+              Product Screen ads show your product's photo inside a laptop, exactly as it is. For
+              software, add a screenshot of your app as the product photo. Only the words are
+              written by AI.
+            </p>
           ) : null}
           {wantsProof ? (
             <label className="flex flex-col gap-2 rounded-[12px] bg-v2-surface p-5">

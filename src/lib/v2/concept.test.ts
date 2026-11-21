@@ -3,6 +3,8 @@ import { describe, test } from "node:test";
 import { strictEqual, ok, deepStrictEqual } from "node:assert";
 import {
   conceptShotCount,
+  moveConceptFrame,
+  redoNote,
   conceptVideoCost,
   falClipInput,
   falMergeInput,
@@ -97,5 +99,42 @@ describe("concept", () => {
     strictEqual(falClipInput({ prompt: "p", imageUrl: "https://x" }).duration, "5");
     deepStrictEqual(falMergeInput(["a", "b"]), { video_urls: ["a", "b"] });
     strictEqual(conceptVideoCost(0.25, 3).toFixed(2), "1.31");
+  });
+});
+
+describe("frame approval", () => {
+  const review = {
+    plan: {
+      bible: {} as never,
+      shots: [
+        { beat: "Hook", type: "close", frame: "a", motion: "m" },
+        { beat: "Setup", type: "wide", frame: "b", motion: "m" },
+      ],
+      vo: "",
+      voice: "",
+      music: "",
+    },
+    frames: ["u/j/1-frame.png", "u/j/2-frame.png"],
+    label: [],
+    size: "",
+    redos: 0,
+  };
+  test("moving a still moves its shot with it", () => {
+    const next = moveConceptFrame(review, 0, 1);
+    deepStrictEqual(next.frames, ["u/j/2-frame.png", "u/j/1-frame.png"]);
+    deepStrictEqual(
+      next.plan.shots.map((s) => s.frame),
+      ["b", "a"],
+    );
+    strictEqual(review.frames[0], "u/j/1-frame.png", "original untouched");
+  });
+  test("out of range is a no-op", () => {
+    strictEqual(moveConceptFrame(review, 0, -1), review);
+    strictEqual(moveConceptFrame(review, 1, 1), review);
+  });
+  test("redo note is tidied and capped", () => {
+    strictEqual(redoNote('  make it "night"\n '), "Change for this frame: make it night.");
+    strictEqual(redoNote(""), "");
+    ok(redoNote("x".repeat(500)).length < 240);
   });
 });

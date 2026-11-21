@@ -1318,7 +1318,14 @@ function keepSignedUrls(
     job.request.product && prevProduct && sameFile(prevProduct, job.request.product.imageUrl)
       ? { ...job.request.product, imageUrl: prevProduct }
       : job.request.product;
-  return { ...job, outputs, request: { ...job.request, product } };
+  /* Concept stills waiting for approval: same file, same link, so they don't reload. */
+  const review = job.review && {
+    ...job.review,
+    frames: job.review.frames.map(
+      (url) => previous.review?.frames.find((p) => p && url && sameFile(p, url)) ?? url,
+    ),
+  };
+  return { ...job, outputs, request: { ...job.request, product }, ...(review ? { review } : {}) };
 }
 
 /*
@@ -1482,6 +1489,8 @@ export function useGenerationJob(jobId: string) {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status !== "queued" && status !== "running") return false;
+      /* Concept stills waiting on the user: nothing changes until they act. */
+      if (query.state.data?.review) return false;
       if (!UUID.test(jobId)) return 500;
       /* Videos take minutes; the server checks fal at most every few seconds anyway. */
       return query.state.data?.request.kind === "video" ? 4000 : 1500;

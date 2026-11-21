@@ -85,6 +85,9 @@ import {
   falComposeInput,
   parseFalAudio,
   parseFinishedVideo,
+  CONCEPT_REVIEW,
+  redoNote,
+  type ConceptReview,
 } from "./concept";
 import {
   checkMessages,
@@ -403,7 +406,19 @@ type Plan = {
   refs: Loaded[];
   copy?: OutputCopy;
   check?: { label: string[]; person: boolean };
+  /** Product Screen: the product image (a screenshot) is used as it is, no image model. */
+  asIs?: boolean;
 };
+
+/** A data URL's bytes and type, for an image used as it is. */
+function dataUrlImage(dataUrl: string) {
+  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUrl);
+  if (!match) throw new GenerationError("Couldn't read the product image.");
+  const bin = match[2] ? atob(match[3]) : decodeURIComponent(match[3]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, type: match[1] || "image/png" };
+}
 
 /**
  * The words printed on the product and its real-world size, from one read; empty when the
@@ -678,6 +693,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
     const labels = themeId ? AD_THEME_RECIPES[themeId]?.labels : undefined;
     return {
       refs,
+      ...(layouts[i] === "device" ? { asIs: true } : {}),
       copy: {
         /* Quote and Note draw their own big quotation mark, so only other layouts add them. */
         headline:
@@ -718,7 +734,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
 }
 
 function extension(type: string) {
-  return type === "image/jpeg" ? "jpg" : "png";
+  return type === "image/jpeg" ? "jpg" : type === "image/webp" ? "webp" : "png";
 }
 
 /* ---------------------------------------------------------------------------------------
@@ -981,9 +997,49 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
   }
 }
 
+type ConceptRequest = GenerationRequest & { review?: ConceptReview };
+
+/** The product and the user's character and scene, as references for a Concept still. */
+async function conceptRefs(ctx: Ctx, request: GenerationRequest) {
+  const inputs = request.inputs;
+  if (!inputs || inputs.studio !== "concept") {
+    throw new GenerationError("This request is missing its settings.");
+  }
+  const product = await loadProduct(ctx, request.product);
+  const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
+  if (inputs.character) refs.push(await loadUpload(ctx, inputs.character, "character"));
+  if (inputs.scene) refs.push(await loadUpload(ctx, inputs.scene, "scene"));
+  return { inputs, product, refs };
+}
+
+function conceptStillPrompt(
+  product: Awaited<ReturnType<typeof loadProduct>>,
+  refs: Loaded[],
+  aspect: GenerationRequest["aspect"],
+  read: { label: string[]; size: string },
+  set: string,
+  i: number,
+  count: number,
+) {
+  return photoPrompt(
+    {
+      product,
+      refs,
+      aspect,
+      recipe: { set, notes: CONCEPT_FRAME_NOTE, composition: CONCEPT_FRAME_COMPOSITION },
+      mode: "diy",
+      label: read.label,
+      size: read.size,
+    },
+    i,
+    count,
+  );
+}
+
 /**
- * Concept ads: write the shot list, make every shot's still, and send every clip to fal at
- * once. syncConceptJob stitches them when they're all back. Never throws.
+ * Concept ads, stage 1: write the shot list and make every shot's still. The job then waits
+ * (provider "review") for the user to approve, redo or reorder the stills; only then does
+ * animateConcept spend on video. Never throws.
  */
 async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
   const request = jobRow.request as GenerationRequest;
@@ -993,13 +1049,9 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     if (!inputs || inputs.studio !== "concept") {
       throw new GenerationError("This request is missing its settings.");
     }
-    const key = falKey();
-    if (!key) throw new GenerationError(NO_VIDEO);
+    if (!falKey()) throw new GenerationError(NO_VIDEO);
     const ctx = await jobCtx(jobRow, site);
-    const product = await loadProduct(ctx, request.product);
-    const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
-    if (inputs.character) refs.push(await loadUpload(ctx, inputs.character, "character"));
-    if (inputs.scene) refs.push(await loadUpload(ctx, inputs.scene, "scene"));
+    const { product, refs } = await conceptRefs(ctx, request);
     const read = await readProduct(product.dataUrl);
     const count = conceptShotCount(jobRow.seconds ?? 15);
     const raw = await gatewayChat({
@@ -1025,20 +1077,12 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     const framePaths: string[] = new Array(count);
     let made = 0;
     const makeFrame = async (i: number) => {
-      const prompt = photoPrompt(
-        {
-          product,
-          refs,
-          aspect: request.aspect,
-          recipe: {
-            set: conceptFrameSet(shots[i], bible),
-            notes: CONCEPT_FRAME_NOTE,
-            composition: CONCEPT_FRAME_COMPOSITION,
-          },
-          mode: "diy",
-          label: read.label,
-          size: read.size,
-        },
+      const prompt = conceptStillPrompt(
+        product,
+        refs,
+        request.aspect,
+        read,
+        conceptFrameSet(shots[i], bible),
         i,
         count,
       );
@@ -1080,6 +1124,125 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       image_path: framePaths[0],
     });
     if (ins.error) throw new Error(ins.error.message);
+
+    const review: ConceptReview = {
+      plan,
+      frames: framePaths,
+      label: read.label,
+      size: read.size,
+      redos: 0,
+    };
+    await admin
+      .from("generation_jobs")
+      .update({
+        provider: CONCEPT_REVIEW,
+        provider_cost_usd: Number(cost.toFixed(5)),
+        progress: 0.35,
+        request: { ...request, review } as ConceptRequest,
+      })
+      .eq("id", jobRow.id);
+  } catch (error) {
+    console.error("[v2 concept] job failed", jobRow.id, error);
+    const message =
+      error instanceof GenerationError
+        ? error.message
+        : "Something went wrong. Your credits are back.";
+    await settleFailed(jobRow.id, message, cost);
+  }
+}
+
+/** Load a Concept job that is waiting on the user, or say why it can't be changed. */
+function reviewOf(jobRow: GenerationJobRow) {
+  const request = jobRow.request as ConceptRequest;
+  if (jobRow.status !== "running" || jobRow.provider !== CONCEPT_REVIEW || !request.review) {
+    throw new GenerationError("These frames can't be changed any more.");
+  }
+  return { request, review: request.review };
+}
+
+/** Save a changed review (new order, a redone still) on the job. */
+async function saveReview(
+  jobRow: GenerationJobRow,
+  request: ConceptRequest,
+  review: ConceptReview,
+  extraCost = 0,
+) {
+  const { error } = await admin
+    .from("generation_jobs")
+    .update({
+      request: { ...request, review },
+      provider_cost_usd: Number((Number(jobRow.provider_cost_usd ?? 0) + extraCost).toFixed(5)),
+    })
+    .eq("id", jobRow.id)
+    .eq("provider", CONCEPT_REVIEW);
+  if (error) throw new Error(error.message);
+  /* The first still is the poster until the video lands. */
+  if (review.frames[0] !== request.review?.frames[0]) {
+    await admin
+      .from("generation_outputs")
+      .update({ image_path: review.frames[0] })
+      .eq("job_id", jobRow.id)
+      .eq("position", 0);
+  }
+}
+
+/** Put the stills in a new order (each shot's motion travels with its still). */
+export async function reorderConceptFrames(jobRow: GenerationJobRow, review: ConceptReview) {
+  const current = reviewOf(jobRow);
+  await saveReview(jobRow, current.request, review);
+}
+
+/** Make one still again, with the user's change if they gave one. One image call, on us. */
+export async function redoConceptFrame(
+  jobRow: GenerationJobRow,
+  site: Site,
+  index: number,
+  note: string,
+) {
+  const { request, review } = reviewOf(jobRow);
+  const { plan } = review;
+  const count = review.frames.length;
+  if (index < 0 || index >= count) throw new GenerationError("Pick a frame.");
+  const ctx = await jobCtx(jobRow, site);
+  const { product, refs } = await conceptRefs(ctx, request);
+  const set = [conceptFrameSet(plan.shots[index], plan.bible), redoNote(note)]
+    .filter(Boolean)
+    .join(" ");
+  const frame = await generateImage(
+    conceptStillPrompt(product, refs, request.aspect, review, set, index, count),
+    refs,
+  );
+  const path = `${jobRow.user_id}/${jobRow.id}/${index + 1}-frame-${review.redos + 1}.${extension(frame.type)}`;
+  const up = await admin.storage
+    .from("outputs")
+    .upload(path, frame.bytes, { contentType: frame.type, upsert: true });
+  if (up.error) throw new Error(up.error.message);
+  const old = review.frames[index];
+  const frames = [...review.frames];
+  frames[index] = path;
+  await saveReview(jobRow, request, { ...review, frames, redos: review.redos + 1 }, EST_USD.image);
+  if (old && old !== path) await admin.storage.from("outputs").remove([old]);
+}
+
+/**
+ * Concept ads, stage 2 (after the user approved the stills): voice, music and every clip go
+ * to fal at once. syncConceptJob stitches them when they're all back. Never throws.
+ */
+export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
+  const request = jobRow.request as ConceptRequest;
+  let cost = Number(jobRow.provider_cost_usd ?? 0);
+  try {
+    const inputs = request.inputs;
+    const review = request.review;
+    if (!inputs || inputs.studio !== "concept" || !review) {
+      throw new GenerationError("This request is missing its settings.");
+    }
+    const key = falKey();
+    if (!key) throw new GenerationError(NO_VIDEO);
+    const { plan, frames: framePaths } = review;
+    const { bible, shots } = plan;
+    const count = shots.length;
+    const product = { name: request.product.name };
 
     /* Voice and music render while the clips do; a failed submit only drops that track. */
     const seconds = count * 5;
@@ -1468,8 +1631,10 @@ export async function runJob(jobRow: GenerationJobRow, site: Site) {
     let done = 0;
     const runOne = async (plan: Plan, position: number) => {
       try {
-        let image = await generateImage(plan.prompt, plan.refs);
-        cost += EST_USD.image;
+        let image = plan.asIs
+          ? dataUrlImage(plan.refs[0].dataUrl)
+          : await generateImage(plan.prompt, plan.refs);
+        if (!plan.asIs) cost += EST_USD.image;
         /* Photo Studio: check against the product and make it again once if it fails. The
            retry is on us; the customer pays for one photo either way. */
         if (plan.check) {

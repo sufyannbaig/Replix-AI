@@ -35,6 +35,8 @@ How to read the priority: **A** = fix before launch (money or legal risk), **B**
 
 What held up well: credits are reserved, settled and refunded in SQL by the service role only; the browser's price is ignored; Pro templates are checked on the server; uploads are read only from the user's own folder; image links pass an SSRF guard; the fal webhook trusts nothing in its body.
 
+**Status 2026-11-22:** item 1 fixed (copy says credits; Free is 10 credits for photos and ads). Item 2 built (credit packs, Stripe; prices for Ben to confirm). Item 4 fixed (video is paid-only, checked on the server). Item 6 fixed (pg_cron sweeper every 15 min). Item 7 built (delete a result, delete the account; no retention rule yet). Still open: 3, 5, 8, 9, 10, 11. Details in `V2_NEXT_SESSION.md` section 10.
+
 ## 2. Legal and platform rules the ads can break
 
 1. **Invented testimonials (A).** The Testimonial theme writes a quote "a real customer would say" and sets it in quotation marks. That is a made-up review. The US FTC rule on reviews and testimonials (in force October 2024) and the UK's fake-review ban (DMCC Act, April 2025) both prohibit this, and Meta rejects it. **Fix:** the theme asks the user to paste a real review (later: pull from Shopify reviews); with none, write it as the brand's own line without quotation marks.

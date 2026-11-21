@@ -264,6 +264,11 @@ export const AD_THEME_RECIPES: Record<
     layout: "The product looking clearly better organised and more professional, in a crisp set.",
     labels: ["The old way", "With us"],
   },
+  "b2b-screen": {
+    story:
+      "The software itself is on screen, so the headline says what it does for the buyer's work, plainly and specifically. Never invent statistics, percentages, savings, ratings or customer numbers.",
+    layout: "No photo is made: the customer's own screenshot is shown in a laptop.",
+  },
   "problem-fix": {
     story: "Name the customer's pain in the headline, show the product as the fix.",
     layout:
@@ -309,13 +314,15 @@ export function testimonialStory(review?: string | null, themeId = "testimonial"
 /** The themes that quote a customer, and only ever a real, pasted review. */
 export const QUOTE_THEMES = ["testimonial", "b2b-quote"];
 
-/** The four B2B themes and the consumer theme whose layouts each one uses. */
+/** The B2B themes and the consumer theme whose layouts each one uses. */
 export const B2B_LAYOUT_THEME: Record<string, string> = {
   "b2b-problem": "problem-solution",
   /* Poster and Banner keep the text clear of the product (Magazine's button sat on it, live 2026-11-17). */
   "b2b-proof": "bold-claim",
   "b2b-quote": "testimonial",
   "b2b-old-way": "us-vs-them",
+  /* Its own layout (the laptop), with the screenshot as given: no image model. */
+  "b2b-screen": "b2b-screen",
 };
 export const isB2bTheme = (id: string | null | undefined) => !!id && id in B2B_LAYOUT_THEME;
 

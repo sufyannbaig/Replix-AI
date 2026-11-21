@@ -142,6 +142,7 @@ export type AdThemeId =
   | "b2b-proof"
   | "b2b-quote"
   | "b2b-old-way"
+  | "b2b-screen"
   | "problem-fix"
   | "bold-offer"
   | "lifestyle";
@@ -439,4 +440,10 @@ export type GenerationJob = {
   outputs: GenerationOutput[];
   /** Server jobs that failed: why, in words safe to show. */
   error?: string | null;
+  /** Concept ads: the stills waiting for the user's approval before any video is made. */
+  review?: {
+    frames: string[];
+    shots: { beat: string; frame: string }[];
+    redosLeft: number;
+  };
 };

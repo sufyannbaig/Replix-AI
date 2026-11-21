@@ -19,6 +19,7 @@ export const AD_LAYOUT_IDS = [
   "stamp",
   "magazine",
   "banner",
+  "device",
 ] as const;
 
 export type AdLayoutId = (typeof AD_LAYOUT_IDS)[number];
@@ -127,6 +128,7 @@ export const LAYOUT_PHOTO_BRIEF: Record<AdLayoutId, string> = {
     "A dynamic hero shot that stops the scroll, not a plain packshot. The whole product is sharp, filling about 50% of the frame height, standing left of centre with its middle about 40% from the left edge and slightly low in the frame. Around it, energy that fits this product: its own liquid splashing, its ingredients or pieces flying, powder, petals or a burst of light in motion. Bold, dramatic colour lighting on a backdrop of one rich colour that suits the product. The top right quarter of the frame and the bottom left corner are plain backdrop with nothing in them, not even the product's edge. Never a product standing still on a plain grey or white set.",
   banner:
     "Premium commercial photography in the scene described, like a top paid-social campaign. The whole product is the sharp, clear hero, centred, about 60% of the frame height, with clear space above and below it and nothing important near the edges, because the frame may be trimmed slightly. Its label faces the camera. The bottom edge of the frame is the calm surface or background the product stands in front of, since the ad continues below it in that colour.",
+  device: "No photo is made: the customer's own screenshot is set in a laptop as it is.",
   magazine:
     "Candid lifestyle moment with the product held or placed close to camera, label facing it and at least a quarter of the frame height, in the middle or lower part of the frame. The top 30% of the frame is calm, simple and slightly darker (shade, a wall, sky), with nothing important in it.",
 };
@@ -1849,6 +1851,197 @@ function banner(ctx: Ctx): AdNode {
   );
 }
 
+/**
+ * Product Screen (B2B): the customer's own software screenshot in a laptop on a brand-colour
+ * background. The screenshot is drawn as given, never redrawn by an image model, so the
+ * product on screen is exactly the real one.
+ */
+function device(ctx: Ctx): AdNode {
+  const wide = ctx.aspect === "16:9";
+  const story = ctx.aspect === "9:16";
+  const mid = shade(ctx.accent, 0.24);
+  const ink = inkOn(mid);
+  const inkRgb = hexToRgb(ink)!;
+  const soft = `rgba(${inkRgb.r},${inkRgb.g},${inkRgb.b},0.8)`;
+  const cta =
+    [ctx.accent, shade(ctx.accent, 0.45, true), shade(ctx.accent, 0.75, true)].find(
+      (c) => contrast(c, mid) >= 3,
+    ) ?? ink;
+
+  /* The laptop: a lid with a thin bezel around the screenshot, and a wider base. */
+  const screenW = Math.round(ctx.width * (wide ? 0.44 : story ? 0.78 : 0.7));
+  const bezel = Math.round(screenW * 0.022);
+  const screenH = Math.round(screenW * 0.625);
+  const lidW = screenW + bezel * 2;
+  const lidH = screenH + bezel * 2;
+  const baseW = Math.min(ctx.width - 8, Math.round(lidW * 1.16));
+  const baseH = Math.max(10, Math.round(lidW * 0.034));
+  const laptopH = lidH + baseH;
+  const low = story ? ctx.bottom : Math.round(ctx.pad * 0.8);
+  const laptopLeft = wide ? ctx.width - ctx.pad - baseW : Math.round((ctx.width - baseW) / 2);
+  const laptopTop = wide ? Math.round((ctx.height - laptopH) / 2) : ctx.height - low - laptopH;
+  const radius = Math.round(bezel * 1.6);
+
+  /* The words: above the laptop, or to its left on a wide frame. */
+  const logoH = logoHeight(ctx);
+  const textTop = ctx.top + (logoH ? logoH + Math.round(ctx.pad * 0.4) : 0);
+  const box = wide
+    ? {
+        left: ctx.pad,
+        top: textTop,
+        width: laptopLeft - ctx.pad * 2,
+        height: ctx.height - textTop - ctx.bottom,
+      }
+    : {
+        left: ctx.pad,
+        top: textTop,
+        width: ctx.width - ctx.pad * 2,
+        height: laptopTop - textTop - Math.round(ctx.pad * 0.5),
+      };
+  const words = ctx.copy.headline;
+  const sub = ctx.copy.subline ?? "";
+  const glyph = 0.56;
+  const measure = ctx.fit ?? ((t: string, s: number) => t.length * s * glyph);
+  const subSize = Math.round(ctx.width * (wide ? 0.016 : 0.03));
+  const ctaSize = Math.round(ctx.width * (wide ? 0.014 : 0.026));
+  const ctaPad = Math.round(ctaSize * 0.6);
+  const gap = Math.round(ctaSize * 0.9);
+  const fitW = Math.round(box.width * 0.9);
+  const rest =
+    (sub
+      ? 14 + subSize * 1.3 * Math.max(1, Math.ceil((sub.length * subSize * 0.55) / box.width))
+      : 0) +
+    gap +
+    ctaSize +
+    2 * ctaPad;
+  let size = fitHeadline(words, fitW, {
+    maxLines: wide ? 4 : 3,
+    max: Math.round(ctx.width * (wide ? 0.05 : 0.09)),
+    min: 36,
+    glyph,
+    measure: ctx.fit,
+  });
+  while (size > 36 && measuredLines(words, fitW, size, measure) * size * 1.05 + rest > box.height)
+    size -= 3;
+  const align = wide ? "flex-start" : "center";
+  const textAlign = wide ? "left" : "center";
+
+  return el(
+    "div",
+    {
+      display: "flex",
+      position: "relative",
+      width: ctx.width,
+      height: ctx.height,
+      background: mid,
+      backgroundImage: `linear-gradient(160deg, ${shade(ctx.accent, 0.36)} 0%, ${shade(ctx.accent, 0.14)} 100%)`,
+    },
+    [
+      el(
+        "div",
+        {
+          position: "absolute",
+          ...box,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: align,
+          justifyContent: "center",
+        },
+        [
+          el(
+            "div",
+            {
+              fontFamily: ctx.heading(FONT.display),
+              fontWeight: 800,
+              fontSize: size,
+              lineHeight: 1.05,
+              letterSpacing: -1,
+              color: ink,
+              textAlign,
+            },
+            words,
+          ),
+          ...(sub
+            ? [
+                el(
+                  "div",
+                  {
+                    marginTop: 14,
+                    fontFamily: ctx.body,
+                    fontWeight: 500,
+                    fontSize: subSize,
+                    lineHeight: 1.3,
+                    color: soft,
+                    textAlign,
+                  },
+                  sub,
+                ),
+              ]
+            : []),
+          el(
+            "div",
+            {
+              display: "flex",
+              marginTop: gap,
+              padding: `${ctaPad}px ${Math.round(ctaSize * 1.4)}px`,
+              borderRadius: 999,
+              background: cta,
+              color: inkOn(cta),
+              fontFamily: ctx.body,
+              fontWeight: 700,
+              fontSize: ctaSize,
+            },
+            ctx.copy.cta,
+          ),
+        ],
+      ),
+      el(
+        "div",
+        {
+          position: "absolute",
+          left: laptopLeft + Math.round((baseW - lidW) / 2),
+          top: laptopTop,
+          width: lidW,
+          height: lidH,
+          display: "flex",
+          padding: bezel,
+          background: "#16181D",
+          borderTopLeftRadius: radius,
+          borderTopRightRadius: radius,
+          boxShadow: "0 30px 80px rgba(0,0,0,0.35)",
+        },
+        el(
+          "img",
+          { width: screenW, height: screenH, objectFit: "cover", objectPosition: "top" },
+          undefined,
+          { src: ctx.photo, width: screenW, height: screenH },
+        ),
+      ),
+      el("div", {
+        position: "absolute",
+        left: laptopLeft,
+        top: laptopTop + lidH,
+        width: baseW,
+        height: baseH,
+        backgroundImage: "linear-gradient(180deg, #E3E6EB 0%, #A7ADB7 100%)",
+        borderBottomLeftRadius: baseH,
+        borderBottomRightRadius: baseH,
+      }),
+      el("div", {
+        position: "absolute",
+        left: laptopLeft + Math.round(baseW * 0.43),
+        top: laptopTop + lidH,
+        width: Math.round(baseW * 0.14),
+        height: Math.round(baseH * 0.45),
+        background: "#8D929C",
+        borderBottomLeftRadius: baseH,
+        borderBottomRightRadius: baseH,
+      }),
+      ...logoMark(ctx, "dark", { left: ctx.pad, top: ctx.top }),
+    ],
+  );
+}
+
 /** Lifestyle B: a masthead-style headline at the top with a thin rule, subline and CTA text. */
 function magazine(ctx: Ctx): AdNode {
   const tall = ctx.height > ctx.width;
@@ -1966,6 +2159,7 @@ const LAYOUTS: Record<AdLayoutId, (ctx: Ctx) => AdNode> = {
   stamp,
   magazine,
   banner,
+  device,
 };
 
 /**
@@ -2007,6 +2201,8 @@ export const THEME_LAYOUTS: Record<string, AdLayoutId[]> = {
   "problem-fix": ["hook", "caption"],
   "bold-offer": ["poster", "stamp"],
   lifestyle: ["editorial", "magazine"],
+  /* B2B Product Screen: the screenshot in a laptop, no image model. */
+  "b2b-screen": ["device"],
 };
 
 /** Default layout for each Ad Studio theme. */

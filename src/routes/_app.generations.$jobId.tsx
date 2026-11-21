@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { EditPhotoDialog } from "@/v2/components/studio/EditPhotoDialog";
 import { EditAdDialog } from "@/v2/components/studio/EditAdDialog";
+import { ConceptFrames } from "@/v2/components/studio/ConceptFrames";
 import { FeedbackBar } from "@/v2/components/studio/FeedbackBar";
 import { toast } from "sonner";
 import { useBrandKits, useGenerationJob } from "@/v2/data/api";
@@ -187,7 +188,9 @@ function Result({ job }: { job: GenerationJob }) {
       ? `Your ${plural ? noun[1] : noun[0]} ${plural ? "are" : "is"} ready`
       : status === "failed"
         ? "Generation didn't finish"
-        : `Creating your ${plural ? noun[1] : noun[0]}…`;
+        : job.review
+          ? "Check your frames"
+          : `Creating your ${plural ? noun[1] : noun[0]}…`;
 
   return (
     <AppShell
@@ -205,19 +208,23 @@ function Result({ job }: { job: GenerationJob }) {
     >
       <div className="mt-8 grid gap-6 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <section className="flex min-w-0 flex-col gap-4 rounded-[18px] bg-v2-surface p-3 sm:p-4">
-          <div className="flex items-center justify-center rounded-[12px] bg-v2-canvas p-4 sm:h-[520px] sm:p-6 lg:h-[560px]">
-            {status === "done" && selected ? (
-              <Viewer job={job} output={selected} />
-            ) : status === "failed" ? (
-              <Failed
-                job={job}
-                pending={pending}
-                onRetry={() => generate(request, { replace: true })}
-              />
-            ) : (
-              <Progress job={job} />
-            )}
-          </div>
+          {job.review && status === "running" ? (
+            <ConceptFrames job={job} />
+          ) : (
+            <div className="flex items-center justify-center rounded-[12px] bg-v2-canvas p-4 sm:h-[520px] sm:p-6 lg:h-[560px]">
+              {status === "done" && selected ? (
+                <Viewer job={job} output={selected} />
+              ) : status === "failed" ? (
+                <Failed
+                  job={job}
+                  pending={pending}
+                  onRetry={() => generate(request, { replace: true })}
+                />
+              ) : (
+                <Progress job={job} />
+              )}
+            </div>
+          )}
 
           {request.count > 1 ? (
             <div

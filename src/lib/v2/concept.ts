@@ -359,3 +359,47 @@ export function falMergeInput(urls: string[]) {
 export function conceptVideoCost(frameCost: number, shots: number) {
   return frameCost + shots * CONCEPT_SHOT_SECONDS * CONCEPT_CLIP_USD_PER_SECOND + CONCEPT_MERGE_USD;
 }
+
+/* ---------- Frame approval (stills first, video only after the user approves) ---------- */
+
+/** `generation_jobs.provider` while a Concept ad's stills wait for the user. */
+export const CONCEPT_REVIEW = "review";
+/** Free redos of single stills per ad (each is one image call, on us). */
+export const CONCEPT_REDO_LIMIT = 6;
+
+/** What a Concept job keeps in its request while the user checks the stills. */
+export type ConceptReview = {
+  plan: ConceptPlan;
+  /** Storage paths of the stills, in shot order. */
+  frames: string[];
+  label: string[];
+  size: string;
+  redos: number;
+};
+
+/** Move a still (and its shot) one place left or right. Out of range: unchanged. */
+export function moveConceptFrame(review: ConceptReview, index: number, dir: -1 | 1): ConceptReview {
+  const to = index + dir;
+  const n = review.frames.length;
+  if (index < 0 || index >= n || to < 0 || to >= n) return review;
+  const swap = <T>(list: T[]) => {
+    const next = [...list];
+    [next[index], next[to]] = [next[to], next[index]];
+    return next;
+  };
+  return {
+    ...review,
+    frames: swap(review.frames),
+    plan: { ...review.plan, shots: swap(review.plan.shots) },
+  };
+}
+
+/** The user's change for one redo, tidied into a line for the image prompt. */
+export function redoNote(note: string | null | undefined) {
+  const clean = (note ?? "")
+    .replace(/[\n\r"]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+  return clean ? `Change for this frame: ${clean}.` : "";
+}

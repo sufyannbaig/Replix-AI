@@ -22,6 +22,12 @@ import {
 } from "@/v2/data/pricing";
 import { AD_LAYOUT_IDS } from "./ad-layouts";
 import { adThemeAt, editCopy, editLayouts } from "./ad-edit";
+import {
+  CONCEPT_REDO_LIMIT,
+  CONCEPT_REVIEW,
+  moveConceptFrame,
+  type ConceptReview,
+} from "./concept";
 import type {
   AdDesign,
   AspectRatio,
@@ -339,6 +345,18 @@ function adEdit(job: GenerationJobRow, o: GenerationOutputRow, urls: Map<string,
   };
 }
 
+/** A Concept ad waiting on the user: its stills (signed), shots and redos left. */
+async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobRow) {
+  const review = (row.request as { review?: ConceptReview }).review;
+  if (row.status !== "running" || row.provider !== CONCEPT_REVIEW || !review) return undefined;
+  const { data } = await db.storage.from("outputs").createSignedUrls(review.frames, 60 * 60 * 6);
+  return {
+    frames: review.frames.map((p) => data?.find((d) => d.path === p)?.signedUrl ?? ""),
+    shots: review.plan.shots.map((s) => ({ beat: s.beat, frame: s.frame })),
+    redosLeft: Math.max(0, CONCEPT_REDO_LIMIT - review.redos),
+  };
+}
+
 function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<string, string>) {
   const design = (o: GenerationOutputRow) => adDesign(row, o);
   const job: GenerationJob & { error?: string | null; refunded?: boolean } = {
@@ -388,7 +406,7 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     const stalled =
       (row.status === "queued" && age > STALE_QUEUED_MS) ||
       (row.status === "running" && age > (video ? STALE_VIDEO_MS : STALE_RUNNING_MS));
-    if (stalled) {
+    if (stalled && row.provider !== CONCEPT_REVIEW) {
       const { admin } = await import("./generation.server");
       /* A Short's first frame alone isn't a result: only a finished video counts. */
       let outputsDone = admin
@@ -410,8 +428,67 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     const { data: outputs } = await db.from("generation_outputs").select("*").eq("job_id", row.id);
     const urls = await signOutputs(db, outputs ?? []);
     const job = toJob(row, outputs ?? [], urls);
+    const review = await conceptReview(db, row);
     await refreshProductImage(db, job.request);
-    return job;
+    return review ? { ...job, review } : job;
+  });
+
+const ConceptAction = z.discriminatedUnion("action", [
+  z.object({ jobId: z.string().uuid(), action: z.literal("approve") }),
+  z.object({
+    jobId: z.string().uuid(),
+    action: z.literal("redo"),
+    index: z.number().int().min(0).max(11),
+    note: z.string().max(200).optional(),
+  }),
+  z.object({
+    jobId: z.string().uuid(),
+    action: z.literal("move"),
+    index: z.number().int().min(0).max(11),
+    dir: z.union([z.literal(-1), z.literal(1)]),
+  }),
+]);
+
+/**
+ * Concept ads wait for the user after the stills: approve them (the video is made), redo
+ * one (with an optional change, free up to CONCEPT_REDO_LIMIT) or move one.
+ */
+export const reviewConceptFrames = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => ConceptAction.parse(data))
+  .handler(async ({ data, context }) => {
+    const server = await import("./generation.server");
+    const { data: row } = await server.admin
+      .from("generation_jobs")
+      .select("*")
+      .eq("id", data.jobId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const review = (row?.request as { review?: ConceptReview } | undefined)?.review;
+    if (!row || row.status !== "running" || row.provider !== CONCEPT_REVIEW || !review) {
+      throw new Error("These frames can't be changed any more.");
+    }
+    if (data.action === "move") {
+      await server.reorderConceptFrames(row, moveConceptFrame(review, data.index, data.dir));
+      return { ok: true };
+    }
+    if (data.action === "redo") {
+      if (review.redos >= CONCEPT_REDO_LIMIT) {
+        throw new Error("No redos left on this ad. Approve the frames or start a new one.");
+      }
+      await server.redoConceptFrame(row, requestSite(), data.index, data.note ?? "");
+      return { ok: true };
+    }
+    /* Claim it first, so a double click can't send the clips twice. */
+    const { data: claimed } = await server.admin
+      .from("generation_jobs")
+      .update({ provider: "approved", progress: 0.38 })
+      .eq("id", row.id)
+      .eq("provider", CONCEPT_REVIEW)
+      .select("*");
+    if (!claimed?.length) return { ok: false };
+    await server.animateConcept(claimed[0], requestSite());
+    return { ok: true };
   });
 
 const SaveAd = z.object({

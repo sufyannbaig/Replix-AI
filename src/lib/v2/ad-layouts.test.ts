@@ -147,3 +147,31 @@ describe("buildAdLayout", () => {
     }
   });
 });
+
+describe("Product Screen (device)", () => {
+  test("shows the screenshot as given, inside the laptop, on every frame", () => {
+    for (const aspect of ASPECTS) {
+      const { width, height, tree } = buildAdLayout({
+        layout: "device",
+        aspect,
+        photo: "data:image/png;base64,SCREEN",
+        copy: { headline: "Close the books in a day", cta: "Book a demo" },
+        colors: ["#2B59C3"],
+      });
+      const imgs: AdNode[] = [];
+      const walk = (n: AdNode) => {
+        if (n.type === "img") imgs.push(n);
+        const c = n.props.children;
+        if (Array.isArray(c)) c.forEach(walk);
+        else if (c && typeof c !== "string") walk(c);
+      };
+      walk(tree);
+      const shot = imgs.find((n) => n.props.src === "data:image/png;base64,SCREEN");
+      ok(shot, "screenshot drawn");
+      const w = shot!.props.width as number;
+      const h = shot!.props.height as number;
+      ok(w > width * 0.4 && w < width, "screen width");
+      ok(h < height, "screen height");
+    }
+  });
+});
