@@ -107,6 +107,20 @@ const Inputs = z.union([
     cta: str(30).optional(),
     proof: z.string().trim().max(200).optional(),
   }),
+  z.object({
+    studio: z.literal("ugc"),
+    mode: z.literal("templates"),
+    templateId: str(120),
+    script: z.string().trim().max(600),
+  }),
+  z.object({
+    studio: z.literal("ugc"),
+    mode: z.literal("custom"),
+    script: z.string().trim().max(600),
+    character: Upload.nullable(),
+    scene: Upload.nullable(),
+    transition: str(40),
+  }),
   z.object({ studio: z.literal("shorts"), mode: z.literal("templates"), templateId: str(120) }),
   z.object({
     studio: z.literal("shorts"),
@@ -117,7 +131,7 @@ const Inputs = z.union([
   }),
 ]);
 const Request = z.object({
-  studio: z.enum(["photo", "ad", "shorts"]),
+  studio: z.enum(["photo", "ad", "shorts", "ugc"]),
   kind: z.enum(["photo", "ad", "video"]),
   inputs: Inputs,
   product: z.object({ id: str(200), name: str(200), imageUrl: str(4000) }),
@@ -155,14 +169,29 @@ export const startGeneration = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => Request.parse(data))
   .handler(async ({ data, context }): Promise<{ jobId: string; cost: number }> => {
     if (data.inputs.studio !== data.studio) throw new Error("Studio and inputs don't match.");
-    const kind = data.studio === "ad" ? "ad" : data.studio === "shorts" ? "video" : "photo";
+    const kind =
+      data.studio === "ad"
+        ? "ad"
+        : data.studio === "shorts" || data.studio === "ugc"
+          ? "video"
+          : "photo";
     if (data.kind !== kind) throw new Error("Wrong generation kind.");
     /* One Short per job; its length is what's charged and what fal is asked for. */
-    const seconds = kind === "video" ? (data.seconds ?? 5) : null;
+    const ugc = data.studio === "ugc";
+    const seconds = kind === "video" ? (data.seconds ?? (ugc ? 8 : 5)) : null;
     if (kind === "video" && data.count !== 1) throw new Error("One video at a time.");
     /* Only the lengths the studio offers: each is priced and tested. */
-    if (seconds !== null && !(VIDEO_LENGTHS.shorts as readonly number[]).includes(seconds)) {
-      throw new Error("Pick 5, 8 or 10 seconds.");
+    const lengths: readonly number[] = ugc ? VIDEO_LENGTHS.ugc : VIDEO_LENGTHS.shorts;
+    if (seconds !== null && !lengths.includes(seconds)) {
+      throw new Error(ugc ? "Pick 8 or 15 seconds." : "Pick 5, 8 or 10 seconds.");
+    }
+    if (
+      ugc &&
+      data.inputs.studio === "ugc" &&
+      data.inputs.mode === "custom" &&
+      !data.inputs.character
+    ) {
+      throw new Error("Add a character for your video.");
     }
     const { admin } = await import("./generation.server");
 

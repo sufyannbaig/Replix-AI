@@ -1212,7 +1212,10 @@ export function useStartGeneration() {
   return useMutation({
     mutationFn: async (request: GenerationRequest): Promise<GenerationJob> => {
       const real =
-        request.studio === "photo" || request.studio === "ad" || request.studio === "shorts";
+        request.studio === "photo" ||
+        request.studio === "ad" ||
+        request.studio === "shorts" ||
+        request.studio === "ugc";
       const userId = real ? await backendUser("generation_jobs") : null;
       /* Never hand a signed-in user a sample result: say it didn't run (no credits used). */
       if (real && (!userId || !request.inputs) && (await signedInUserId())) {

@@ -43,6 +43,20 @@ import {
   type ShortRecipe,
 } from "./shorts";
 import {
+  CUSTOM_UGC,
+  UGC_FRAME_COMPOSITION,
+  UGC_FRAME_NOTE,
+  UGC_MODEL,
+  UGC_USD_PER_SECOND,
+  cleanScript,
+  falUgcInput,
+  parseScript,
+  ugcRecipe,
+  ugcScriptMessages,
+  ugcSlug,
+  ugcVideoPrompt,
+} from "./ugc";
+import {
   checkMessages,
   fixLine,
   labelMessages,
@@ -232,7 +246,7 @@ async function loadUpload(ctx: Ctx, file: UploadRef, role: PromptRef["role"]): P
   return { role, name: file.name.slice(0, 80), dataUrl: await fromStorage("uploads", file.path) };
 }
 
-async function loadTemplate(ctx: Ctx, id: string, studio: "photo" | "ad" | "shorts") {
+async function loadTemplate(ctx: Ctx, id: string, studio: "photo" | "ad" | "shorts" | "ugc") {
   const { data } = await admin
     .from("templates")
     .select("*")
@@ -750,6 +764,80 @@ async function shortPlan(ctx: Ctx, job: GenerationRequest, inputs: GenerationInp
   return { plan, motion: motionPrompt({ productName: product.name, motion, note: job.note }) };
 }
 
+/**
+ * AI UGC: the script (theirs, or written to the length), the creator still holding the
+ * product, and the talking-video prompt that speaks the script.
+ */
+async function ugcPlan(
+  ctx: Ctx,
+  job: GenerationRequest,
+  inputs: GenerationInputs,
+  seconds: number,
+) {
+  if (inputs.studio !== "ugc") throw new GenerationError("Wrong studio.");
+  const product = await loadProduct(ctx, job.product);
+  const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
+  let recipe = CUSTOM_UGC;
+  if (inputs.mode === "templates") {
+    const tpl = await loadTemplate(ctx, inputs.templateId, "ugc");
+    recipe = ugcRecipe(tpl.slug || ugcSlug(tpl.id));
+    /* The template's creator is the person in the video. */
+    refs.push({
+      role: "character",
+      name: "the creator",
+      dataUrl: await bundledArt(catalogImage("ugc", tpl.slug || ugcSlug(tpl.id)), ctx.site),
+    });
+  } else {
+    if (!inputs.character) throw new GenerationError("Add a character for your video.");
+    refs.push(await loadUpload(ctx, inputs.character, "character"));
+    if (inputs.scene) refs.push(await loadUpload(ctx, inputs.scene, "scene"));
+  }
+
+  let script = cleanScript(inputs.script ?? "", seconds);
+  if (!script) {
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: ugcScriptMessages({
+        productName: product.name,
+        description: product.description,
+        recipe,
+        seconds,
+        note: job.note,
+      }),
+    });
+    script = cleanScript(parseScript(parseJsonBlock(raw)), seconds);
+    if (!script) throw new GenerationError("Couldn't write a script. Add your own and try again.");
+  }
+
+  const read = await readProduct(product.dataUrl);
+  const prompt = photoPrompt(
+    {
+      product,
+      refs,
+      aspect: job.aspect,
+      recipe: {
+        set: recipe.set,
+        light: recipe.light,
+        camera: recipe.camera,
+        notes: UGC_FRAME_NOTE,
+        composition: UGC_FRAME_COMPOSITION,
+      },
+      mode: "diy",
+      label: read.label,
+      size: read.size,
+    },
+    0,
+    1,
+  );
+  const plan: Plan = { prompt, refs, check: { label: read.label, person: true } };
+  return {
+    plan,
+    motion: ugcVideoPrompt({ productName: product.name, recipe, script }),
+    script,
+  };
+}
+
 async function settleFailed(jobId: string, error: string, cost: number) {
   await admin.rpc("v2_settle_generation_job", {
     _job_id: jobId,
@@ -770,8 +858,13 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
     const key = falKey();
     if (!key) throw new GenerationError(NO_VIDEO);
     const ctx = await jobCtx(jobRow, site);
-    const { plan, motion } = await shortPlan(ctx, request, inputs);
-    cost += EST_USD.text;
+    const ugc = jobRow.studio === "ugc";
+    const seconds = jobRow.seconds ?? (ugc ? 8 : 5);
+    const { plan, motion } = ugc
+      ? await ugcPlan(ctx, request, inputs, seconds)
+      : await shortPlan(ctx, request, inputs);
+    /* The label read, plus the script for UGC. */
+    cost += EST_USD.text * (ugc ? 2 : 1);
     await admin.from("generation_jobs").update({ progress: 0.15 }).eq("id", jobRow.id);
 
     let frame = await generateImage(plan.prompt, plan.refs);
@@ -807,16 +900,16 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
       .createSignedUrl(framePath, 60 * 60);
     if (!signed?.signedUrl) throw new Error("Couldn't sign the first frame.");
     const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
-    const model = VIDEO_MODEL;
+    const model = ugc ? UGC_MODEL : VIDEO_MODEL;
     const submit = `${falUrls(model).submit}?fal_webhook=${encodeURIComponent(hook)}`;
     const res = await fetch(submit, {
       method: "POST",
       headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify(
-        falVideoInput({
+        (ugc ? falUgcInput : falVideoInput)({
           prompt: motion,
           imageUrl: signed.signedUrl,
-          seconds: jobRow.seconds ?? 5,
+          seconds,
         }),
       ),
       signal: AbortSignal.timeout(30_000),
@@ -914,7 +1007,8 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
       .eq("position", 0);
     if (saved.error) throw new Error(saved.error.message);
     const model = row.provider.slice(4);
-    const cost = frameCost + videoUsdPerSecond(model) * (row.seconds ?? 5);
+    const perSecond = row.studio === "ugc" ? UGC_USD_PER_SECOND : videoUsdPerSecond(model);
+    const cost = frameCost + perSecond * (row.seconds ?? 5);
     await admin.rpc("v2_settle_generation_job", {
       _job_id: row.id,
       _ok: 1,
@@ -923,7 +1017,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
     });
     await admin.from("usage_events").insert({
       user_id: row.user_id,
-      event_type: "v2_shorts",
+      event_type: `v2_${row.studio}`,
       model,
       variant_count: 1,
       estimated_cost_usd: Number(cost.toFixed(5)),
@@ -945,7 +1039,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
  * Run one claimed job to completion. Never throws: failures settle the job (with refund).
  */
 export async function runJob(jobRow: GenerationJobRow, site: Site) {
-  if (jobRow.studio === "shorts") return runShortJob(jobRow, site);
+  if (jobRow.studio === "shorts" || jobRow.studio === "ugc") return runShortJob(jobRow, site);
   const request = jobRow.request as GenerationRequest;
   let ok = 0;
   let cost = 0;

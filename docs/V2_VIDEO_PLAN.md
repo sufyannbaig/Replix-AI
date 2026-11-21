@@ -88,6 +88,13 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 - **Price (2026-11-16):** Shorts now cost 8 / 11 / 13 credits for 5 / 8 / 10 s (was a flat 10), so every length keeps at least half on Scale with Kling 3 Pro (`V2_GENERATION_COSTS.md` section 4).
 - **Next:** re-run Morning Light after its motion fix, then AI UGC (step 2).
 
+## 5b. Status: AI UGC written (2026-11-21)
+
+- **Pipeline (`src/lib/v2/ugc.ts`, `ugcPlan` and the shared video runner in `generation.server.ts`):** script (the user's, cut to about 2.3 words a second, or written by the text model with the template's tone when empty) → creator still (Photo Studio pipeline with the template's creator image as CHARACTER, or their own character and scene, label lock, person rules and the check) → Kling 3 Pro image-to-video **with audio** speaking the script in one 8 or 15 s clip (no stitching). Same fal queue, webhook, poll and refund path as Shorts. Cost logged at $0.168 a second plus the still.
+- **Server accepts `ugc`** in `startGeneration` (8 or 15 s only; custom needs a character) and the studio is live in `api.ts`.
+- **Not done yet:** the live test (does Kling 3 speak the script clearly with lip sync and keep the label?); captions; the studio's "Write with AI" button (an empty script already gets one written on the server); showing the script on the result page. If Kling's voice or lip sync isn't good enough, try Veo 3.1 through Lovable's gateway, or a separate voice plus lip-sync (step 2.3).
+- Before launch: the character-upload consent terms (D5).
+
 ## 6. What needs no one
 
 The fal client, the webhook route, the Shorts recipes and motion templates, the video player, downloads and the Assets playback can all be written and tested with a stubbed fal response while the key is pending.
