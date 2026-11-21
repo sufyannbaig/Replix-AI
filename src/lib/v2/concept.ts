@@ -21,17 +21,57 @@ export const CONCEPT_SHOT_SECONDS = 5;
 /** Marks the stored fal request id of the stitch step. */
 export const MERGE_PREFIX = "merge:";
 
-export type ConceptShot = { frame: string; motion: string };
+export type ConceptShot = { beat: string; type: string; frame: string; motion: string };
+
+/** The locked attributes every frame repeats word for word (the master shot's continuity). */
+export type ContinuityBible = {
+  character: string;
+  wardrobe: string;
+  location: string;
+  timeOfDay: string;
+  light: string;
+  grade: string;
+  lens: string;
+  prop: string;
+  humanTouch: string;
+};
+
+export type ConceptPlan = { bible: ContinuityBible; shots: ConceptShot[] };
 
 /** One shot per 5 seconds: 3 for 15 s, 6 for 30 s. */
 export function conceptShotCount(seconds: number) {
   return Math.min(6, Math.max(2, Math.round(seconds / CONCEPT_SHOT_SECONDS)));
 }
 
+/** The story beats for a shot count: hook first, the brand ending last. */
+export function conceptBeats(count: number): string[] {
+  if (count <= 2) return ["Hook", "Climax and brand ending"];
+  if (count === 3) return ["Hook", "Development", "Climax and brand ending"];
+  const middle = Array.from({ length: count - 4 }, () => "Development");
+  return ["Hook", "Setup", ...middle, "Climax", "Brand ending"];
+}
+
+/** Mind-hack shot types: never the generic close-up / medium / wide on its own. */
+export const MIND_HACK_SHOTS = [
+  "foreground framing (something between camera and subject: glass, steam, fabric, leaves)",
+  "other POV (a reflection, a window, a pet, the product's own POV)",
+  "light moment (light rays, lens flare, practical light in frame)",
+  "small surrounding details that make the place real",
+  "character gesture or habit that tells us who they are",
+  "top-down or aerial scale shot",
+  "process moment (applying, pouring, opening, using the product)",
+  "one grounded VFX beat that heightens the concept",
+];
+
 const clip = (s: unknown, max: number) =>
   typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, max) : "";
 
-/** The text model's brief for the shot list. */
+/**
+ * The text model's brief, built on the course method (skills ai-ad-master-shot,
+ * mind-travel-shot-list, ai-ad-storyboard, ad-ending-variants): lock a continuity bible from
+ * one master shot, then one shot per beat, each a mind-hack shot type with one main motion,
+ * ending on the target emotion with the product as hero.
+ */
 export function conceptShotMessages(opts: {
   productName: string;
   description?: string | null;
@@ -41,12 +81,19 @@ export function conceptShotMessages(opts: {
   script?: string;
   shots: number;
   label?: string[];
+  aspect?: string;
 }) {
+  const beats = conceptBeats(opts.shots);
   return [
     {
       role: "system" as const,
-      content:
-        'You are an award-winning commercial director. You turn an ad idea into a shot list for a short video ad. Every shot is 5 seconds, one continuous camera move, no cuts inside a shot. The same character and the same product appear throughout. Keep it filmable: one clear action per shot, no text on screen, no extra brands or logos. Reply as JSON: {"shots": [{"frame": "the opening still of the shot: who, where, what the product is doing, camera angle", "motion": "what moves during the 5 seconds and how the camera moves"}]}.',
+      content: [
+        "You are an award-winning commercial director. You take control; the AI only renders. Never give the first generic idea.",
+        "Method: 1) Decide ONE master shot and lock its continuity bible: the character's exact look (skin, face, hair, build, age), wardrobe, location, time of day, light direction, colour grade, lens. Pick the ONE prop that carries the concept (props are the strongest director tool) and ONE human touch (a small real, relatable detail). 2) Write one shot per beat. Every shot is 5 seconds with ONE main motion (one subject action and one camera move), no cuts inside a shot, no on-screen text, no other brands or logos.",
+        `3) Avoid the storyboard-then-animate look: each shot uses a mind-hack shot type, at least two different ones across the film, chosen from: ${MIND_HACK_SHOTS.join("; ")}.`,
+        "4) The concept must be visible in the frame itself, not implied. The last shot is the ending aimed at the target emotion: the product is the hero, label towards the camera, the payoff readable in the final 2 seconds.",
+        'Reply as JSON: {"bible": {"character": "", "wardrobe": "", "location": "", "timeOfDay": "", "light": "", "grade": "", "lens": "", "prop": "", "humanTouch": ""}, "shots": [{"beat": "", "type": "the mind-hack shot type", "frame": "the opening still: subject, action, product placement, foreground, camera angle", "motion": "the one subject action and the one camera move over 5 seconds"}]}',
+      ].join("\n"),
     },
     {
       role: "user" as const,
@@ -58,7 +105,9 @@ export function conceptShotMessages(opts: {
         opts.climax ? `Climax or ending: ${opts.climax.slice(0, 400)}` : "",
         `Target emotion: ${opts.emotion}.`,
         opts.script ? `Script or story notes: ${opts.script.slice(0, 600)}` : "",
-        `Write exactly ${opts.shots} shots. Shot 1 hooks in the first second. The last shot is the climax: the product clearly in frame, label towards the camera.`,
+        opts.aspect ? `Frame: ${opts.aspect}.` : "",
+        "The CHARACTER and SCENE reference images are the casting and the location: the bible must describe them, not invent others.",
+        `Write exactly ${opts.shots} shots, one per beat in this order: ${beats.join(", ")}. The hook grabs attention in the first second.`,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -66,28 +115,88 @@ export function conceptShotMessages(opts: {
   ];
 }
 
-/** Exactly `count` usable shots from the reply; missing ones fall back to safe defaults. */
-export function parseShots(raw: unknown, count: number, productName: string): ConceptShot[] {
-  const list = (raw as { shots?: unknown } | null)?.shots;
-  const shots = (Array.isArray(list) ? list : [])
-    .map((s) => ({ frame: clip(s?.frame, 500), motion: clip(s?.motion, 400) }))
+const BIBLE_KEYS: (keyof ContinuityBible)[] = [
+  "character",
+  "wardrobe",
+  "location",
+  "timeOfDay",
+  "light",
+  "grade",
+  "lens",
+  "prop",
+  "humanTouch",
+];
+
+/** The bible and exactly `count` shots from the reply; gaps fall back to safe defaults. */
+export function parseConceptPlan(raw: unknown, count: number, productName: string): ConceptPlan {
+  const r = (raw ?? {}) as { bible?: Record<string, unknown>; shots?: unknown };
+  const bible = Object.fromEntries(
+    BIBLE_KEYS.map((k) => [k, clip(r.bible?.[k], 240)]),
+  ) as ContinuityBible;
+  const beats = conceptBeats(count);
+  const list = Array.isArray(r.shots) ? r.shots : [];
+  const shots = list
+    .map((s) => ({
+      beat: clip(s?.beat, 60),
+      type: clip(s?.type, 120),
+      frame: clip(s?.frame, 500),
+      motion: clip(s?.motion, 400),
+    }))
     .filter((s) => s.frame && s.motion)
     .slice(0, count);
-  const fallback = (i: number): ConceptShot =>
-    i === count - 1
+  const fallback = (last: boolean): ConceptShot =>
+    last
       ? {
-          frame: `Hero close-up of ${productName} in the scene, label towards the camera, the character's hand just leaving it.`,
+          beat: "",
+          type: "light moment",
+          frame: `Hero shot of ${productName} in the scene, label towards the camera, soft light rays across it, the character's hand just leaving it.`,
           motion:
-            "Slow push-in on the product, gentle light shift, the product stays perfectly still.",
+            "Slow push-in on the product while the light shifts gently; the product stays perfectly still.",
         }
       : {
-          frame: `The character in the scene with ${productName}, natural moment, product visible.`,
-          motion: "The character interacts naturally with the product; slow handheld drift.",
+          beat: "",
+          type: "foreground framing",
+          frame: `The character using ${productName} in the scene, seen past a soft out-of-focus foreground element, product visible.`,
+          motion:
+            "The character uses the product naturally; slow lateral dolly past the foreground.",
         };
-  if (!shots.length) shots.push(fallback(count - 1));
-  /* Missing shots go before the last one, which stays the climax. */
-  while (shots.length < count) shots.splice(shots.length - 1, 0, fallback(0));
-  return shots;
+  if (!shots.length) shots.push(fallback(true));
+  /* Missing shots go before the last one, which stays the ending. */
+  while (shots.length < count) shots.splice(shots.length - 1, 0, fallback(false));
+  shots.forEach((s, i) => {
+    if (!s.beat) s.beat = beats[i];
+  });
+  return { bible, shots };
+}
+
+/** The locked attributes as one line, repeated word for word in every frame. */
+export function bibleText(b: ContinuityBible) {
+  const parts: [string, string][] = [
+    ["Character", b.character],
+    ["Wardrobe", b.wardrobe],
+    ["Location", b.location],
+    ["Time of day", b.timeOfDay],
+    ["Light", b.light],
+    ["Colour grade", b.grade],
+    ["Lens", b.lens],
+    ["Key prop", b.prop],
+    ["Human touch", b.humanTouch],
+  ];
+  return parts
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(". ");
+}
+
+/** A frame's set line: the shot, its type, then the locked continuity. */
+export function conceptFrameSet(shot: ConceptShot, bible: ContinuityBible) {
+  const locked = bibleText(bible);
+  return [
+    `${shot.beat} shot (${shot.type}): ${shot.frame}`,
+    locked ? `LOCKED CONTINUITY, keep exactly: ${locked}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export const CONCEPT_FRAME_NOTE =
@@ -99,12 +208,17 @@ export function conceptMotionPrompt(opts: {
   productName: string;
   shot: ConceptShot;
   emotion: string;
+  bible?: ContinuityBible;
 }) {
   return [
-    `A shot from a ${opts.emotion.toLowerCase()} video ad for ${opts.productName}.`,
+    `A ${opts.shot.type || "cinematic"} shot from a ${opts.emotion.toLowerCase()} video ad for ${opts.productName}.`,
     opts.shot.motion,
+    opts.bible?.grade ? `Colour grade: ${opts.bible.grade}.` : "",
+    opts.bible?.light ? `Light: ${opts.bible.light}.` : "",
     "The product keeps exactly its shape, colours, size and label; every printed word stays the same and readable. The person keeps the same face and clothes. Natural physics, smooth cinematic motion, no cuts, no on-screen text.",
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** fal body for one Kling 2.5 Turbo Pro clip. */

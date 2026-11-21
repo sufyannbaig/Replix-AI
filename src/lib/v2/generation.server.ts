@@ -68,7 +68,8 @@ import {
   conceptVideoCost,
   falClipInput,
   falMergeInput,
-  parseShots,
+  parseConceptPlan,
+  conceptFrameSet,
 } from "./concept";
 import {
   checkMessages,
@@ -988,7 +989,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       }),
     });
     cost += EST_USD.text * 2;
-    const shots = parseShots(parseJsonBlock(raw), count, product.name);
+    const { bible, shots } = parseConceptPlan(parseJsonBlock(raw), count, product.name);
     await admin.from("generation_jobs").update({ progress: 0.1 }).eq("id", jobRow.id);
 
     /* Stills two at a time, each checked against the product like a photo. */
@@ -1001,7 +1002,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
           refs,
           aspect: request.aspect,
           recipe: {
-            set: shots[i].frame,
+            set: conceptFrameSet(shots[i], bible),
             notes: CONCEPT_FRAME_NOTE,
             composition: CONCEPT_FRAME_COMPOSITION,
           },
@@ -1068,6 +1069,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
                 productName: product.name,
                 shot,
                 emotion: inputs.emotion,
+                bible,
               }),
               imageUrl: signed.signedUrl,
             }),

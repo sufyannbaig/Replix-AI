@@ -6,7 +6,9 @@ import {
   conceptVideoCost,
   falClipInput,
   falMergeInput,
-  parseShots,
+  parseConceptPlan,
+  conceptBeats,
+  conceptFrameSet,
 } from "./concept.ts";
 
 describe("concept", () => {
@@ -19,12 +21,12 @@ describe("concept", () => {
       shots: Array.from({ length: 5 }, (_, i) => ({ frame: `f${i}`, motion: `m${i}` })),
     };
     deepStrictEqual(
-      parseShots(raw, 3, "Serum").map((s) => s.frame),
+      parseConceptPlan(raw, 3, "Serum").shots.map((s) => s.frame),
       ["f0", "f1", "f2"],
     );
   });
   test("fills missing shots before the last, and survives junk", () => {
-    const two = parseShots(
+    const two = parseConceptPlan(
       {
         shots: [
           { frame: "a", motion: "b" },
@@ -33,12 +35,31 @@ describe("concept", () => {
       },
       3,
       "Serum",
-    );
+    ).shots;
     strictEqual(two.length, 3);
     strictEqual(two[2].frame, "c");
-    const junk = parseShots(null, 3, "Serum");
+    const junk = parseConceptPlan(null, 3, "Serum").shots;
     strictEqual(junk.length, 3);
-    ok(junk[2].frame.includes("Hero close-up of Serum"));
+    ok(junk[2].frame.includes("Hero shot of Serum"));
+  });
+  test("beats run hook to brand ending", () => {
+    deepStrictEqual(conceptBeats(3), ["Hook", "Development", "Climax and brand ending"]);
+    const six = conceptBeats(6);
+    strictEqual(six.length, 6);
+    strictEqual(six[0], "Hook");
+    strictEqual(six[5], "Brand ending");
+  });
+  test("every frame repeats the locked continuity", () => {
+    const { bible, shots } = parseConceptPlan(
+      { bible: { character: "Sara, 28", prop: "a fogged mirror" }, shots: [] },
+      3,
+      "Serum",
+    );
+    strictEqual(shots[0].beat, "Hook");
+    for (const s of shots) {
+      const set = conceptFrameSet(s, bible);
+      ok(set.includes("Character: Sara, 28") && set.includes("Key prop: a fogged mirror"));
+    }
   });
   test("fal bodies and cost", () => {
     strictEqual(falClipInput({ prompt: "p", imageUrl: "https://x" }).duration, "5");
