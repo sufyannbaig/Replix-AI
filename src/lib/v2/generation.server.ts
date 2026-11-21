@@ -70,6 +70,19 @@ import {
   falMergeInput,
   parseConceptPlan,
   conceptFrameSet,
+  CONCEPT_TTS_MODEL,
+  CONCEPT_MUSIC_MODEL,
+  CONCEPT_COMPOSE_MODEL,
+  VO_PREFIX,
+  MUSIC_PREFIX,
+  COMPOSE_PREFIX,
+  conceptVoText,
+  conceptAudioCost,
+  falTtsInput,
+  falMusicInput,
+  falComposeInput,
+  parseFalAudio,
+  parseFinishedVideo,
 } from "./concept";
 import {
   checkMessages,
@@ -994,7 +1007,8 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       }),
     });
     cost += EST_USD.text * 2;
-    const { bible, shots } = parseConceptPlan(parseJsonBlock(raw), count, product.name);
+    const plan = parseConceptPlan(parseJsonBlock(raw), count, product.name);
+    const { bible, shots } = plan;
     await admin.from("generation_jobs").update({ progress: 0.1 }).eq("id", jobRow.id);
 
     /* Stills two at a time, each checked against the product like a photo. */
@@ -1057,6 +1071,41 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     });
     if (ins.error) throw new Error(ins.error.message);
 
+    /* Voice and music render while the clips do; a failed submit only drops that track. */
+    const seconds = count * 5;
+    const voText = conceptVoText(inputs.script, plan.vo, seconds);
+    const queueAudio = async (model: string, input: object, prefix: string) => {
+      try {
+        const res = await fetch(falUrls(model).submit, {
+          method: "POST",
+          headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+        if (res.ok && typeof body?.request_id === "string") return prefix + body.request_id;
+        console.error("[v2 concept] audio submit failed", jobRow.id, model, res.status, body);
+      } catch (error) {
+        console.error("[v2 concept] audio submit failed", jobRow.id, model, error);
+      }
+      return null;
+    };
+    const audioIds = (
+      await Promise.all([
+        voText ? queueAudio(CONCEPT_TTS_MODEL, falTtsInput(voText, plan.voice), VO_PREFIX) : null,
+        queueAudio(
+          CONCEPT_MUSIC_MODEL,
+          falMusicInput(plan.music, inputs.emotion, seconds),
+          MUSIC_PREFIX,
+        ),
+      ])
+    ).filter((id): id is string => !!id);
+    cost += conceptAudioCost(
+      audioIds.some((id) => id.startsWith(VO_PREFIX)) ? voText.length : 0,
+      seconds,
+      audioIds.some((id) => id.startsWith(MUSIC_PREFIX)),
+    );
+
     const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
     const submit = `${falUrls(CONCEPT_CLIP_MODEL).submit}?fal_webhook=${encodeURIComponent(hook)}`;
     const ids = await Promise.all(
@@ -1095,7 +1144,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       .from("generation_jobs")
       .update({
         provider: `fal:${CONCEPT_CLIP_MODEL}`,
-        provider_job_ids: ids,
+        provider_job_ids: [...ids, ...audioIds],
         provider_cost_usd: Number(cost.toFixed(5)),
         progress: 0.4,
       })
@@ -1125,8 +1174,13 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
   };
   try {
     /* Stage 2: the stitch. */
-    if (ids[0]?.startsWith(MERGE_PREFIX)) {
-      const { state, urls } = await ask(CONCEPT_MERGE_MODEL, ids[0].slice(MERGE_PREFIX.length));
+    const finish = ids[0]?.startsWith(COMPOSE_PREFIX)
+      ? { model: CONCEPT_COMPOSE_MODEL, id: ids[0].slice(COMPOSE_PREFIX.length) }
+      : ids[0]?.startsWith(MERGE_PREFIX)
+        ? { model: CONCEPT_MERGE_MODEL, id: ids[0].slice(MERGE_PREFIX.length) }
+        : null;
+    if (finish) {
+      const { state, urls } = await ask(finish.model, finish.id);
       if (state === "failed") {
         await settleFailed(row.id, VIDEO_FAILED, frameCost);
         return true;
@@ -1141,7 +1195,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         .select("id");
       if (!claimed?.length) return false;
       const result = await fetch(urls.result, { headers, signal: AbortSignal.timeout(15_000) });
-      const videoUrl = result.ok ? parseFalVideo(await result.json()) : undefined;
+      const videoUrl = result.ok ? parseFinishedVideo(await result.json()) : undefined;
       if (!videoUrl) {
         await settleFailed(row.id, VIDEO_FAILED, frameCost);
         return true;
@@ -1181,16 +1235,24 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
     }
 
     /* Stage 1: the clips. */
-    const states = await Promise.all(ids.map((id) => ask(CONCEPT_CLIP_MODEL, id)));
+    const clipIds = ids.filter((id) => !id.includes(":"));
+    const voId = ids.find((id) => id.startsWith(VO_PREFIX));
+    const musicId = ids.find((id) => id.startsWith(MUSIC_PREFIX));
+    const [states, vo, music] = await Promise.all([
+      Promise.all(clipIds.map((id) => ask(CONCEPT_CLIP_MODEL, id))),
+      voId ? ask(CONCEPT_TTS_MODEL, voId.slice(VO_PREFIX.length)) : null,
+      musicId ? ask(CONCEPT_MUSIC_MODEL, musicId.slice(MUSIC_PREFIX.length)) : null,
+    ]);
     if (states.some((s) => s.state === "failed")) {
       await settleFailed(row.id, VIDEO_FAILED, frameCost);
       return true;
     }
     const done = states.filter((s) => s.state === "done").length;
-    if (done < ids.length) {
+    const audioWaiting = [vo, music].some((a) => a && a.state === "running");
+    if (done < clipIds.length || audioWaiting) {
       await admin
         .from("generation_jobs")
-        .update({ progress: Math.max(row.progress, 0.4 + (0.45 * done) / ids.length) })
+        .update({ progress: Math.max(row.progress, 0.4 + (0.45 * done) / clipIds.length) })
         .eq("id", row.id)
         .eq("status", "running");
       return false;
@@ -1213,12 +1275,27 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       await settleFailed(row.id, VIDEO_FAILED, frameCost);
       return true;
     }
-    const res = await fetch(falUrls(CONCEPT_MERGE_MODEL).submit, {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify(falMergeInput(clips as string[])),
-      signal: AbortSignal.timeout(30_000),
-    });
+    /* A track that failed is left out; the ad still finishes. */
+    const audioUrl = async (a: typeof vo) => {
+      if (!a || a.state !== "done") return undefined;
+      const r = await fetch(a.urls.result, { headers, signal: AbortSignal.timeout(15_000) });
+      return r.ok ? parseFalAudio(await r.json()) : undefined;
+    };
+    const [voUrl, musicUrl] = await Promise.all([audioUrl(vo), audioUrl(music)]);
+    const withSound = !!(voUrl || musicUrl);
+    const res = await fetch(
+      falUrls(withSound ? CONCEPT_COMPOSE_MODEL : CONCEPT_MERGE_MODEL).submit,
+      {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(
+          withSound
+            ? falComposeInput({ clips: clips as string[], vo: voUrl, music: musicUrl })
+            : falMergeInput(clips as string[]),
+        ),
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
     const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
     if (!res.ok || typeof body?.request_id !== "string") {
       console.error("[v2 concept] merge submit failed", row.id, res.status, body);
@@ -1227,7 +1304,10 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
     }
     await admin
       .from("generation_jobs")
-      .update({ provider_job_ids: [`${MERGE_PREFIX}${body.request_id}`], progress: 0.92 })
+      .update({
+        provider_job_ids: [`${withSound ? COMPOSE_PREFIX : MERGE_PREFIX}${body.request_id}`],
+        progress: 0.92,
+      })
       .eq("id", row.id);
     return true;
   } catch (error) {

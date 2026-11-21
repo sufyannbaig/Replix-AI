@@ -25,7 +25,11 @@ export const Route = createFileRoute("/api/public/hooks/fal")({
           .select("*")
           .eq("id", jobId)
           .maybeSingle();
-        if (!row || !requestId || !row.provider_job_ids?.includes(requestId)) {
+        if (
+          !row ||
+          !requestId ||
+          !row.provider_job_ids?.some((id) => id === requestId || id.endsWith(`:${requestId}`))
+        ) {
           return new Response("Unknown job", { status: 404 });
         }
         await syncVideoJob(row, true);

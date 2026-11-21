@@ -7,6 +7,11 @@ import {
   falClipInput,
   falMergeInput,
   parseConceptPlan,
+  conceptVoText,
+  conceptVoWords,
+  falComposeInput,
+  falMusicInput,
+  parseFinishedVideo,
   conceptBeats,
   conceptFrameSet,
 } from "./concept.ts";
@@ -60,6 +65,33 @@ describe("concept", () => {
       const set = conceptFrameSet(s, bible);
       ok(set.includes("Character: Sara, 28") && set.includes("Key prop: a fogged mirror"));
     }
+  });
+  test("voiceover: script wins, cut to fit; voice is from the cast list", () => {
+    const long = Array.from({ length: 80 }, (_, i) => `w${i}`).join(" ");
+    ok(conceptVoText(long, "plan", 15).split(" ").length <= conceptVoWords(15));
+    strictEqual(
+      conceptVoText(undefined, "Glow, from the first drop.", 15),
+      "Glow, from the first drop.",
+    );
+    strictEqual(conceptVoText("", "", 15), "");
+    strictEqual(parseConceptPlan({ voice: "laura" }, 3, "S").voice, "Laura");
+    strictEqual(parseConceptPlan({ voice: "Bob" }, 3, "S").voice, "Sarah");
+  });
+  test("compose lays clips in order with music and voice", () => {
+    const { tracks } = falComposeInput({ clips: ["a", "b", "c"], vo: "v", music: "m" });
+    deepStrictEqual(
+      tracks[0].keyframes.map((k) => (k as { timestamp: number }).timestamp),
+      [0, 5000, 10000],
+    );
+    deepStrictEqual(
+      tracks.map((t) => t.id),
+      ["video", "music", "vo"],
+    );
+    strictEqual(falComposeInput({ clips: ["a"] }).tracks.length, 1);
+    strictEqual(falMusicInput("", "Desire", 15).music_length_ms, 15000);
+    strictEqual(parseFinishedVideo({ video_url: "https://x/v.mp4" }), "https://x/v.mp4");
+    strictEqual(parseFinishedVideo({ video: { url: "https://y" } }), "https://y");
+    strictEqual(parseFinishedVideo({ video_url: "http://bad" }), undefined);
   });
   test("fal bodies and cost", () => {
     strictEqual(falClipInput({ prompt: "p", imageUrl: "https://x" }).duration, "5");
