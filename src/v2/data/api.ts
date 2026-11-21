@@ -1215,7 +1215,8 @@ export function useStartGeneration() {
         request.studio === "photo" ||
         request.studio === "ad" ||
         request.studio === "shorts" ||
-        request.studio === "ugc";
+        request.studio === "ugc" ||
+        request.studio === "concept";
       const userId = real ? await backendUser("generation_jobs") : null;
       /* Never hand a signed-in user a sample result: say it didn't run (no credits used). */
       if (real && (!userId || !request.inputs) && (await signedInUserId())) {

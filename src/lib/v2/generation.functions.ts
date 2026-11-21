@@ -121,6 +121,16 @@ const Inputs = z.union([
     scene: Upload.nullable(),
     transition: str(40),
   }),
+  z.object({
+    studio: z.literal("concept"),
+    concept: z.string().trim().min(3).max(600),
+    climax: z.string().trim().max(400),
+    emotion: str(40),
+    script: z.string().trim().max(600),
+    character: Upload.nullable(),
+    scene: Upload.nullable(),
+    reference: Upload.nullable().optional(),
+  }),
   z.object({ studio: z.literal("shorts"), mode: z.literal("templates"), templateId: str(120) }),
   z.object({
     studio: z.literal("shorts"),
@@ -131,7 +141,7 @@ const Inputs = z.union([
   }),
 ]);
 const Request = z.object({
-  studio: z.enum(["photo", "ad", "shorts", "ugc"]),
+  studio: z.enum(["photo", "ad", "shorts", "ugc", "concept"]),
   kind: z.enum(["photo", "ad", "video"]),
   inputs: Inputs,
   product: z.object({ id: str(200), name: str(200), imageUrl: str(4000) }),
@@ -172,18 +182,29 @@ export const startGeneration = createServerFn({ method: "POST" })
     const kind =
       data.studio === "ad"
         ? "ad"
-        : data.studio === "shorts" || data.studio === "ugc"
+        : data.studio === "shorts" || data.studio === "ugc" || data.studio === "concept"
           ? "video"
           : "photo";
     if (data.kind !== kind) throw new Error("Wrong generation kind.");
     /* One Short per job; its length is what's charged and what fal is asked for. */
     const ugc = data.studio === "ugc";
-    const seconds = kind === "video" ? (data.seconds ?? (ugc ? 8 : 5)) : null;
+    const concept = data.studio === "concept";
+    const seconds = kind === "video" ? (data.seconds ?? (ugc ? 8 : concept ? 15 : 5)) : null;
     if (kind === "video" && data.count !== 1) throw new Error("One video at a time.");
     /* Only the lengths the studio offers: each is priced and tested. */
-    const lengths: readonly number[] = ugc ? VIDEO_LENGTHS.ugc : VIDEO_LENGTHS.shorts;
+    const lengths: readonly number[] = ugc
+      ? VIDEO_LENGTHS.ugc
+      : concept
+        ? VIDEO_LENGTHS.concept
+        : VIDEO_LENGTHS.shorts;
     if (seconds !== null && !lengths.includes(seconds)) {
-      throw new Error(ugc ? "Pick 8 or 15 seconds." : "Pick 5, 8 or 10 seconds.");
+      throw new Error(
+        ugc
+          ? "Pick 8 or 15 seconds."
+          : concept
+            ? "Pick 15 or 30 seconds."
+            : "Pick 5, 8 or 10 seconds.",
+      );
     }
     if (
       ugc &&

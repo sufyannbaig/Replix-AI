@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * fal.ai calls this when a Product Short's video is ready (docs/V2_VIDEO_PLAN.md).
+ * fal.ai calls this when a Short's, UGC video's or Concept clip's video is ready (docs/V2_VIDEO_PLAN.md).
  *
  * Nothing in the call is trusted: it only says "look at job X now". The job must be a
  * running Short whose stored fal request id matches the one in the call, and the result is
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/public/hooks/fal")({
           .select("*")
           .eq("id", jobId)
           .maybeSingle();
-        if (!row || !requestId || row.provider_job_ids?.[0] !== requestId) {
+        if (!row || !requestId || !row.provider_job_ids?.includes(requestId)) {
           return new Response("Unknown job", { status: 404 });
         }
         await syncVideoJob(row, true);

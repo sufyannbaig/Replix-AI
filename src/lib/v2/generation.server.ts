@@ -57,6 +57,20 @@ import {
   ugcVideoPrompt,
 } from "./ugc";
 import {
+  CONCEPT_CLIP_MODEL,
+  CONCEPT_FRAME_COMPOSITION,
+  CONCEPT_FRAME_NOTE,
+  CONCEPT_MERGE_MODEL,
+  MERGE_PREFIX,
+  conceptMotionPrompt,
+  conceptShotCount,
+  conceptShotMessages,
+  conceptVideoCost,
+  falClipInput,
+  falMergeInput,
+  parseShots,
+} from "./concept";
+import {
   checkMessages,
   fixLine,
   labelMessages,
@@ -938,6 +952,283 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
   }
 }
 
+/**
+ * Concept ads: write the shot list, make every shot's still, and send every clip to fal at
+ * once. syncConceptJob stitches them when they're all back. Never throws.
+ */
+async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
+  const request = jobRow.request as GenerationRequest;
+  let cost = 0;
+  try {
+    const inputs = request.inputs;
+    if (!inputs || inputs.studio !== "concept") {
+      throw new GenerationError("This request is missing its settings.");
+    }
+    const key = falKey();
+    if (!key) throw new GenerationError(NO_VIDEO);
+    const ctx = await jobCtx(jobRow, site);
+    const product = await loadProduct(ctx, request.product);
+    const refs: Loaded[] = [{ role: "product", name: product.name, dataUrl: product.dataUrl }];
+    if (inputs.character) refs.push(await loadUpload(ctx, inputs.character, "character"));
+    if (inputs.scene) refs.push(await loadUpload(ctx, inputs.scene, "scene"));
+    const read = await readProduct(product.dataUrl);
+    const count = conceptShotCount(jobRow.seconds ?? 15);
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: conceptShotMessages({
+        productName: product.name,
+        description: product.description,
+        concept: inputs.concept,
+        climax: inputs.climax,
+        emotion: inputs.emotion,
+        script: inputs.script,
+        shots: count,
+        label: read.label,
+      }),
+    });
+    cost += EST_USD.text * 2;
+    const shots = parseShots(parseJsonBlock(raw), count, product.name);
+    await admin.from("generation_jobs").update({ progress: 0.1 }).eq("id", jobRow.id);
+
+    /* Stills two at a time, each checked against the product like a photo. */
+    const framePaths: string[] = new Array(count);
+    let made = 0;
+    const makeFrame = async (i: number) => {
+      const prompt = photoPrompt(
+        {
+          product,
+          refs,
+          aspect: request.aspect,
+          recipe: {
+            set: shots[i].frame,
+            notes: CONCEPT_FRAME_NOTE,
+            composition: CONCEPT_FRAME_COMPOSITION,
+          },
+          mode: "diy",
+          label: read.label,
+          size: read.size,
+        },
+        i,
+        count,
+      );
+      let frame = await generateImage(prompt, refs);
+      cost += EST_USD.image;
+      const result = await checkPhoto(product.dataUrl, frame, {
+        label: read.label,
+        person: refs.some((r) => r.role === "character"),
+      });
+      cost += EST_USD.text;
+      if (!result.pass) {
+        try {
+          frame = await generateImage(prompt + fixLine(result.issues), refs);
+          cost += EST_USD.image;
+        } catch (error) {
+          console.error("[v2 concept] frame retry failed", jobRow.id, error);
+        }
+      }
+      const path = `${jobRow.user_id}/${jobRow.id}/${i + 1}-frame.${extension(frame.type)}`;
+      const up = await admin.storage
+        .from("outputs")
+        .upload(path, frame.bytes, { contentType: frame.type, upsert: true });
+      if (up.error) throw new Error(up.error.message);
+      framePaths[i] = path;
+      made += 1;
+      await admin
+        .from("generation_jobs")
+        .update({ progress: 0.1 + (0.25 * made) / count })
+        .eq("id", jobRow.id);
+    };
+    for (let i = 0; i < count; i += 2) {
+      await Promise.all([i, i + 1].filter((n) => n < count).map(makeFrame));
+    }
+    /* The first still is the poster until the video lands. */
+    const ins = await admin.from("generation_outputs").insert({
+      job_id: jobRow.id,
+      user_id: jobRow.user_id,
+      position: 0,
+      image_path: framePaths[0],
+    });
+    if (ins.error) throw new Error(ins.error.message);
+
+    const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
+    const submit = `${falUrls(CONCEPT_CLIP_MODEL).submit}?fal_webhook=${encodeURIComponent(hook)}`;
+    const ids = await Promise.all(
+      shots.map(async (shot, i) => {
+        const { data: signed } = await admin.storage
+          .from("outputs")
+          .createSignedUrl(framePaths[i], 60 * 60);
+        if (!signed?.signedUrl) throw new Error("Couldn't sign a frame.");
+        const res = await fetch(submit, {
+          method: "POST",
+          headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify(
+            falClipInput({
+              prompt: conceptMotionPrompt({
+                productName: product.name,
+                shot,
+                emotion: inputs.emotion,
+              }),
+              imageUrl: signed.signedUrl,
+            }),
+          ),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+        if (!res.ok || typeof body?.request_id !== "string") {
+          console.error("[v2 concept] fal submit failed", jobRow.id, res.status, body);
+          throw new GenerationError(
+            "The video service didn't take the job. Your credits are back.",
+          );
+        }
+        return body.request_id;
+      }),
+    );
+    await admin
+      .from("generation_jobs")
+      .update({
+        provider: `fal:${CONCEPT_CLIP_MODEL}`,
+        provider_job_ids: ids,
+        provider_cost_usd: Number(cost.toFixed(5)),
+        progress: 0.4,
+      })
+      .eq("id", jobRow.id);
+  } catch (error) {
+    console.error("[v2 concept] job failed", jobRow.id, error);
+    const message =
+      error instanceof GenerationError
+        ? error.message
+        : "Something went wrong. Your credits are back.";
+    await settleFailed(jobRow.id, message, cost);
+  }
+}
+
+/**
+ * A running Concept ad: wait for every clip, stitch them in order, then save the video and
+ * settle. Returns true when the job changed. Never throws.
+ */
+async function syncConceptJob(row: GenerationJobRow, key: string) {
+  const ids = row.provider_job_ids ?? [];
+  const headers = { Authorization: `Key ${key}` };
+  const frameCost = Number(row.provider_cost_usd ?? 0);
+  const ask = async (model: string, id: string) => {
+    const urls = falUrls(model, id);
+    const res = await fetch(urls.status, { headers, signal: AbortSignal.timeout(15_000) });
+    return { state: res.ok ? parseFalStatus(await res.json()) : ("running" as const), urls };
+  };
+  try {
+    /* Stage 2: the stitch. */
+    if (ids[0]?.startsWith(MERGE_PREFIX)) {
+      const { state, urls } = await ask(CONCEPT_MERGE_MODEL, ids[0].slice(MERGE_PREFIX.length));
+      if (state === "failed") {
+        await settleFailed(row.id, VIDEO_FAILED, frameCost);
+        return true;
+      }
+      if (state !== "done") return false;
+      const { data: claimed } = await admin
+        .from("generation_jobs")
+        .update({ progress: 0.99 })
+        .eq("id", row.id)
+        .eq("status", "running")
+        .lt("progress", 0.99)
+        .select("id");
+      if (!claimed?.length) return false;
+      const result = await fetch(urls.result, { headers, signal: AbortSignal.timeout(15_000) });
+      const videoUrl = result.ok ? parseFalVideo(await result.json()) : undefined;
+      if (!videoUrl) {
+        await settleFailed(row.id, VIDEO_FAILED, frameCost);
+        return true;
+      }
+      const file = await fetch(videoUrl, { signal: AbortSignal.timeout(60_000) });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (!file.ok || !bytes.byteLength || bytes.byteLength > MAX_VIDEO_BYTES) {
+        throw new Error(`video download failed (${file.status}, ${bytes.byteLength} bytes)`);
+      }
+      const path = `${row.user_id}/${row.id}/1.mp4`;
+      const up = await admin.storage
+        .from("outputs")
+        .upload(path, bytes, { contentType: "video/mp4", upsert: true });
+      if (up.error) throw new Error(up.error.message);
+      const saved = await admin
+        .from("generation_outputs")
+        .update({ video_path: path })
+        .eq("job_id", row.id)
+        .eq("position", 0);
+      if (saved.error) throw new Error(saved.error.message);
+      const shots = conceptShotCount(row.seconds ?? 15);
+      const cost = conceptVideoCost(frameCost, shots);
+      await admin.rpc("v2_settle_generation_job", {
+        _job_id: row.id,
+        _ok: 1,
+        _error: null,
+        _provider_cost_usd: Number(cost.toFixed(5)),
+      });
+      await admin.from("usage_events").insert({
+        user_id: row.user_id,
+        event_type: "v2_concept",
+        model: CONCEPT_CLIP_MODEL,
+        variant_count: shots,
+        estimated_cost_usd: Number(cost.toFixed(5)),
+      });
+      return true;
+    }
+
+    /* Stage 1: the clips. */
+    const states = await Promise.all(ids.map((id) => ask(CONCEPT_CLIP_MODEL, id)));
+    if (states.some((s) => s.state === "failed")) {
+      await settleFailed(row.id, VIDEO_FAILED, frameCost);
+      return true;
+    }
+    const done = states.filter((s) => s.state === "done").length;
+    if (done < ids.length) {
+      await admin
+        .from("generation_jobs")
+        .update({ progress: Math.max(row.progress, 0.4 + (0.45 * done) / ids.length) })
+        .eq("id", row.id)
+        .eq("status", "running");
+      return false;
+    }
+    const { data: claimed } = await admin
+      .from("generation_jobs")
+      .update({ progress: 0.9 })
+      .eq("id", row.id)
+      .eq("status", "running")
+      .lt("progress", 0.9)
+      .select("id");
+    if (!claimed?.length) return false;
+    const clips = await Promise.all(
+      states.map(async (s) => {
+        const res = await fetch(s.urls.result, { headers, signal: AbortSignal.timeout(15_000) });
+        return res.ok ? parseFalVideo(await res.json()) : undefined;
+      }),
+    );
+    if (clips.some((c) => !c)) {
+      await settleFailed(row.id, VIDEO_FAILED, frameCost);
+      return true;
+    }
+    const res = await fetch(falUrls(CONCEPT_MERGE_MODEL).submit, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(falMergeInput(clips as string[])),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+    if (!res.ok || typeof body?.request_id !== "string") {
+      console.error("[v2 concept] merge submit failed", row.id, res.status, body);
+      await settleFailed(row.id, VIDEO_FAILED, frameCost);
+      return true;
+    }
+    await admin
+      .from("generation_jobs")
+      .update({ provider_job_ids: [`${MERGE_PREFIX}${body.request_id}`], progress: 0.92 })
+      .eq("id", row.id);
+    return true;
+  } catch (error) {
+    console.error("[v2 concept] sync failed", row.id, error);
+    return false;
+  }
+}
+
 /** Last fal check per job, so a fast poll doesn't call fal every time. */
 const lastVideoSync = new Map<string, number>();
 
@@ -953,6 +1244,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
   lastVideoSync.set(row.id, now);
   const key = falKey();
   if (!key) return false;
+  if (row.studio === "concept") return syncConceptJob(row, key);
   const urls = falUrls(row.provider.slice(4), requestId);
   const headers = { Authorization: `Key ${key}` };
   const frameCost = Number(row.provider_cost_usd ?? 0);
@@ -1040,6 +1332,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
  */
 export async function runJob(jobRow: GenerationJobRow, site: Site) {
   if (jobRow.studio === "shorts" || jobRow.studio === "ugc") return runShortJob(jobRow, site);
+  if (jobRow.studio === "concept") return runConceptJob(jobRow, site);
   const request = jobRow.request as GenerationRequest;
   let ok = 0;
   let cost = 0;

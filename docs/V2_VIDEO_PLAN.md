@@ -96,6 +96,13 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 - **Still open:** (does Kling 3 speak the script clearly with lip sync and keep the label?); captions; the studio's "Write with AI" button (an empty script already gets one written on the server); showing the script on the result page. If Kling's voice or lip sync isn't good enough, try Veo 3.1 through Lovable's gateway, or a separate voice plus lip-sync (step 2.3).
 - Before launch: the character-upload consent terms (D5).
 
+## 5c. Status: Concept ads written (2026-11-21)
+
+- **Pipeline (`src/lib/v2/concept.ts`, `runConceptJob` / `syncConceptJob` in `generation.server.ts`):** the text model writes one shot per 5 s (3 for 15 s, 6 for 30 s; the last is the product climax) from the concept, climax, emotion and script → each shot's still through the Photo Studio pipeline (product, character, scene, label lock, check) → every still becomes a 5 s clip on **Kling 2.5 Turbo Pro** ($0.07/s), all submitted at once → when all clips are back, fal's `ffmpeg-api/merge-videos` stitches them in order → saved as `1.mp4`, first still as the poster. Any failed clip refunds.
+- **Cost:** about $1.30 for 15 s and $2.60 for 30 s, so today's 10 credits per 15 s keeps about a third on Scale (the "cheap model" row on the pricing page). No price change needed.
+- fal inputs checked against fal's OpenAPI for both endpoints (2026-11-21). The webhook now accepts any of a job's clip ids.
+- **Not in v1:** voiceover from the script, music and captions (the clips are silent; the script steers the shots). Next step if wanted: a music bed and a voice track merged with `ffmpeg-api`.
+
 ## 6. What needs no one
 
 The fal client, the webhook route, the Shorts recipes and motion templates, the video player, downloads and the Assets playback can all be written and tested with a stubbed fal response while the key is pending.
