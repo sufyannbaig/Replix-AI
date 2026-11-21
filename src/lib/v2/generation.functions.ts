@@ -342,6 +342,7 @@ function toJob(row: GenerationJobRow, outputs: GenerationOutputRow[], urls: Map<
         ...(design(o) ? { design: design(o) } : {}),
         ...adEdit(row, o, urls),
         ...(o.copy?.post ? { post: { ...o.copy.post, cta: o.copy.cta } } : {}),
+        ...(o.spoken ? { spoken: o.spoken } : {}),
       })),
     error: row.error,
     refunded: row.refunded,
@@ -690,4 +691,43 @@ ${
             .slice(0, 4)
         : [];
     return { painPoints: list(parsed.painPoints), adAngles: list(parsed.adAngles) };
+  });
+
+const WriteInput = z.object({
+  product: z.object({ id: str(200), name: str(200), imageUrl: str(4000) }),
+  field: z.enum(["concept", "climax", "script", "ugcScript"]),
+  concept: str(600).optional(),
+  climax: str(400).optional(),
+  emotion: str(40).optional(),
+  script: str(600).optional(),
+  seconds: z.number().int().min(5).max(60).optional(),
+});
+
+/** "Write with AI" / "Suggested with AI" on the video studio forms: drafts one field. */
+export const writeCopy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => WriteInput.parse(data))
+  .handler(async ({ data, context }): Promise<string> => {
+    const { loadProductForInsights, spendDailyAllowance, TEXT_MODEL } =
+      await import("./generation.server");
+    await spendDailyAllowance(context.userId, "v2_write", DAILY_INSIGHTS);
+    const { gatewayChat, parseJsonBlock } = await import("@/lib/ai-gateway.server");
+    const { writerMessages, parseWriter } = await import("./writer");
+    const product = await loadProductForInsights(context.userId, data.product, requestSite());
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: writerMessages(data.field, {
+        productName: product.name,
+        description: product.description,
+        concept: data.concept,
+        climax: data.climax,
+        emotion: data.emotion,
+        script: data.script,
+        seconds: data.seconds,
+      }),
+    });
+    const text = parseWriter(parseJsonBlock(raw), data.field);
+    if (!text) throw new Error("The writer didn't come back with anything. Try again.");
+    return text;
   });

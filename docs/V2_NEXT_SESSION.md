@@ -214,3 +214,20 @@ Research (competitors plus one live test) found the label already comes out righ
 `docs/V2_AUDIT.md` lists the loopholes, the legal and ad-platform risks, what users expect from competing tools, and the design for a B2B ad type (today's Ad Studio is B2C only). The cheap fixes are done (db53c91, listed at the top of the audit): daily caps on the free AI helpers, the Short length check, the model switch removed, real-review testimonials, the Before / After rule, the consent step for uploaded people, and the AI mark in downloaded pictures. Open: plan wording and credit sizes, credit packs, video on the Free plan, deleting assets and accounts, the stuck-video sweeper (the last two need database changes), then Edit text and B2B ads.
 
 **Checked live on the preview (db53c91, 4 credits):** a Testimonial ad with a pasted review quoted it exactly ("The best serum I have tried", quote layout); one without a review came out in the brand's voice with no quotation marks (banner layout). The downloaded ad carries the AI mark and opens normally. Adding a character in the Library opens the consent step, Upload stays off until the box is ticked, and Cancel adds nothing and shows no error. The two new Help answers show. Not run live: a confirmed character upload (so `consent_confirmed_at` being stored), the daily caps being hit, and the 5 / 8 / 10 s check rejecting another length.
+
+## 9. Session 2026-11-22: Concept ads finished, video polish
+
+Done (details in `docs/V2_VIDEO_PLAN.md` 5d and `docs/V2_GENERATION_COSTS.md`):
+
+- Concept ads write shots on the master-shot course method, with voiceover and music.
+- Built-in characters and scenes picked from the Library now load for Concept jobs (they failed with "upload didn't finish").
+- Write with AI / Suggest with AI work on the Concept and UGC forms.
+- UGC and Concept results show the script or voiceover, with captions on the video.
+- Clear "video making is paused" message when fal refuses work.
+- New column `generation_outputs.spoken` (migration 20261122100000, already applied).
+
+Waiting:
+
+- **fal.ai balance is empty** (Ben to top up). All video generation fails with a refund until then. First $15 went mostly on the Nov 16 model comparison ($12.60).
+- Then: one live Concept ad with sound, check the voice sits over the music, measure the audio cost.
+- Before launch: reset the test account's plan and credits.

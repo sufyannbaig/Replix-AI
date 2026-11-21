@@ -216,3 +216,12 @@ export function videoProgress(elapsedMs: number) {
   const t = Math.max(0, elapsedMs) / 120_000;
   return Number((0.4 + 0.55 * (1 - Math.exp(-2 * t))).toFixed(3));
 }
+
+/** What users see when fal refuses work on our side (empty balance, locked or bad key). */
+export const VIDEO_PAUSED =
+  "Video making is paused on our side for a short while. Your credits are back, please try again later.";
+
+/** True when fal turned a submit down because of our account, not the request. */
+export function falRefused(status: number) {
+  return status === 401 || status === 402 || status === 403;
+}

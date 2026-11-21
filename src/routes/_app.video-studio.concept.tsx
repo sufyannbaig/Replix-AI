@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Sparkles, X } from "lucide-react";
+import { Loader2, Sparkles, X } from "lucide-react";
+import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
@@ -10,7 +11,7 @@ import { ComposerBar, missingHint } from "@/v2/components/studio/ComposerBar";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import type { UploadedImage } from "@/v2/components/studio/UploadCard";
-import { videoGenerationCost } from "@/v2/data/api";
+import { useWriteCopy, videoGenerationCost, type WriteField } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
 import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, PieceKind, Product } from "@/v2/data/types";
@@ -41,6 +42,7 @@ function StoryField({
   actionLabel,
   onAction,
   actionDisabled,
+  busy = false,
   tall = false,
 }: {
   title: string;
@@ -50,6 +52,7 @@ function StoryField({
   actionLabel: string;
   onAction: () => void;
   actionDisabled?: boolean;
+  busy?: boolean;
   tall?: boolean;
 }) {
   return (
@@ -72,12 +75,12 @@ function StoryField({
         <button
           type="button"
           onClick={onAction}
-          disabled={actionDisabled}
+          disabled={actionDisabled || busy}
           title={actionDisabled ? "Add a product first" : undefined}
           className="absolute right-[14px] top-[17px] flex items-center gap-1.5 rounded-[60px] border border-[#a2a2a2] bg-v2-surface px-4 py-2 font-archivo text-xs leading-[1.4] text-black hover:bg-v2-canvas disabled:opacity-40 night:text-v2-ink"
         >
-          <Sparkles className="size-3" />
-          {actionLabel}
+          {busy ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+          {busy ? "Writing…" : actionLabel}
         </button>
       </div>
     </section>
@@ -201,20 +204,25 @@ function ConceptPage() {
   const cost = videoGenerationCost(seconds);
   const productName = product?.name ?? "the product";
 
-  /* Backend hook-up: these call the trained concept / ending / script models. */
+  /* "Suggest / Write with AI": the text model drafts the field from what's filled in. */
+  const writer = useWriteCopy();
+  const [writing, setWriting] = useState<WriteField | null>(null);
+  const write = (field: "concept" | "climax" | "script", set: (v: string) => void) => () => {
+    if (!product || writing) return;
+    setWriting(field);
+    writer.mutate(
+      { product, field, concept, climax, emotion, script, seconds },
+      {
+        onSuccess: set,
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't write that."),
+        onSettled: () => setWriting(null),
+      },
+    );
+  };
   const suggest = {
-    concept: () =>
-      setConcept(
-        `A barista is too tired to function until one taste of ${productName} turns the whole café into a slow-motion dessert commercial.`,
-      ),
-    climax: () =>
-      setClimax(
-        `The queue of customers all freeze mid-bite, then turn to camera in unison: "Where do we get ${productName}?"`,
-      ),
-    script: () =>
-      setScript(
-        `VO: Mornings are hard.\nBARISTA: (one sip) …oh.\nVO: ${productName}. Small spoon, big moment.`,
-      ),
+    concept: write("concept", setConcept),
+    climax: write("climax", setClimax),
+    script: write("script", setScript),
   };
 
   return (
@@ -249,6 +257,7 @@ function ConceptPage() {
             actionLabel="Suggest with AI"
             onAction={suggest.concept}
             actionDisabled={!product}
+            busy={writing === "concept"}
             tall
           />
           <StoryField
@@ -259,6 +268,7 @@ function ConceptPage() {
             actionLabel="Suggest with AI"
             onAction={suggest.climax}
             actionDisabled={!product}
+            busy={writing === "climax"}
           />
           <section className="flex flex-col gap-[22px]">
             <SectionTitle>Target Emotion</SectionTitle>
@@ -294,6 +304,7 @@ function ConceptPage() {
             actionLabel="Write with AI"
             onAction={suggest.script}
             actionDisabled={!product}
+            busy={writing === "script"}
           />
         </div>
 

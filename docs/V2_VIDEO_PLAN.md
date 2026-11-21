@@ -103,6 +103,14 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 - fal inputs checked against fal's OpenAPI for both endpoints (2026-11-21). The webhook now accepts any of a job's clip ids.
 - **Not in v1:** voiceover from the script, music and captions (the clips are silent; the script steers the shots). Next step if wanted: a music bed and a voice track merged with `ffmpeg-api`.
 
+## 5d. Status: Concept ads on the course method, with voice and music (2026-11-22)
+
+- **Shot writer** (`src/lib/v2/concept.ts`): the text model first locks a continuity bible from one master shot (character, wardrobe, location, time of day, light, grade, lens, key prop, human touch), then writes one shot per beat (Hook, Setup, Development, Climax, Brand ending; 15 s is Hook, Development, Climax and brand ending). Each shot is a mind-hack type (reflection, foreground, light moment, process, top-down...) with one motion. Every frame repeats the bible word for word. Live test c834054c: same woman, robe and light across all 3 shots, label readable, 4.5 minutes.
+- **Voice and music**: the same plan writes the voiceover (or uses the user's script, cut to about 30 words for 15 s), picks an ElevenLabs voice and writes a music brief. fal makes both while the clips render; `fal-ai/ffmpeg-api/compose` lays the clips with both tracks. A failed audio track is dropped; with none it falls back to the plain merge. Not yet heard live: the test (6ac6c739) hit fal's empty balance. Watch for music too loud under the voice (compose has no volume control).
+- **Script and captions**: the spoken words are saved on the output (`generation_outputs.spoken`) for UGC and Concept, shown on the result page with Copy, and drawn as captions by the browser (`src/lib/v2/captions.ts`, WebVTT), nothing re-rendered.
+- **Write with AI**: the Concept form's Suggest/Write buttons and the UGC custom script button call `writeCopy` (`src/lib/v2/writer.ts`).
+- **fal refusals** (401/402/403, e.g. empty balance) now tell users video making is paused instead of "the video didn't come out".
+
 ## 6. What needs no one
 
 The fal client, the webhook route, the Shorts recipes and motion templates, the video player, downloads and the Assets playback can all be written and tested with a stubbed fal response while the key is pending.

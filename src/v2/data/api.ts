@@ -10,6 +10,7 @@ import { extractBrandKit, readProductPage } from "@/lib/v2/v2.functions";
 import {
   getGenerationJob,
   getProductInsights,
+  writeCopy,
   readProductLabel,
   listGenerations,
   runGeneration,
@@ -790,6 +791,38 @@ export function useProductInsights(product: Product | null, audience: AdAudience
       }
       await new Promise((resolve) => setTimeout(resolve, 1400));
       return sampleInsights;
+    },
+  });
+}
+
+export type WriteField = "concept" | "climax" | "script" | "ugcScript";
+
+/**
+ * "Write with AI" on the video studio forms: drafts one field from the product and what's
+ * filled in so far. Sample-data mode returns a demo line.
+ */
+export function useWriteCopy() {
+  return useMutation({
+    mutationFn: async (opts: {
+      product: Product;
+      field: WriteField;
+      concept?: string;
+      climax?: string;
+      emotion?: string;
+      script?: string;
+      seconds?: number;
+    }): Promise<string> => {
+      const { product, ...rest } = opts;
+      if (await backendUser("generation_jobs")) {
+        return writeCopy({
+          data: {
+            product: { id: product.id, name: product.name, imageUrl: product.imageUrl },
+            ...rest,
+          },
+        });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      return `A fresh idea for ${product.name} would appear here.`;
     },
   });
 }

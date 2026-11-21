@@ -38,6 +38,8 @@ import {
   motionPrompt,
   parseFalStatus,
   parseFalVideo,
+  VIDEO_PAUSED,
+  falRefused,
   shortSlug,
   videoProgress,
   type ShortRecipe,
@@ -893,9 +895,12 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
     const ctx = await jobCtx(jobRow, site);
     const ugc = jobRow.studio === "ugc";
     const seconds = jobRow.seconds ?? (ugc ? 8 : 5);
-    const { plan, motion } = ugc
+    const planned = ugc
       ? await ugcPlan(ctx, request, inputs, seconds)
       : await shortPlan(ctx, request, inputs);
+    const { plan, motion } = planned;
+    const spoken =
+      "script" in planned && typeof planned.script === "string" ? planned.script : null;
     /* The label read, plus the script for UGC. */
     cost += EST_USD.text * (ugc ? 2 : 1);
     await admin.from("generation_jobs").update({ progress: 0.15 }).eq("id", jobRow.id);
@@ -924,6 +929,7 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
       user_id: jobRow.user_id,
       position: 0,
       image_path: framePath,
+      spoken: spoken || null,
     });
     if (ins.error) throw new Error(ins.error.message);
 
@@ -950,7 +956,11 @@ async function runShortJob(jobRow: GenerationJobRow, site: Site) {
     const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
     if (!res.ok || typeof body?.request_id !== "string") {
       console.error("[v2 shorts] fal submit failed", jobRow.id, res.status, body);
-      throw new GenerationError("The video service didn't take the job. Your credits are back.");
+      throw new GenerationError(
+        falRefused(res.status)
+          ? VIDEO_PAUSED
+          : "The video service didn't take the job. Your credits are back.",
+      );
     }
     await admin
       .from("generation_jobs")
@@ -1100,6 +1110,13 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
         ),
       ])
     ).filter((id): id is string => !!id);
+    if (voText && audioIds.some((id) => id.startsWith(VO_PREFIX))) {
+      await admin
+        .from("generation_outputs")
+        .update({ spoken: voText })
+        .eq("job_id", jobRow.id)
+        .eq("position", 0);
+    }
     cost += conceptAudioCost(
       audioIds.some((id) => id.startsWith(VO_PREFIX)) ? voText.length : 0,
       seconds,
@@ -1134,7 +1151,9 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
         if (!res.ok || typeof body?.request_id !== "string") {
           console.error("[v2 concept] fal submit failed", jobRow.id, res.status, body);
           throw new GenerationError(
-            "The video service didn't take the job. Your credits are back.",
+            falRefused(res.status)
+              ? VIDEO_PAUSED
+              : "The video service didn't take the job. Your credits are back.",
           );
         }
         return body.request_id;
@@ -1299,7 +1318,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
     const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
     if (!res.ok || typeof body?.request_id !== "string") {
       console.error("[v2 concept] merge submit failed", row.id, res.status, body);
-      await settleFailed(row.id, VIDEO_FAILED, frameCost);
+      await settleFailed(row.id, falRefused(res.status) ? VIDEO_PAUSED : VIDEO_FAILED, frameCost);
       return true;
     }
     await admin

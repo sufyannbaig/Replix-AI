@@ -28,22 +28,22 @@ For Sufyan and Benjamin. Prices checked 2026-11-06 from provider list prices (so
 
 ## 3. Cost per generation (what we pay)
 
-| Generation                            | Calls made                                                                                                         | Our cost (list price)                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Photo Studio, 1 image (any mode)      | 1 label read (Gemini text) + 1 Nano Banana call + 1 check (Gemini text); a failed check adds 1 retry image (on us) | **≈ $0.08**, ≈ $0.15 when the retry runs                                           |
-| Photo Studio, 4 images                | 1 label read + 4 image calls + 4 checks, plus any retries                                                          | ≈ $0.31, up to ≈ $0.59 if all four retry                                           |
-| Photo Studio, edit one photo          | 1 label read + 1 image call (product + the photo) + 1 check, plus a possible retry; charged as 1 photo (2 credits) | ≈ $0.08, ≈ $0.15 with the retry                                                    |
-| Photo Studio, "Text on your product"  | 1 Gemini text call per product per session (camera step); the job still reads once for the product's real size     | ≈ $0.005                                                                           |
-| Ad Studio, 1 ad                       | 1 copy call (Gemini text) + 1 Nano Banana call                                                                     | **≈ $0.075 to $0.08**                                                              |
-| Ad Studio, 4 ads                      | 1 copy call + 4 image calls                                                                                        | ≈ $0.29                                                                            |
-| Ad Studio insights (once per product) | 1 Gemini vision call                                                                                               | ≈ $0.005                                                                           |
-| Brand Kit extract                     | Website read (free) + 1 Gemini call                                                                                | ≈ $0.01                                                                            |
-| Product import from a URL             | Website read only                                                                                                  | $0                                                                                 |
-| Product Short, 8 s                    | 11                                                                                                                 | $2.17 to $3.66                                                                     | $1.05 (Kling 3 Pro) | Keeps about half on Scale |
-| AI UGC, 8 s with voice                | Script + frame + talking video with audio (+ voice / lip-sync if separate)                                         | ≈ $1.30 (Veo 3.1 Fast audio) to $3.30 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $1.44 |
-| AI UGC, 15 s with voice               | Same, about two clips                                                                                              | ≈ $2.35 (Veo 3.1 Fast audio) to $6.10 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $2.62 |
-| Concept ad, 15 s (several shots)      | Script and shot list + 2 to 3 frames + clips + stitching                                                           | ≈ $1.30 (Kling 2.5 Turbo) to $3.30 (Veo 3.1, no audio)                             |
-| Concept ad, 30 s (several shots)      | Script and shot list + 3 to 5 frames + clips + stitching                                                           | ≈ $2.40 (Kling 2.5 Turbo) to $6.50 (Veo 3.1, no audio)                             |
+| Generation                                | Calls made                                                                                                               | Our cost (list price)                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Photo Studio, 1 image (any mode)          | 1 label read (Gemini text) + 1 Nano Banana call + 1 check (Gemini text); a failed check adds 1 retry image (on us)       | **≈ $0.08**, ≈ $0.15 when the retry runs                                                     |
+| Photo Studio, 4 images                    | 1 label read + 4 image calls + 4 checks, plus any retries                                                                | ≈ $0.31, up to ≈ $0.59 if all four retry                                                     |
+| Photo Studio, edit one photo              | 1 label read + 1 image call (product + the photo) + 1 check, plus a possible retry; charged as 1 photo (2 credits)       | ≈ $0.08, ≈ $0.15 with the retry                                                              |
+| Photo Studio, "Text on your product"      | 1 Gemini text call per product per session (camera step); the job still reads once for the product's real size           | ≈ $0.005                                                                                     |
+| Ad Studio, 1 ad                           | 1 copy call (Gemini text) + 1 Nano Banana call                                                                           | **≈ $0.075 to $0.08**                                                                        |
+| Ad Studio, 4 ads                          | 1 copy call + 4 image calls                                                                                              | ≈ $0.29                                                                                      |
+| Ad Studio insights (once per product)     | 1 Gemini vision call                                                                                                     | ≈ $0.005                                                                                     |
+| Brand Kit extract                         | Website read (free) + 1 Gemini call                                                                                      | ≈ $0.01                                                                                      |
+| Product import from a URL                 | Website read only                                                                                                        | $0                                                                                           |
+| Product Short, 8 s                        | 11                                                                                                                       | $2.17 to $3.66                                                                               | $1.05 (Kling 3 Pro) | Keeps about half on Scale |
+| AI UGC, 8 s with voice                    | Script + frame + talking video with audio (+ voice / lip-sync if separate)                                               | ≈ $1.30 (Veo 3.1 Fast audio) to $3.30 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $1.44           |
+| AI UGC, 15 s with voice                   | Same, about two clips                                                                                                    | ≈ $2.35 (Veo 3.1 Fast audio) to $6.10 (Veo 3.1 audio); Kling 3.0 Pro audio ≈ $2.62           |
+| Concept ad, 15 s (3 shots, voice + music) | Shot list, voiceover and music brief + 3 checked frames + 3 Kling 2.5 Turbo clips + ElevenLabs voice and music + compose | ≈ $1.65 measured parts: frames $0.38, clips $1.05, audio ≈ $0.21 (list price), compose $0.01 |
+| Concept ad, 30 s (6 shots, voice + music) | Same, 6 frames and 6 clips                                                                                               | ≈ $3.30 (frames $0.75, clips $2.10, audio ≈ $0.42)                                           |
 
 Failed generations: the credits go back to the user, but the provider may still bill us for calls that already ran (Lovable notes that cancelled requests can still be billed). Partial results (for example 3 of 4 images) refund the missing share.
 
@@ -64,8 +64,8 @@ v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, Prod
 | Product Short, 8 s     | 10      | $1.97 to $3.33               | $0.63 to $1.99   | OK on Kling / Veo Fast; thin on Seedance at Scale |
 | AI UGC, 8 s            | 15      | $2.95 to $5.00               | $1.30 to $3.30   | Profit on every plan with Veo Fast / Kling 3.0    |
 | AI UGC, 15 s           | 30      | $5.90 to $9.99               | $2.35 to $6.10   | Profit on every plan; Veo 3.1 audio breaks even   |
-| Concept ad, 15 s       | 10      | $1.97 to $3.33               | $1.30 to $3.30   | Depends on the model                              |
-| Concept ad, 30 s       | 20      | $3.93 to $6.66               | $2.40 to $6.50   | Depends on the model                              |
+| Concept ad, 15 s       | 10      | $1.97 to $3.33               | ≈ $1.65          | Kling 2.5 Turbo + voice and music (2026-11-22)    |
+| Concept ad, 30 s       | 20      | $3.93 to $6.66               | ≈ $3.30          | Kling 2.5 Turbo + voice and music (2026-11-22)    |
 | Free plan (10 credits) | 10      | $0                           | 5 photos ≈ $0.35 | Fine for photos and ads                           |
 
 **Product Shorts after the live model test (2026-11-16, `V2_VIDEO_PLAN.md` section 5).** Our cost per Short is the video plus about $0.15 for the first frame and its checks. Kling 3 Pro keeps the label as well as the dearer models, so it stays the model for every template.
@@ -117,3 +117,9 @@ Then compare the total with the drop in Lovable's **Run credits** for the same p
 - Gemini 3.8 Flash: [layer3labs.io](https://www.layer3labs.io/guides/gemini-3-8-flash-pricing), [apidog.com](https://apidog.com/blog/gemini-3-8-flash-pricing/)
 - Video models: [fal.ai image-to-video](https://fal.ai/learn/tools/best-image-to-video-apis-2026), [fal.ai video generators](https://fal.ai/learn/tools/ai-video-generators)
 - ElevenLabs: [modelslab.com](https://modelslab.com/elevenlabs-api-pricing.md), [soniox.com](https://soniox.com/pricing/tts/soniox-vs-elevenlabs)
+
+## Concept ads with voice and music (2026-11-22)
+
+Voice (ElevenLabs multilingual v2 on fal, $0.10 per 1000 characters, about $0.02 for a 15 s voiceover) and music (ElevenLabs music on fal, about $0.80 a minute, so $0.20 for 15 s) add about $0.21 to a 15 s Concept ad, which now costs about $1.65. At 10 credits that still earns on every plan: about $0.32 kept on Scale (the cheapest credit, $0.197), more on the others. 30 s keeps about $0.63 on Scale. No price change needed; the audio prices are fal list prices until the first live run is measured (blocked on the fal top-up). If Scale margin matters more, dropping music saves $0.20 and keeps the voice.
+
+The "Write with AI" and "Suggest with AI" buttons are one text call each (about $0.001), free to users, capped at 60 a day per user (`v2_write` in usage_events).

@@ -128,6 +128,8 @@ export type GenerationOutputRow = {
   video_path: string | null;
   saved_to_assets: boolean;
   copy: OutputCopy | null;
+  /** What the UGC creator or the Concept narrator says (script and captions). */
+  spoken: string | null;
   created_at: string;
 };
 

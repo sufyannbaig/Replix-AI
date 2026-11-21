@@ -396,6 +396,8 @@ export type GenerationOutput = {
   };
   /** Ads: the words to post with it (Meta's primary text, headline, description, button). */
   post?: { primary: string; headline: string; description: string; cta: string };
+  /** What the creator or narrator says in a video: shown as the script and captions. */
+  spoken?: string;
 };
 
 export type AdDesign = {

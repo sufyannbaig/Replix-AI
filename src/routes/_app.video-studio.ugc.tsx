@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCredits } from "@/hooks/use-credits";
@@ -23,7 +24,7 @@ import {
   UploadTip,
   type UploadedImage,
 } from "@/v2/components/studio/UploadCard";
-import { ugcGenerationCost, useUgcTemplates } from "@/v2/data/api";
+import { ugcGenerationCost, useUgcTemplates, useWriteCopy } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
 import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, Product, UgcStyle, UgcTemplate } from "@/v2/data/types";
@@ -180,6 +181,7 @@ function UgcPage() {
 
   const [style, setStyle] = useState<"all" | UgcStyle>("all");
   const [template, setTemplate] = useState<UgcTemplate | null>(null);
+  const writer = useWriteCopy();
   const [locked, setLocked] = useState<UgcTemplate | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -346,17 +348,27 @@ function UgcPage() {
             noteAction={
               <button
                 type="button"
-                disabled={!product}
+                disabled={!product || writer.isPending}
                 title={product ? undefined : "Add a product first"}
                 onClick={() => {
-                  // Backend hook-up: call the script writer with the product + template style.
-                  setScript(
-                    `I didn't expect ${product?.name ?? "this"} to be this good. Here's why it's in my bag every day…`,
+                  if (!product) return;
+                  writer.mutate(
+                    { product, field: "ugcScript", script, seconds },
+                    {
+                      onSuccess: setScript,
+                      onError: (e) =>
+                        toast.error(e instanceof Error ? e.message : "Couldn't write that."),
+                    },
                   );
                 }}
                 className="flex shrink-0 items-center gap-1 rounded-full bg-v2-nav-active px-2.5 py-1 font-archivo text-[11px] text-v2-ink disabled:opacity-40"
               >
-                <Sparkles className="size-3" /> Write with AI
+                {writer.isPending ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3" />
+                )}{" "}
+                {writer.isPending ? "Writing…" : "Write with AI"}
               </button>
             }
             cost={cost}

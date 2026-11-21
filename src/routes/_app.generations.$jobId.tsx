@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { captionCues, toVtt } from "@/lib/v2/captions";
 import {
   ArrowLeft,
   Check,
@@ -330,6 +331,12 @@ function Result({ job }: { job: GenerationJob }) {
               b2b={request.inputs?.studio === "ad" && request.inputs.audience === "b2b"}
             />
           ) : null}
+          {status === "done" && selected?.spoken ? (
+            <SpokenScript
+              text={selected.spoken}
+              who={request.studio === "concept" ? "Voiceover" : "Script"}
+            />
+          ) : null}
           <Details job={job} />
         </aside>
       </div>
@@ -384,6 +391,16 @@ function Result({ job }: { job: GenerationJob }) {
 
 function Viewer({ job, output }: { job: GenerationJob; output: GenerationOutput }) {
   const { request } = job;
+  /* Captions from the spoken words, drawn by the browser (nothing re-rendered). */
+  const captions = useMemo(() => {
+    if (!output.spoken || typeof URL === "undefined") return null;
+    const cues = captionCues(output.spoken, {
+      startMs: request.studio === "concept" ? 400 : 300,
+      endMs: request.seconds ? request.seconds * 1000 : undefined,
+    });
+    return URL.createObjectURL(new Blob([toVtt(cues)], { type: "text/vtt" }));
+  }, [output.spoken, request.studio, request.seconds]);
+  useEffect(() => () => (captions ? URL.revokeObjectURL(captions) : undefined), [captions]);
   return (
     <div
       className={cn(
@@ -403,7 +420,11 @@ function Viewer({ job, output }: { job: GenerationJob; output: GenerationOutput 
           playsInline
           aria-label={`Video of ${request.product.name}`}
           className="size-full bg-black object-cover"
-        />
+        >
+          {captions ? (
+            <track kind="captions" src={captions} srcLang="en" label="English" default />
+          ) : null}
+        </video>
       ) : (
         <img
           src={output.imageUrl}
@@ -591,6 +612,38 @@ function NotFound() {
 }
 
 /** The words to post with an ad (Meta's Ads Manager fields), each one copyable. */
+/** What the creator or narrator says, to read, copy or reuse as captions elsewhere. */
+function SpokenScript({ text, who }: { text: string; who: string }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${who} copied`);
+    } catch {
+      toast.error("Couldn't copy. Select the text and copy it instead.");
+    }
+  };
+  return (
+    <section className="flex flex-col gap-3 rounded-[18px] bg-v2-surface p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="type-label text-v2-ink">{who}</h2>
+        <button
+          type="button"
+          onClick={copy}
+          className="font-inter-tight text-xs text-v2-blue hover:underline"
+        >
+          Copy
+        </button>
+      </div>
+      <p className="whitespace-pre-line font-inter-tight text-sm leading-[1.5] text-v2-ink">
+        {text}
+      </p>
+      <p className="font-inter-tight text-xs text-v2-muted">
+        Shown as captions on the video. Turn them off with the CC button in the player.
+      </p>
+    </section>
+  );
+}
+
 function PostCopy({ post, b2b }: { post: NonNullable<GenerationOutput["post"]>; b2b?: boolean }) {
   const fields: [string, string][] = [
     ["Primary text", post.primary],
