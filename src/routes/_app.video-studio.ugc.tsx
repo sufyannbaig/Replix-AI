@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Loader2, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { AiButton } from "@/v2/components/studio/AiButton";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -346,10 +347,13 @@ function UgcPage() {
             onNoteChange={setScript}
             notePlaceholder="What should the creator say?"
             noteAction={
-              <button
-                type="button"
-                disabled={!product || writer.isPending}
-                title={product ? undefined : "Add a product first"}
+              <AiButton
+                label="Write with AI"
+                busy={writer.isPending}
+                needsProduct={!product}
+                onNeedProduct={() => setPickerOpen(true)}
+                tipAbove
+                className="shrink-0"
                 onClick={() => {
                   if (!product) return;
                   writer.mutate(
@@ -361,15 +365,7 @@ function UgcPage() {
                     },
                   );
                 }}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-v2-nav-active px-2.5 py-1 font-archivo text-[11px] text-v2-ink disabled:opacity-40"
-              >
-                {writer.isPending ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3" />
-                )}{" "}
-                {writer.isPending ? "Writing…" : "Write with AI"}
-              </button>
+              />
             }
             cost={cost}
             canGenerate={

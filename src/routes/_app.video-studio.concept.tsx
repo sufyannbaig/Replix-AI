@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2, Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
+import { AiButton } from "@/v2/components/studio/AiButton";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
@@ -42,6 +43,7 @@ function StoryField({
   actionLabel,
   onAction,
   actionDisabled,
+  onNeedProduct,
   busy = false,
   tall = false,
 }: {
@@ -52,6 +54,7 @@ function StoryField({
   actionLabel: string;
   onAction: () => void;
   actionDisabled?: boolean;
+  onNeedProduct?: () => void;
   busy?: boolean;
   tall?: boolean;
 }) {
@@ -72,16 +75,14 @@ function StoryField({
           aria-label={title}
           className="size-full resize-none rounded-[14px] bg-transparent py-5 pl-[14px] pr-[170px] font-inter-tight text-sm leading-[1.4] text-v2-ink outline-none placeholder:text-v2-muted"
         />
-        <button
-          type="button"
+        <AiButton
+          label={actionLabel}
+          busy={busy}
+          needsProduct={actionDisabled}
           onClick={onAction}
-          disabled={actionDisabled || busy}
-          title={actionDisabled ? "Add a product first" : undefined}
-          className="absolute right-[14px] top-[17px] flex items-center gap-1.5 rounded-[60px] border border-[#a2a2a2] bg-v2-surface px-4 py-2 font-archivo text-xs leading-[1.4] text-black hover:bg-v2-canvas disabled:opacity-40 night:text-v2-ink"
-        >
-          {busy ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-          {busy ? "Writing…" : actionLabel}
-        </button>
+          onNeedProduct={onNeedProduct}
+          className="absolute right-[14px] top-[17px]"
+        />
       </div>
     </section>
   );
@@ -257,6 +258,7 @@ function ConceptPage() {
             actionLabel="Suggest with AI"
             onAction={suggest.concept}
             actionDisabled={!product}
+            onNeedProduct={() => setPickerOpen(true)}
             busy={writing === "concept"}
             tall
           />
@@ -268,6 +270,7 @@ function ConceptPage() {
             actionLabel="Suggest with AI"
             onAction={suggest.climax}
             actionDisabled={!product}
+            onNeedProduct={() => setPickerOpen(true)}
             busy={writing === "climax"}
           />
           <section className="flex flex-col gap-[22px]">
@@ -304,6 +307,7 @@ function ConceptPage() {
             actionLabel="Write with AI"
             onAction={suggest.script}
             actionDisabled={!product}
+            onNeedProduct={() => setPickerOpen(true)}
             busy={writing === "script"}
           />
         </div>
