@@ -12,7 +12,7 @@ import { ProfileMenu } from "./ProfileMenu";
 import { Sidebar, SidebarContent } from "./Sidebar";
 import creditCoin from "@/assets/v2/credit-coin.png";
 import defaultAvatar from "@/assets/v2/home/avatar.png";
-import logoMark from "@/assets/v2/logo-mark.png";
+import { ReplixMark } from "@/v2/components/brand/ReplixLogo";
 
 function useAccountSummary() {
   const { user } = useAuth();
@@ -170,7 +170,7 @@ export function AppShell({
             </SheetContent>
           </Sheet>
           <Link to="/dashboard" aria-label="Replix AI home" className="shrink-0">
-            <img src={logoMark} alt="" className="size-8 rounded-[5px]" />
+            <ReplixMark className="size-8" />
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <CompactCredits />

@@ -5,8 +5,7 @@ import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "@/v2/components/Icon";
 import { useBrandKits } from "@/v2/data/api";
 import { brandLogo } from "@/v2/data/types";
-import logoMark from "@/assets/v2/logo-mark.png";
-import logoWordmark from "@/assets/v2/logo-wordmark.svg";
+import { ReplixLogo } from "@/v2/components/brand/ReplixLogo";
 import brandKitRing from "@/assets/v2/icons/brandkit-ring.svg";
 
 type NavIcon =
@@ -201,12 +200,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         className="ml-[38.19px] mt-[51.36px] flex h-[39.9px] items-center gap-[6.6px]"
         aria-label="Replix AI home"
       >
-        <img src={logoMark} alt="" className="size-[39.9px] rounded-[6px] object-cover" />
-        <span
-          aria-hidden
-          className="v2-icon mt-[5.3px] h-[34.3px] w-[150.2px] self-start text-[#162544] night:text-v2-ink"
-          style={{ maskImage: `url("${logoWordmark}")`, WebkitMaskImage: `url("${logoWordmark}")` }}
-        />
+        <ReplixLogo className="h-[39.9px] w-auto" />
       </Link>
 
       <div className="ml-11 mt-[46.79px]">

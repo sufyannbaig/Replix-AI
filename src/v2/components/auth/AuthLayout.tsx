@@ -2,8 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import logoMark from "@/assets/v2/logo-mark.png";
-import logoWordmark from "@/assets/v2/logo-wordmark.svg";
+import { ReplixLogo } from "@/v2/components/brand/ReplixLogo";
 import { AuthHeroMotion } from "./AuthHeroMotion";
 
 /**
@@ -28,15 +27,7 @@ export function AuthLayout({
           aria-label="Replix AI home"
           className="flex h-[37px] items-center gap-[6.1px] self-start"
         >
-          <img src={logoMark} alt="" className="size-[37px] rounded-[5.5px] object-cover" />
-          <span
-            aria-hidden
-            className="v2-icon mt-[4.9px] h-[31.8px] w-[139.3px] self-start text-[#162544] night:text-v2-ink"
-            style={{
-              maskImage: `url("${logoWordmark}")`,
-              WebkitMaskImage: `url("${logoWordmark}")`,
-            }}
-          />
+          <ReplixLogo className="h-[37px] w-auto" />
         </Link>
 
         <div className="mt-14 w-full max-w-[418px] sm:mt-[61px]">

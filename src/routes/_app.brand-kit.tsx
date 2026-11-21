@@ -25,7 +25,7 @@ import {
 } from "@/v2/data/api";
 import { BRAND_KIT_LIMITS } from "@/v2/data/pricing";
 import { brandLogo, type BrandKit } from "@/v2/data/types";
-import logoMark from "@/assets/v2/logo-mark.png";
+import { ReplixMark } from "@/v2/components/brand/ReplixLogo";
 import assetCap from "@/assets/v2/brand/asset-cap.png";
 import assetBottle from "@/assets/v2/brand/asset-bottle.png";
 import linkA from "@/assets/v2/brand/link-a.svg";
@@ -425,11 +425,7 @@ function EmptyKit({
           className="absolute left-[257px] top-[147px] h-[33.7px] w-[15.7px]"
         />
         <div className="absolute left-[114px] top-[25px] h-[131px] w-[176px] rounded-[14px] bg-[#f5f5f5] shadow-[0_0_26.8px_rgba(0,0,0,0.04)]" />
-        <img
-          src={logoMark}
-          alt=""
-          className="absolute left-[168px] top-[57px] size-[68px] rounded-[6px] object-cover"
-        />
+        <ReplixMark className="absolute left-[168px] top-[57px] size-[68px]" />
         <Callout className="left-0 top-[38px] h-[82px] w-[120px] px-2 pt-2 shadow-[1px_4px_14.2px_rgba(232,169,59,0.08)]">
           <p className="font-archivo text-[10px] font-medium leading-[1.4] text-black">
             Brand Colour
