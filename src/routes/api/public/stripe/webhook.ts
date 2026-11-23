@@ -5,8 +5,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { APP_PLANS, type AppPlanKey } from "@/lib/shopify-app.constants";
 import { creditPack, creditsAfterReset } from "@/v2/data/pricing";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 /**
  * Stripe webhook — fires on every checkout completion and subscription
  * state change for the non-Shopify billing path. This is the equivalent of
@@ -17,16 +15,21 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Created per request: at module level, a missing key would crash every page.
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+        if (!secretKey || !webhookSecret) {
+          console.error("Stripe webhook: STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is not set");
+          return new Response("Stripe is not configured", { status: 500 });
+        }
+        const stripe = new Stripe(secretKey);
+
         const rawBody = await request.text();
         const signature = request.headers.get("stripe-signature");
 
         let event: Stripe.Event;
         try {
-          event = stripe.webhooks.constructEvent(
-            rawBody,
-            signature ?? "",
-            process.env.STRIPE_WEBHOOK_SECRET!,
-          );
+          event = stripe.webhooks.constructEvent(rawBody, signature ?? "", webhookSecret);
         } catch {
           return new Response("Invalid signature", { status: 401 });
         }
