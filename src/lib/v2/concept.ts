@@ -213,9 +213,9 @@ export function conceptVoText(script: string | undefined, planVo: string, second
 export const CONCEPT_TTS_MODEL = "fal-ai/elevenlabs/tts/multilingual-v2";
 export const CONCEPT_MUSIC_MODEL = "fal-ai/elevenlabs/music";
 export const CONCEPT_COMPOSE_MODEL = "fal-ai/ffmpeg-api/compose";
-/** fal list prices (estimates until measured): $0.10 per 1000 characters, $0.80 a minute. */
+/** fal list prices (2026-11-23): $0.10 per 1000 characters; music $0.60 per started minute. */
 export const CONCEPT_TTS_USD_PER_CHAR = 0.0001;
-export const CONCEPT_MUSIC_USD_PER_SECOND = 0.8 / 60;
+export const CONCEPT_MUSIC_USD_PER_MINUTE = 0.6;
 export const VO_PREFIX = "vo:";
 export const MUSIC_PREFIX = "music:";
 export const COMPOSE_PREFIX = "compose:";
@@ -284,7 +284,10 @@ export function parseFinishedVideo(raw: unknown): string | undefined {
 }
 
 export function conceptAudioCost(voChars: number, seconds: number, music: boolean) {
-  return voChars * CONCEPT_TTS_USD_PER_CHAR + (music ? seconds * CONCEPT_MUSIC_USD_PER_SECOND : 0);
+  return (
+    voChars * CONCEPT_TTS_USD_PER_CHAR +
+    (music ? Math.ceil(seconds / 60) * CONCEPT_MUSIC_USD_PER_MINUTE : 0)
+  );
 }
 
 /** The locked attributes as one line, repeated word for word in every frame. */
@@ -348,6 +351,27 @@ export function falClipInput(opts: { prompt: string; imageUrl: string }) {
     negative_prompt: NEGATIVE_PROMPT,
     cfg_scale: 0.5,
   };
+}
+
+/**
+ * Send every clip, or none. The first goes alone, so a refusal (empty balance, bad input)
+ * costs nothing; if a later one fails, the clips already sent are cancelled.
+ */
+export async function submitAllClips(
+  count: number,
+  submit: (index: number) => Promise<string>,
+  cancel: (id: string) => Promise<unknown>,
+) {
+  if (count < 1) return [];
+  const first = await submit(0);
+  const rest = await Promise.allSettled(Array.from({ length: count - 1 }, (_, i) => submit(i + 1)));
+  const failed = rest.find((r) => r.status === "rejected");
+  const ids = [first, ...rest.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))];
+  if (failed) {
+    await Promise.allSettled(ids.map(cancel));
+    throw failed.reason;
+  }
+  return ids;
 }
 
 /** fal body for the stitch, clips in shot order. */

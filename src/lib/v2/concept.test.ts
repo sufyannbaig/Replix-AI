@@ -2,7 +2,9 @@
 import { describe, test } from "node:test";
 import { strictEqual, ok, deepStrictEqual } from "node:assert";
 import {
+  conceptAudioCost,
   conceptShotCount,
+  submitAllClips,
   moveConceptFrame,
   redoNote,
   conceptVideoCost,
@@ -136,5 +138,47 @@ describe("frame approval", () => {
     strictEqual(redoNote('  make it "night"\n '), "Change for this frame: make it night.");
     strictEqual(redoNote(""), "");
     ok(redoNote("x".repeat(500)).length < 240);
+  });
+});
+
+describe("concept spend", () => {
+  test("music is billed per started minute", () => {
+    strictEqual(conceptAudioCost(0, 15, true), 0.6);
+    strictEqual(conceptAudioCost(0, 30, true), 0.6);
+    strictEqual(conceptAudioCost(0, 61, true), 1.2);
+    strictEqual(conceptAudioCost(0, 15, false), 0);
+  });
+  const run = async (fail: number | null) => {
+    const sent: number[] = [];
+    const cancelled: string[] = [];
+    let error = "";
+    const ids = await submitAllClips(
+      3,
+      async (i) => {
+        sent.push(i);
+        if (i === fail) throw new Error("refused");
+        return `c${i}`;
+      },
+      async (id) => cancelled.push(id),
+    ).catch((e: Error) => {
+      error = e.message;
+      return [];
+    });
+    return { ids, sent, cancelled, error };
+  };
+  test("all clips accepted, in shot order", async () => {
+    deepStrictEqual(await run(null), {
+      ids: ["c0", "c1", "c2"],
+      sent: [0, 1, 2],
+      cancelled: [],
+      error: "",
+    });
+  });
+  test("a refused first clip sends nothing else", async () => {
+    deepStrictEqual(await run(0), { ids: [], sent: [0], cancelled: [], error: "refused" });
+  });
+  test("a later refusal cancels the clips already sent", async () => {
+    deepStrictEqual((await run(1)).cancelled, ["c0", "c2"]);
+    strictEqual((await run(2)).error, "refused");
   });
 });

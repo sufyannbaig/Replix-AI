@@ -85,6 +85,7 @@ import {
   falComposeInput,
   parseFalAudio,
   parseFinishedVideo,
+  submitAllClips,
   CONCEPT_REVIEW,
   redoNote,
   type ConceptReview,
@@ -1244,7 +1245,59 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
     const count = shots.length;
     const product = { name: request.product.name };
 
-    /* Voice and music render while the clips do; a failed submit only drops that track. */
+    const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
+    const submit = `${falUrls(CONCEPT_CLIP_MODEL).submit}?fal_webhook=${encodeURIComponent(hook)}`;
+    /* Every frame is signed before anything is sent, so a missing one costs nothing. */
+    const frameUrls = await Promise.all(
+      shots.map(async (_, i) => {
+        const { data: signed } = await admin.storage
+          .from("outputs")
+          .createSignedUrl(framePaths[i], 60 * 60);
+        if (!signed?.signedUrl) throw new Error("Couldn't sign a frame.");
+        return signed.signedUrl;
+      }),
+    );
+    const cancel = (id: string) =>
+      fetch(falUrls(CONCEPT_CLIP_MODEL, id).status.replace(/\/status$/, "/cancel"), {
+        method: "PUT",
+        headers: { Authorization: `Key ${key}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+    const ids = await submitAllClips(
+      count,
+      async (i) => {
+        const shot = shots[i];
+        const res = await fetch(submit, {
+          method: "POST",
+          headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify(
+            falClipInput({
+              prompt: conceptMotionPrompt({
+                productName: product.name,
+                shot,
+                emotion: inputs.emotion,
+                bible,
+              }),
+              imageUrl: frameUrls[i],
+            }),
+          ),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+        if (!res.ok || typeof body?.request_id !== "string") {
+          console.error("[v2 concept] fal submit failed", jobRow.id, res.status, body);
+          throw new GenerationError(
+            falRefused(res.status)
+              ? VIDEO_PAUSED
+              : "The video service didn't take the job. Your credits are back.",
+          );
+        }
+        return body.request_id;
+      },
+      cancel,
+    );
+
+    /* Sent once every clip is accepted; a failed submit only drops that track. */
     const seconds = count * 5;
     const voText = conceptVoText(inputs.script, plan.vo, seconds);
     const queueAudio = async (model: string, input: object, prefix: string) => {
@@ -1286,43 +1339,7 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
       audioIds.some((id) => id.startsWith(MUSIC_PREFIX)),
     );
 
-    const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
-    const submit = `${falUrls(CONCEPT_CLIP_MODEL).submit}?fal_webhook=${encodeURIComponent(hook)}`;
-    const ids = await Promise.all(
-      shots.map(async (shot, i) => {
-        const { data: signed } = await admin.storage
-          .from("outputs")
-          .createSignedUrl(framePaths[i], 60 * 60);
-        if (!signed?.signedUrl) throw new Error("Couldn't sign a frame.");
-        const res = await fetch(submit, {
-          method: "POST",
-          headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify(
-            falClipInput({
-              prompt: conceptMotionPrompt({
-                productName: product.name,
-                shot,
-                emotion: inputs.emotion,
-                bible,
-              }),
-              imageUrl: signed.signedUrl,
-            }),
-          ),
-          signal: AbortSignal.timeout(30_000),
-        });
-        const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
-        if (!res.ok || typeof body?.request_id !== "string") {
-          console.error("[v2 concept] fal submit failed", jobRow.id, res.status, body);
-          throw new GenerationError(
-            falRefused(res.status)
-              ? VIDEO_PAUSED
-              : "The video service didn't take the job. Your credits are back.",
-          );
-        }
-        return body.request_id;
-      }),
-    );
-    await admin
+    const stored = await admin
       .from("generation_jobs")
       .update({
         provider: `fal:${CONCEPT_CLIP_MODEL}`,
@@ -1331,6 +1348,10 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
         progress: 0.4,
       })
       .eq("id", jobRow.id);
+    if (stored.error) {
+      await Promise.allSettled(ids.map(cancel));
+      throw new Error(stored.error.message);
+    }
   } catch (error) {
     console.error("[v2 concept] job failed", jobRow.id, error);
     const message =
@@ -1349,10 +1370,16 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
   const ids = row.provider_job_ids ?? [];
   const headers = { Authorization: `Key ${key}` };
   const frameCost = Number(row.provider_cost_usd ?? 0);
+  /* Set once this call holds the claim: where to put progress back if it then fails. */
+  let retryAt: number | null = null;
   const ask = async (model: string, id: string) => {
     const urls = falUrls(model, id);
     const res = await fetch(urls.status, { headers, signal: AbortSignal.timeout(15_000) });
     return { state: res.ok ? parseFalStatus(await res.json()) : ("running" as const), urls };
+  };
+  /* fal having a moment (429, 5xx) is worth another try; anything else is an answer. */
+  const retryIfBusy = (res: Response) => {
+    if (res.status === 429 || res.status >= 500) throw new Error(`fal busy (${res.status})`);
   };
   try {
     /* Stage 2: the stitch. */
@@ -1376,7 +1403,9 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         .lt("progress", 0.99)
         .select("id");
       if (!claimed?.length) return false;
+      retryAt = 0.95;
       const result = await fetch(urls.result, { headers, signal: AbortSignal.timeout(15_000) });
+      retryIfBusy(result);
       const videoUrl = result.ok ? parseFinishedVideo(await result.json()) : undefined;
       if (!videoUrl) {
         await settleFailed(row.id, VIDEO_FAILED, frameCost);
@@ -1447,9 +1476,11 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       .lt("progress", 0.9)
       .select("id");
     if (!claimed?.length) return false;
+    retryAt = 0.85;
     const clips = await Promise.all(
       states.map(async (s) => {
         const res = await fetch(s.urls.result, { headers, signal: AbortSignal.timeout(15_000) });
+        retryIfBusy(res);
         return res.ok ? parseFalVideo(await res.json()) : undefined;
       }),
     );
@@ -1478,22 +1509,32 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         signal: AbortSignal.timeout(30_000),
       },
     );
+    retryIfBusy(res);
     const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
     if (!res.ok || typeof body?.request_id !== "string") {
       console.error("[v2 concept] merge submit failed", row.id, res.status, body);
       await settleFailed(row.id, falRefused(res.status) ? VIDEO_PAUSED : VIDEO_FAILED, frameCost);
       return true;
     }
-    await admin
+    const stored = await admin
       .from("generation_jobs")
       .update({
         provider_job_ids: [`${withSound ? COMPOSE_PREFIX : MERGE_PREFIX}${body.request_id}`],
         progress: 0.92,
       })
       .eq("id", row.id);
+    if (stored.error) throw new Error(stored.error.message);
     return true;
   } catch (error) {
     console.error("[v2 concept] sync failed", row.id, error);
+    /* Let go of the claim so the next check tries again: the clips are already paid for. */
+    if (retryAt !== null) {
+      await admin
+        .from("generation_jobs")
+        .update({ progress: retryAt })
+        .eq("id", row.id)
+        .eq("status", "running");
+    }
     return false;
   }
 }
