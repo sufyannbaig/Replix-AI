@@ -28,4 +28,4 @@ export const STORY_RULES = [
 
 /** Each clip starts from its still, so the still must be the moment before the motion. */
 export const FRAME_MOTION_RULE =
-  "The frame is the instant BEFORE the motion: whatever the motion changes has not happened yet (a bottle about to be set down is still in the hand). Both hands must be free for what the motion asks. Use the same shot size in frame and motion, and one simple action that finishes in 5 seconds.";
+  "The frame is the instant BEFORE the motion: whatever the motion changes has not happened yet (a bottle about to be set down is still in the hand). Both hands must be free for what the motion asks. Never say left or right. Keep the whole head in frame when the face is shown. Use the same shot size in frame and motion, and one simple action that finishes in 5 seconds.";

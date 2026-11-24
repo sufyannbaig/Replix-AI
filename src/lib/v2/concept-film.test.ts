@@ -61,6 +61,14 @@ describe("film still", () => {
   });
 });
 
+describe("review rules", () => {
+  test("hand side never blocks; continuity is checked against the earlier still", () => {
+    const m = stillReviewMessages({ still: "S", shot, product: "P", film: "F", label: [] });
+    const all = JSON.stringify(m);
+    ok(all.includes("left or right hand") && all.includes("matches the earlier still"));
+  });
+});
+
 describe("quality gate", () => {
   test("low scores and visible faults block; a silent reviewer doesn't", () => {
     ok(stillPasses(R(8)) && !stillPasses(R(6)) && !stillPasses(R(9, ["six fingers"])));

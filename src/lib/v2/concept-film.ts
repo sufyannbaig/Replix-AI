@@ -96,23 +96,25 @@ export function stillReviewMessages(opts: {
     ...(opts.film ? [{ text: "an earlier still of the same film", url: opts.film }] : []),
   ];
   const asks = [
-    `It shows this shot and nothing that contradicts it: ${opts.shot.frame}`,
+    `It tells this story moment, with every object and body position the story needs: ${opts.shot.frame}`,
     opts.shot.keep ? `This is true: ${opts.shot.keep}` : "",
-    `It is the moment BEFORE this motion, which could start from here: ${opts.shot.motion}`,
+    `This motion could start from here and has not already happened (someone about to sit is still standing): ${opts.shot.motion}`,
     "Hands, fingers, face, eyes and teeth are anatomically right and hold things believably.",
     "Every object appears once, rests on something and makes physical sense; no studio equipment.",
     shows
       ? `The product appears exactly once, matches the real one at a believable size${opts.label.length ? `, and any readable label says ${opts.label.map((l) => `"${l}"`).join(" / ")}` : ""}.`
       : "No product or label is in the frame.",
     opts.character ? "The person, if seen, is the actor." : "",
-    opts.film ? "Clothes, room and light match the earlier still." : "",
+    opts.film
+      ? "Every piece of clothing (coat, top, trousers or skirt, shoes), hair, room, furniture, light and story object matches the earlier still; name anything that changed."
+      : "",
     "It would pass as a frame of a real commercial: real skin, motivated light, no waxy, glowing, pasted-on or stock-photo look.",
   ].filter(Boolean);
   return [
     {
       role: "system" as const,
       content:
-        'You are a commercial director rejecting AI-looking frames before money is spent on them. Judge only what you can see. Reply with JSON only: {"score": 1-10, "blocking": ["..."], "minor": ["..."]}. "blocking": faults an ordinary viewer would notice, each in under 12 words. 10 is a frame from a real commercial, 7 is usable, under 7 is not. Do not be kind, and do not invent faults.',
+        'You are a commercial director rejecting AI-looking frames before money is spent on them. Judge only what you can see. Reply with JSON only: {"score": 1-10, "blocking": ["..."], "minor": ["..."]}. "blocking": faults an ordinary viewer would notice, each in under 12 words. Never blocking: left or right hand, a slightly different shot size or camera angle, or tiny details nobody would notice; put those in \"minor\". Always blocking: a missing story object, changed clothes, a head cut by the frame in a shot about the person, the motion already done. 10 is a frame from a real commercial, 7 is usable, under 7 is not. Do not be kind, and do not invent faults.',
     },
     {
       role: "user" as const,

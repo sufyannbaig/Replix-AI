@@ -1186,8 +1186,8 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       const path = `${jobRow.user_id}/${jobRow.id}/${i + 1}-frame.${extension(still.type)}`;
       await saveOutput(path, still.bytes, still.type);
       framePaths[i] = path;
-      /* Only a good first still sets the look the others must match. */
-      if (i === 0 && !issues[0].length) film = stillUrl(still);
+      /* The first still sets the look the others must match, even if it needs a redo. */
+      if (i === 0) film = stillUrl(still);
       made += 1;
       await admin
         .from("generation_jobs")
@@ -1291,8 +1291,9 @@ export async function redoConceptFrame(
   const ctx = await jobCtx(jobRow, site);
   const { product, refs } = await conceptRefs(ctx, request);
   const issues = review.issues ?? review.frames.map(() => []);
-  /* Match a still that passed, if there is one (never the one being redone). */
-  const good = review.frames.findIndex((_, i) => i !== index && !issues[i]?.length);
+  /* Match another still: the first that passed, else the first there is. */
+  const others = review.frames.map((_, i) => i).filter((i) => i !== index);
+  const good = others.find((i) => !issues[i]?.length) ?? others[0] ?? -1;
   const film = good >= 0 ? await fromStorage("outputs", review.frames[good]) : undefined;
   const { still: frame, review: result } = await tryStill({
     product,
