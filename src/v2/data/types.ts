@@ -443,6 +443,14 @@ export type GenerationJob = {
   outputs: GenerationOutput[];
   /** Server jobs that failed: why, in words safe to show. */
   error?: string | null;
+  /** A one-take dry run: the plan and opening still, before any paid video. */
+  takeCheck?: {
+    still: string;
+    shots: { seconds: number; action: string }[];
+    line: string;
+    wardrobe: string;
+    faults: string[];
+  };
   /** Concept ads: the stills waiting for the user's approval before any video is made. */
   review?: {
     frames: string[];

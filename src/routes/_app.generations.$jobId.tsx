@@ -226,6 +226,8 @@ function Result({ job }: { job: GenerationJob }) {
             </div>
           )}
 
+          {job.takeCheck ? <TakeCheck check={job.takeCheck} /> : null}
+
           {request.count > 1 ? (
             <div
               className="flex gap-3 overflow-x-auto px-1 pb-1"
@@ -808,4 +810,28 @@ async function downloadOutput(job: GenerationJob, output: GenerationOutput) {
     /* Last resort: open it, so it can be saved from the new tab. */
     window.open(url, "_blank", "noopener");
   }
+}
+
+/** What a one-take dry run planned (preview only). */
+function TakeCheck({ check }: { check: NonNullable<GenerationJob["takeCheck"]> }) {
+  return (
+    <div className="flex w-full max-w-[420px] flex-col gap-2 pb-8 font-inter-tight text-sm text-v2-muted">
+      {check.still ? <img src={check.still} alt="" className="w-full rounded-[12px]" /> : null}
+      {check.faults.length ? (
+        <p className="text-[#b26b00]">Check this: {check.faults.join("; ")}</p>
+      ) : (
+        <p className="text-v2-ink">No faults found.</p>
+      )}
+      {check.shots.map((shot, i) => (
+        <p key={i}>
+          <span className="font-semibold text-v2-ink">
+            Shot {i + 1}, {shot.seconds} s.
+          </span>{" "}
+          {shot.action}
+        </p>
+      ))}
+      <p>Voice: {check.line}</p>
+      <p>Wardrobe: {check.wardrobe}</p>
+    </div>
+  );
 }

@@ -37,6 +37,7 @@ import {
   takeAllowed,
   type TakeFormat,
   type TakeModel,
+  type TakePlan,
 } from "./one-take";
 import type {
   AdDesign,
@@ -370,6 +371,29 @@ function adEdit(job: GenerationJobRow, o: GenerationOutputRow, urls: Map<string,
   };
 }
 
+/** A one-take job that stopped before filming: what it planned, for the preview's test. */
+async function takeDryRun(db: SupabaseClient<V2Database>, row: GenerationJobRow) {
+  const record = (
+    row.request as {
+      takeRecord?: {
+        plan: TakePlan;
+        refs: { role: string; path: string }[];
+        faults?: string[];
+      };
+    }
+  ).takeRecord;
+  if (row.status !== "failed" || !record) return undefined;
+  const path = record.refs.find((r) => r.role === "still")?.path ?? "";
+  const { data } = await db.storage.from("outputs").createSignedUrl(path, 60 * 60);
+  return {
+    still: data?.signedUrl ?? "",
+    shots: record.plan.shots.map((s) => ({ seconds: s.seconds, action: s.action })),
+    line: record.plan.line,
+    wardrobe: record.plan.wardrobe,
+    faults: record.faults ?? [],
+  };
+}
+
 /** A Concept ad waiting on the user: its stills (signed), shots and redos left. */
 async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobRow) {
   const review = (row.request as { review?: ConceptReview }).review;
@@ -461,8 +485,9 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     const urls = await signOutputs(db, outputs ?? []);
     const job = toJob(row, outputs ?? [], urls);
     const review = await conceptReview(db, row);
+    const takeCheck = await takeDryRun(db, row);
     await refreshProductImage(db, job.request);
-    return review ? { ...job, review } : job;
+    return { ...job, ...(review ? { review } : {}), ...(takeCheck ? { takeCheck } : {}) };
   });
 
 const ConceptAction = z.discriminatedUnion("action", [

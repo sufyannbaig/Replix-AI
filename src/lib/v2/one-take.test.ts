@@ -84,6 +84,15 @@ describe("checks before any paid call", () => {
     for (const part of ["beam", "where things are", "show the product", "don't fit"])
       ok(bad.includes(part), part);
   });
+  test("the voice names the product and the clothes are complete", () => {
+    ok(!takeIssues(good, 8, "acme glow serum").length);
+    const bad = takeIssues(
+      { ...good, line: "Cancel the morning", wardrobe: "Trench coat, knit" },
+      8,
+      "acme glow serum",
+    );
+    strictEqual(bad.length, 2);
+  });
   test("supervisor replies are tidied", () => {
     deepStrictEqual(parseFaults({ faults: ["  keys moved. ", 3, ""] }), ["keys moved"]);
     deepStrictEqual(parseFaults(null), []);

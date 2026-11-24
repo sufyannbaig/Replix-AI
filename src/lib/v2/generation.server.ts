@@ -1341,7 +1341,7 @@ async function runOneTakeJob(jobRow: GenerationJobRow, site: Site, take: TakeInp
         const written = parseTakePlan(parseJsonBlock(raw), seconds);
         cost += EST_USD.text * 2;
         if (!written) return { plan: null, faults: ["the plan came back empty"] };
-        const faults = takeIssues(written, seconds);
+        const faults = takeIssues(written, seconds, product.name);
         try {
           const check = await gatewayChat({
             model: TEXT_MODEL,

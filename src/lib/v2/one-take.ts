@@ -112,7 +112,7 @@ export function takeMessages(opts: {
         "Each shot: one framing, one small physical action a camera can film, one gentle camera move. Shots follow from each other with the same actor, clothes, room and light. The product looks and behaves like the real one; it is clearly seen and readable in the last shot.",
         "Track every object: at the end of each shot say where each one is (hand, table, floor). The next shot starts from there; nothing moves, appears or changes between shots. If the ending needs something beside the product, put it there on camera. Only one change of body position in the whole ad, never standing and sitting down inside one shot.",
         "Never: magic, glowing, melting, cutting, pouring, crowds, mirrors, screens, on-screen text, claims the details don't state. If the location picture is an empty studio, use a real everyday place with the same palette.",
-        "Describe people and the place from the pictures (real age, hair, build). Name every piece of clothing once in wardrobe.",
+        "Describe people and the place from the pictures (real age, hair, build). Name every piece of clothing once in wardrobe, top to shoes. If words are given to speak, keep the ending and the product name whole and cut the start instead.",
         'Reply with JSON only: {"shots": [{"seconds": 3, "action": "framing, action, camera; max 45 words", "objects": "where each object and the person are at the end"}], "look": "place, time, light, colour, lens; max 40 words", "wardrobe": "every garment; max 25 words", "line": "the only spoken words", "sound": "room sound and one quiet music idea; max 20 words", "still": "the opening frame, the moment before shot 1\'s action; max 45 words"}',
       ].join("\n"),
     },
@@ -174,8 +174,22 @@ const HARD =
   /\b(glow(s|ing)? (beam|light)|beam|magic|melt|slic(e|es|ing)|shatter|explod|pour(s|ing)?|mirror|crowd|float(s|ing)|on-screen text|caption)/i;
 
 /** Faults that can be found without any model; an empty list means the plan may be filmed. */
-export function takeIssues(plan: TakePlan, seconds: number): string[] {
+export function takeIssues(plan: TakePlan, seconds: number, productName = ""): string[] {
   const out: string[] = [];
+  const names = productName.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+  if (plan.line && names.length && !names.some((n) => plan.line.toLowerCase().includes(n)))
+    out.push("the voice never says the product's name");
+  if (
+    /\b(glowing|radiant|luminous) (skin|cheek|face)|\bsmil(es|ing)\b/i.test(
+      plan.shots.map((s) => s.action).join(" "),
+    )
+  )
+    out.push("it leans on a smile or glowing skin");
+  if (
+    plan.wardrobe &&
+    !/\b(trousers|jeans|skirt|dress|pants|shorts|leggings|suit)\b/i.test(plan.wardrobe)
+  )
+    out.push("the wardrobe doesn't name what is worn below the waist");
   const total = plan.shots.reduce((n, s) => n + s.seconds, 0);
   if (total !== seconds) out.push(`the shots add up to ${total} s, not ${seconds}`);
   if (plan.shots.length < 2) out.push("only one shot");
