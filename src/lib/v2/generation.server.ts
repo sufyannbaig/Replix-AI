@@ -890,6 +890,21 @@ async function ugcPlan(
   };
 }
 
+/** Save a finished file, trying again on a brief storage error: the AI work is already paid. */
+async function saveOutput(path: string, bytes: Uint8Array, contentType: string) {
+  let last = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((done) => setTimeout(done, 500 * attempt));
+    const up = await admin.storage
+      .from("outputs")
+      .upload(path, bytes, { contentType, upsert: true });
+    if (!up.error) return;
+    last = up.error.message;
+    console.error("[v2 generation] save failed", path, attempt + 1, last);
+  }
+  throw new Error(last);
+}
+
 async function settleFailed(jobId: string, error: string, cost: number) {
   await admin.rpc("v2_settle_generation_job", {
     _job_id: jobId,
@@ -1103,10 +1118,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
         }
       }
       const path = `${jobRow.user_id}/${jobRow.id}/${i + 1}-frame.${extension(frame.type)}`;
-      const up = await admin.storage
-        .from("outputs")
-        .upload(path, frame.bytes, { contentType: frame.type, upsert: true });
-      if (up.error) throw new Error(up.error.message);
+      await saveOutput(path, frame.bytes, frame.type);
       framePaths[i] = path;
       made += 1;
       await admin
@@ -1417,10 +1429,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         throw new Error(`video download failed (${file.status}, ${bytes.byteLength} bytes)`);
       }
       const path = `${row.user_id}/${row.id}/1.mp4`;
-      const up = await admin.storage
-        .from("outputs")
-        .upload(path, bytes, { contentType: "video/mp4", upsert: true });
-      if (up.error) throw new Error(up.error.message);
+      await saveOutput(path, bytes, "video/mp4");
       const saved = await admin
         .from("generation_outputs")
         .update({ video_path: path })
