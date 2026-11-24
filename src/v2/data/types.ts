@@ -443,7 +443,8 @@ export type GenerationJob = {
   /** Concept ads: the stills waiting for the user's approval before any video is made. */
   review?: {
     frames: string[];
-    shots: { beat: string; frame: string }[];
+    /** `motion` is how the still will move; empty until it is planned. */
+    shots: { beat: string; frame: string; motion: string }[];
     redosLeft: number;
     /** Per still: what must be fixed before video; empty when it is good. */
     issues?: string[][];

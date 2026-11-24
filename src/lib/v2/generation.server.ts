@@ -92,13 +92,17 @@ import {
 import {
   bestStill,
   filmStillPrompt,
+  motionMessages,
+  parseMotion,
   parseStillReview,
   shotRefs,
   stillIssues,
   stillPasses,
   stillReviewMessages,
+  unplannedFrames,
   UNREVIEWED,
   type FilmRef,
+  type StillMotion,
   type StillReview,
 } from "./concept-film";
 import {
@@ -1049,6 +1053,32 @@ const ASPECT_FRAME: Record<string, string> = {
 type Still = { bytes: Uint8Array; type: string };
 const stillUrl = (s: Still) => toDataUrl(s.bytes.slice().buffer as ArrayBuffer, s.type);
 
+/** The movement for one finished still; null when the director didn't answer. */
+async function planMotion(
+  still: string,
+  plan: ConceptReview["plan"],
+  index: number,
+  inputs: { concept: string; emotion: string },
+): Promise<StillMotion | null> {
+  try {
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: motionMessages({
+        still,
+        shots: plan.shots,
+        index,
+        concept: inputs.concept,
+        emotion: inputs.emotion,
+      }),
+    });
+    return parseMotion(parseJsonBlock(raw));
+  } catch (error) {
+    console.error("[v2 concept] motion plan failed", error);
+    return null;
+  }
+}
+
 /** One reviewed attempt at a still. Throws only when the image itself couldn't be made. */
 async function tryStill(opts: {
   product: { name: string; dataUrl: string };
@@ -1147,6 +1177,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     const issues: string[][] = new Array(count).fill(null).map(() => []);
     let made = 0;
     let film: string | undefined;
+    const motions: Record<string, StillMotion> = {};
     const attempt = async (i: number, last?: string[]) => {
       try {
         const result = await tryStill({
@@ -1186,6 +1217,9 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       const path = `${jobRow.user_id}/${jobRow.id}/${i + 1}-frame.${extension(still.type)}`;
       await saveOutput(path, still.bytes, still.type);
       framePaths[i] = path;
+      const move = await planMotion(stillUrl(still), plan, i, inputs);
+      cost += EST_USD.text;
+      if (move) motions[path] = move;
       /* The first still sets the look the others must match, even if it needs a redo. */
       if (i === 0) film = stillUrl(still);
       made += 1;
@@ -1216,6 +1250,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       size: read.size,
       redos: 0,
       issues,
+      motions,
     };
     const parked = await admin
       .from("generation_jobs")
@@ -1278,6 +1313,39 @@ export async function reorderConceptFrames(jobRow: GenerationJobRow, review: Con
   await saveReview(jobRow, current.request, review);
 }
 
+/** The user keeps a still the reviewer faulted. */
+export async function acceptConceptFrame(jobRow: GenerationJobRow, index: number) {
+  const { request, review } = reviewOf(jobRow);
+  const path = review.frames[index];
+  if (!path) throw new GenerationError("Pick a frame.");
+  await saveReview(jobRow, request, {
+    ...review,
+    accepted: [...new Set([...(review.accepted ?? []), path])],
+  });
+}
+
+/** Write the movement for every still that doesn't have one yet. */
+export async function planConceptMotions(jobRow: GenerationJobRow) {
+  const { request, review } = reviewOf(jobRow);
+  const inputs = request.inputs;
+  if (!inputs || inputs.studio !== "concept") {
+    throw new GenerationError("This request is missing its settings.");
+  }
+  const todo = unplannedFrames(review);
+  const motions = { ...review.motions };
+  await Promise.all(
+    todo.map(async (i) => {
+      const path = review.frames[i];
+      const move = await planMotion(await fromStorage("outputs", path), review.plan, i, inputs);
+      if (move) motions[path] = move;
+    }),
+  );
+  await saveReview(jobRow, request, { ...review, motions }, EST_USD.text * todo.length);
+  if (unplannedFrames({ ...review, motions }).length) {
+    throw new GenerationError("The movement wasn't planned. Try again.");
+  }
+}
+
 /** Make one still again, with the user's change if they gave one. One image call, on us. */
 export async function redoConceptFrame(
   jobRow: GenerationJobRow,
@@ -1289,7 +1357,7 @@ export async function redoConceptFrame(
   const { plan } = review;
   if (index < 0 || index >= review.frames.length) throw new GenerationError("Pick a frame.");
   const ctx = await jobCtx(jobRow, site);
-  const { product, refs } = await conceptRefs(ctx, request);
+  const { inputs, product, refs } = await conceptRefs(ctx, request);
   const issues = review.issues ?? review.frames.map(() => []);
   /* Match another still: the first that passed, else the first there is. */
   const others = review.frames.map((_, i) => i).filter((i) => i !== index);
@@ -1309,6 +1377,7 @@ export async function redoConceptFrame(
   });
   const path = `${jobRow.user_id}/${jobRow.id}/${index + 1}-frame-${review.redos + 1}.${extension(frame.type)}`;
   await saveOutput(path, frame.bytes, frame.type);
+  const move = await planMotion(stillUrl(frame), plan, index, inputs);
   const old = review.frames[index];
   const frames = [...review.frames];
   frames[index] = path;
@@ -1318,8 +1387,14 @@ export async function redoConceptFrame(
   await saveReview(
     jobRow,
     request,
-    { ...review, frames, redos: review.redos + 1, issues: nextIssues },
-    EST_USD.image + EST_USD.text,
+    {
+      ...review,
+      frames,
+      redos: review.redos + 1,
+      issues: nextIssues,
+      motions: { ...review.motions, ...(move ? { [path]: move } : {}) },
+    },
+    EST_USD.image + EST_USD.text * 2,
   );
   if (old && old !== path) await admin.storage.from("outputs").remove([old]);
 }
@@ -1340,7 +1415,9 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
     const key = falKey();
     if (!key) throw new GenerationError(NO_VIDEO);
     const { plan, frames: framePaths } = review;
-    const { bible, shots } = plan;
+    const { bible } = plan;
+    /* Each clip moves the way its finished still allows. */
+    const shots = plan.shots.map((s, i) => ({ ...s, ...review.motions?.[framePaths[i]] }));
     const count = shots.length;
     const product = { name: request.product.name };
 

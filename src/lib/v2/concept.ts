@@ -431,6 +431,10 @@ export type ConceptReview = {
   redos: number;
   /** Per still: why it isn't good enough for video yet; empty when it is. */
   issues?: string[][];
+  /** Stills (storage paths) the user chose to use despite a fault. */
+  accepted?: string[];
+  /** Movement by still path, written from the finished picture. */
+  motions?: Record<string, { motion: string; keep: string }>;
 };
 
 /** Move a still (and its shot) one place left or right. Out of range: unchanged. */

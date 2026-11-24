@@ -17,6 +17,8 @@ const FRAME: Record<AspectRatio, string> = {
 
 type Action =
   | { action: "approve" }
+  | { action: "plan" }
+  | { action: "accept"; index: number }
   | { action: "redo"; index: number; note?: string }
   | { action: "move"; index: number; dir: -1 | 1 };
 
@@ -43,6 +45,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
     act.mutate(a);
   };
   const n = review.frames.length;
+  const planned = review.shots.every((s) => s.motion);
   const blocked = (review.issues ?? []).flatMap((list, i) => (list.length ? [i + 1] : []));
 
   return (
@@ -72,7 +75,20 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
             </div>
             {review.issues?.[i]?.length ? (
               <p role="status" className="font-inter-tight text-xs text-[#b26b00]">
-                Needs a redo: {review.issues[i].join("; ")}
+                Check this: {review.issues[i].join("; ")}{" "}
+                <button
+                  type="button"
+                  disabled={act.isPending}
+                  onClick={() => run(`accept-${i}`, { action: "accept", index: i })}
+                  className="font-semibold underline disabled:opacity-40"
+                >
+                  Use this still
+                </button>
+              </p>
+            ) : null}
+            {review.shots[i]?.motion ? (
+              <p className="font-inter-tight text-xs text-v2-muted">
+                Movement: {review.shots[i].motion}
               </p>
             ) : null}
             <input
@@ -117,13 +133,19 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
       <div className="flex flex-wrap items-center gap-3">
         <PillButton
           disabled={act.isPending || blocked.length > 0}
-          onClick={() => run("approve", { action: "approve" })}
+          onClick={() => run("approve", { action: planned ? "approve" : "plan" })}
           className="h-11 px-6 text-sm"
         >
-          {busy === "approve" ? "Starting the video…" : "Approve and make the video"}
+          {busy === "approve"
+            ? planned
+              ? "Starting the video…"
+              : "Planning the movement…"
+            : planned
+              ? "Approve and make the video"
+              : "Plan the movement"}
         </PillButton>
         <span className="font-inter-tight text-xs text-v2-muted">
-          {blocked.length ? `Redo frame ${blocked.join(" and ")} first. ` : ""}
+          {blocked.length ? `Redo frame ${blocked.join(" and ")} or use it as it is. ` : ""}
           Not approved within 2 hours? Your credits come back.
         </span>
       </div>

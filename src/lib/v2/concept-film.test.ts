@@ -5,7 +5,10 @@ import {
   bestStill,
   blockedFrames,
   filmStillPrompt,
+  motionMessages,
+  parseMotion,
   parseStillReview,
+  unplannedFrames,
   shotRefs,
   stillIssues,
   stillPasses,
@@ -73,7 +76,7 @@ describe("quality gate", () => {
   test("low scores and visible faults block; a silent reviewer doesn't", () => {
     ok(stillPasses(R(8)) && !stillPasses(R(6)) && !stillPasses(R(9, ["six fingers"])));
     deepStrictEqual(stillIssues(R(9, ["six fingers"])), ["six fingers"]);
-    strictEqual(stillIssues(R(5)).length, 1);
+    deepStrictEqual(stillIssues(R(5)), []);
     deepStrictEqual(stillIssues(UNREVIEWED), []);
   });
   test("bad replies count as unreviewed", () => {
@@ -97,8 +100,10 @@ describe("quality gate", () => {
       redos: 0,
       issues: [["bad"], []],
     };
-    deepStrictEqual(blockedFrames(moveConceptFrame(review, 0, 1).issues), [1]);
+    deepStrictEqual(blockedFrames(moveConceptFrame(review, 0, 1)), [1]);
     deepStrictEqual(blockedFrames(undefined), []);
+    deepStrictEqual(blockedFrames({ ...review, accepted: ["a"] }), []);
+    deepStrictEqual(blockedFrames({ ...review, frames: ["new", "b"], accepted: ["a"] }), [0]);
   });
 });
 
@@ -126,5 +131,25 @@ describe("shot list", () => {
     const parts = m[1].content as { text?: string; image_url?: { url: string } }[];
     ok(parts[0].text?.includes("PICTURE 2: the character."));
     strictEqual(parts[2].image_url?.url, "C");
+  });
+});
+
+describe("movement from the still", () => {
+  test("the director sees the still and the story", () => {
+    const m = motionMessages({
+      still: "S",
+      shots: [shot],
+      index: 0,
+      concept: "C",
+      emotion: "Humor",
+    });
+    const c = m[1].content as { text?: string; image_url?: { url: string } }[];
+    ok(c[0].text?.includes("C") && c[1].image_url?.url === "S");
+  });
+  test("movement belongs to a picture, so a redone still needs a new one", () => {
+    const move = parseMotion({ motion: " Fingers  open. ", keep: "Face stays out" })!;
+    strictEqual(move.motion, "Fingers open.");
+    strictEqual(parseMotion({ motion: 4 }), null);
+    deepStrictEqual(unplannedFrames({ frames: ["b", "a"], motions: { a: move } }), [0]);
   });
 });

@@ -98,7 +98,6 @@ export function stillReviewMessages(opts: {
   const asks = [
     `It tells this story moment, with every object and body position the story needs: ${opts.shot.frame}`,
     opts.shot.keep ? `This is true: ${opts.shot.keep}` : "",
-    `This motion could start from here and has not already happened (someone about to sit is still standing): ${opts.shot.motion}`,
     "Hands, fingers, face, eyes and teeth are anatomically right and hold things believably.",
     "Every object appears once, rests on something and makes physical sense; no studio equipment.",
     shows
@@ -114,7 +113,7 @@ export function stillReviewMessages(opts: {
     {
       role: "system" as const,
       content:
-        'You are a commercial director rejecting AI-looking frames before money is spent on them. Judge only what you can see. Reply with JSON only: {"score": 1-10, "blocking": ["..."], "minor": ["..."]}. "blocking": faults an ordinary viewer would notice, each in under 12 words. Never blocking: left or right hand, a slightly different shot size or camera angle, or tiny details nobody would notice; put those in \"minor\". Always blocking: a missing story object, changed clothes, a head cut by the frame in a shot about the person, the motion already done. 10 is a frame from a real commercial, 7 is usable, under 7 is not. Do not be kind, and do not invent faults.',
+        'You are a commercial director rejecting AI-looking frames before money is spent on them. Judge only what you can see. Reply with JSON only: {"score": 1-10, "blocking": ["..."], "minor": ["..."]}. "blocking": faults an ordinary viewer would notice, each in under 12 words. Never blocking: left or right hand, a slightly different shot size or camera angle, or tiny details nobody would notice; put those in \"minor\". Always blocking: a missing story object, changed clothes, a head cut by the frame in a shot about the person. Every blocking fault names the exact thing that is wrong; a low score alone is not a fault. How it will move is decided later. 10 is a frame from a real commercial, 7 is usable, under 7 is not. Do not be kind, and do not invent faults.',
     },
     {
       role: "user" as const,
@@ -155,7 +154,7 @@ export function stillPasses(r: StillReview) {
 /** What the user is told about a still; empty when it is fine or couldn't be reviewed. */
 export function stillIssues(r: StillReview): string[] {
   if (!r.reviewed || stillPasses(r)) return [];
-  return r.blocking.length ? r.blocking : ["It doesn't look real enough yet."];
+  return r.blocking;
 }
 
 /** The better of the candidates: a pass first, then fewer faults, then the score. */
@@ -165,7 +164,59 @@ export function bestStill<T extends { review: StillReview }>(list: T[]): T {
   return list.reduce((a, b) => (rank(b.review) > rank(a.review) ? b : a));
 }
 
-/** Frames (0-based) that can't become video until they are redone. */
-export function blockedFrames(issues: string[][] | undefined): number[] {
-  return (issues ?? []).flatMap((list, i) => (list.length ? [i] : []));
+/** Frames (0-based) with a named fault the user hasn't accepted. */
+export function blockedFrames(
+  review: { frames: string[]; issues?: string[][]; accepted?: string[] } | undefined,
+): number[] {
+  return (review?.frames ?? []).flatMap((path, i) =>
+    review?.issues?.[i]?.length && !review.accepted?.includes(path) ? [i] : [],
+  );
+}
+
+/** How a still moves: written from the finished picture, kept by its storage path. */
+export type StillMotion = { motion: string; keep: string };
+
+/** Asks a director to look at the chosen still and give it one small movement. */
+export function motionMessages(opts: {
+  still: string;
+  shots: ConceptShot[];
+  index: number;
+  concept: string;
+  emotion: string;
+}) {
+  const shot = opts.shots[opts.index];
+  const list = opts.shots.map((s, i) => `${i + 1}. ${s.beat}: ${s.frame}`).join("\n");
+  return [
+    {
+      role: "system" as const,
+      content:
+        'You direct image-to-video. You get the finished first frame; the video model animates it for 5 seconds. Write ONE small movement that can truly start from exactly what is visible, finishes inside 5 seconds and moves the story on. Only what is in the frame may move; never bring in or describe anything outside it. If only a hand is visible, only the hand moves. No walking, sitting down, standing up, turning round, eating, pouring, or objects changing shape. Letting go, a finger moving, a breath, a look, a lean, hair or cloth shifting are good. One gentle camera move: locked off, a slow push or a slight drift. Reply with JSON only: {"motion": "the movement, then the camera, max 45 words", "keep": "what must stay exactly as it is and what must not happen, max 30 words"}.',
+    },
+    {
+      role: "user" as const,
+      content: [
+        {
+          type: "text",
+          text: `Story: ${opts.concept.slice(0, 600)}\nEmotion: ${opts.emotion}.\nShots:\n${list}\nThis is shot ${opts.index + 1} (${shot.beat}). The first plan was: ${shot.motion}. Keep its meaning only where the picture allows.`,
+        },
+        image(opts.still),
+      ],
+    },
+  ];
+}
+
+export function parseMotion(raw: unknown): StillMotion | null {
+  const r = raw as { motion?: unknown; keep?: unknown } | null;
+  const tidy = (s: unknown, max: number) =>
+    typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  const motion = tidy(r?.motion, 400);
+  return motion ? { motion, keep: tidy(r?.keep, 240) } : null;
+}
+
+/** Stills (0-based) whose movement hasn't been written from the picture yet. */
+export function unplannedFrames(review: {
+  frames: string[];
+  motions?: Record<string, StillMotion>;
+}): number[] {
+  return review.frames.flatMap((path, i) => (review.motions?.[path] ? [] : [i]));
 }

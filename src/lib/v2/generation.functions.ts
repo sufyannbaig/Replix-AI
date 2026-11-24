@@ -28,7 +28,7 @@ import {
   moveConceptFrame,
   type ConceptReview,
 } from "./concept";
-import { blockedFrames } from "./concept-film";
+import { blockedFrames, unplannedFrames } from "./concept-film";
 import type {
   AdDesign,
   AspectRatio,
@@ -353,9 +353,15 @@ async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobR
   const { data } = await db.storage.from("outputs").createSignedUrls(review.frames, 60 * 60 * 6);
   return {
     frames: review.frames.map((p) => data?.find((d) => d.path === p)?.signedUrl ?? ""),
-    shots: review.plan.shots.map((s) => ({ beat: s.beat, frame: s.frame })),
+    shots: review.plan.shots.map((s, i) => ({
+      beat: s.beat,
+      frame: s.frame,
+      motion: review.motions?.[review.frames[i]]?.motion ?? "",
+    })),
     redosLeft: Math.max(0, CONCEPT_REDO_LIMIT - review.redos),
-    issues: review.frames.map((_, i) => review.issues?.[i] ?? []),
+    issues: review.frames.map((p, i) =>
+      review.accepted?.includes(p) ? [] : (review.issues?.[i] ?? []),
+    ),
   };
 }
 
@@ -436,6 +442,12 @@ export const getGenerationJob = createServerFn({ method: "POST" })
   });
 
 const ConceptAction = z.discriminatedUnion("action", [
+  z.object({ jobId: z.string().uuid(), action: z.literal("plan") }),
+  z.object({
+    jobId: z.string().uuid(),
+    action: z.literal("accept"),
+    index: z.number().int().min(0).max(11),
+  }),
   z.object({ jobId: z.string().uuid(), action: z.literal("approve") }),
   z.object({
     jobId: z.string().uuid(),
@@ -474,6 +486,14 @@ export const reviewConceptFrames = createServerFn({ method: "POST" })
       await server.reorderConceptFrames(row, moveConceptFrame(review, data.index, data.dir));
       return { ok: true };
     }
+    if (data.action === "accept") {
+      await server.acceptConceptFrame(row, data.index);
+      return { ok: true };
+    }
+    if (data.action === "plan") {
+      await server.planConceptMotions(row);
+      return { ok: true };
+    }
     if (data.action === "redo") {
       if (review.redos >= CONCEPT_REDO_LIMIT) {
         throw new Error("No redos left on this ad. Approve the frames or start a new one.");
@@ -481,13 +501,14 @@ export const reviewConceptFrames = createServerFn({ method: "POST" })
       await server.redoConceptFrame(row, requestSite(), data.index, data.note ?? "");
       return { ok: true };
     }
-    /* A still that isn't good enough never becomes video. */
-    const blocked = blockedFrames(review.issues);
+    /* A faulted still becomes video only when the user says so. */
+    const blocked = blockedFrames(review);
     if (blocked.length) {
       throw new Error(
-        `Redo frame ${blocked.map((i) => i + 1).join(" and ")} before making the video.`,
+        `Redo frame ${blocked.map((i) => i + 1).join(" and ")}, or choose to use it anyway.`,
       );
     }
+    if (unplannedFrames(review).length) throw new Error("Plan the movement first.");
     /* Claim it first, so a double click can't send the clips twice. */
     const { data: claimed } = await server.admin
       .from("generation_jobs")
