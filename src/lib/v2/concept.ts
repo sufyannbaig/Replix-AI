@@ -26,7 +26,16 @@ export const CONCEPT_SHOT_SECONDS = 5;
 /** Marks the stored fal request id of the stitch step. */
 export const MERGE_PREFIX = "merge:";
 
-export type ConceptShot = { beat: string; type: string; frame: string; motion: string };
+export type ConceptShot = {
+  beat: string;
+  type: string;
+  frame: string;
+  motion: string;
+  /** False when the product is not in this shot; the ending always shows it. */
+  product?: boolean;
+  /** What must be true at the start and must not change during the clip. */
+  keep?: string;
+};
 
 /** The locked attributes every frame repeats word for word (the master shot's continuity). */
 export type ContinuityBible = {
@@ -78,11 +87,23 @@ export const MIND_HACK_SHOTS = [
   "character gesture or habit that tells us who they are",
   "top-down or aerial scale shot",
   "process moment (applying, pouring, opening, using the product)",
-  "one grounded VFX beat that heightens the concept",
+  "a held reaction: the camera stays on a face while something is understood",
 ];
 
 const clip = (s: unknown, max: number) =>
   typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, max) : "";
+
+/** The brief as text, or text then the pictures it names. */
+function withImages(text: string, images?: { role: string; dataUrl: string }[]) {
+  if (!images?.length) return text;
+  return [
+    {
+      type: "text",
+      text: `${text}\n${images.map((r, i) => `PICTURE ${i + 1}: the ${r.role}.`).join(" ")}`,
+    },
+    ...images.map((r) => ({ type: "image_url", image_url: { url: r.dataUrl } })),
+  ];
+}
 
 /**
  * The text model's brief, built on the course method (skills ai-ad-master-shot,
@@ -100,8 +121,25 @@ export function conceptShotMessages(opts: {
   shots: number;
   label?: string[];
   aspect?: string;
+  /** The reference pictures, so the director describes the real cast, place and product. */
+  images?: { role: string; dataUrl: string }[];
 }) {
   const beats = conceptBeats(opts.shots);
+  const text = [
+    `Product: ${opts.productName}.`,
+    opts.description ? `Details: ${opts.description.slice(0, 500)}` : "",
+    opts.label?.length ? `Words on the product: ${opts.label.slice(0, 8).join(", ")}.` : "",
+    `Concept: ${opts.concept.slice(0, 600)}`,
+    opts.climax ? `Climax or ending: ${opts.climax.slice(0, 400)}` : "",
+    `Target emotion: ${opts.emotion}.`,
+    opts.script ? `Script or story notes: ${opts.script.slice(0, 600)}` : "",
+    opts.aspect ? `Frame: ${opts.aspect}.` : "",
+    "The pictures are the casting, the location and the product, in the order named. The bible must describe exactly what you see (real age, hair, build, room), not invent others. If the location picture is an empty studio, choose a real everyday place with the same palette and say so.",
+    `Write exactly ${opts.shots} shots, one per beat in this order: ${beats.join(", ")}. The hook grabs attention in the first second.`,
+    `Voiceover: at most ${conceptVoWords(opts.shots * CONCEPT_SHOT_SECONDS)} words in total.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
   return [
     {
       role: "system" as const,
@@ -111,31 +149,15 @@ export function conceptShotMessages(opts: {
         "Method: 1) Decide ONE master shot and lock its continuity bible: the character's exact look (skin, face, hair, build, age), wardrobe, location, time of day, light direction, colour grade, lens. Pick the ONE prop that carries the concept (props are the strongest director tool) and ONE human touch (a small real, relatable detail). 2) Write one shot per beat. Every shot is 5 seconds with ONE main motion (one subject action and one camera move), no cuts inside a shot, no on-screen text, no other brands or logos.",
         `3) Avoid the storyboard-then-animate look: each shot uses a mind-hack shot type, at least two different ones across the film, chosen from: ${MIND_HACK_SHOTS.join("; ")}.`,
         `Frame and motion: ${FRAME_MOTION_RULE}`,
+        'Only show the product where the story needs it; set "product" to false in the other shots. Vary the shot size from shot to shot. Camera moves are small: locked off, a slow push, a slight handheld drift or a short slide.',
         "4) The concept must be visible in the frame itself, not implied. The last shot is the ending aimed at the target emotion: the product is the hero, label towards the camera, the payoff readable in the final 2 seconds.",
-        'Reply as JSON: {"bible": {"character": "", "wardrobe": "", "location": "", "timeOfDay": "", "light": "", "grade": "", "lens": "", "prop": "", "humanTouch": ""}, "shots": [{"beat": "", "type": "the mind-hack shot type", "frame": "the opening still: subject, action, product placement, foreground, camera angle", "motion": "the one subject action and the one camera move over 5 seconds"}], "vo": "the voiceover", "voice": "one voice name", "music": "the music brief"}',
+        'Reply as JSON: {"bible": {"character": "", "wardrobe": "", "location": "", "timeOfDay": "", "light": "", "grade": "", "lens": "", "prop": "", "humanTouch": ""}, "shots": [{"beat": "", "type": "the mind-hack shot type", "product": true or false, "frame": "the opening still: shot size, subject, action, foreground, camera angle", "motion": "the one subject action and the one camera move over 5 seconds", "keep": "what must stay true from the first to the last moment, including the one thing that must NOT happen"}], "vo": "the voiceover", "voice": "one voice name", "music": "the music brief"}',
         "5) Voiceover: one narrator line per beat, spoken over the film, in a tone that suits the target emotion. Never describe what we already see; add a private thought, an irony or a joke. The last line is the payoff with the product name. Plain words a person would say, no hashtags or stage directions. If a script is given, use its words. Pick the voice from: " +
           `${ALL_VOICES.join(", ")} (female: ${CONCEPT_VOICES.female.join(", ")}).`,
         "6) Music brief (the ad film music method): genre, tempo in BPM, 2 to 4 instruments, the mood arc across the beats, one lift at the climax and a clean resolve on the brand ending. Instrumental only, quiet enough to sit under the voice.",
       ].join("\n"),
     },
-    {
-      role: "user" as const,
-      content: [
-        `Product: ${opts.productName}.`,
-        opts.description ? `Details: ${opts.description.slice(0, 500)}` : "",
-        opts.label?.length ? `Words on the product: ${opts.label.slice(0, 8).join(", ")}.` : "",
-        `Concept: ${opts.concept.slice(0, 600)}`,
-        opts.climax ? `Climax or ending: ${opts.climax.slice(0, 400)}` : "",
-        `Target emotion: ${opts.emotion}.`,
-        opts.script ? `Script or story notes: ${opts.script.slice(0, 600)}` : "",
-        opts.aspect ? `Frame: ${opts.aspect}.` : "",
-        "The CHARACTER and SCENE reference images are the casting and the location: the bible must describe them, not invent others.",
-        `Write exactly ${opts.shots} shots, one per beat in this order: ${beats.join(", ")}. The hook grabs attention in the first second.`,
-        `Voiceover: at most ${conceptVoWords(opts.shots * CONCEPT_SHOT_SECONDS)} words in total.`,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    },
+    { role: "user" as const, content: withImages(text, opts.images) },
   ];
 }
 
@@ -160,11 +182,13 @@ export function parseConceptPlan(raw: unknown, count: number, productName: strin
   const beats = conceptBeats(count);
   const list = Array.isArray(r.shots) ? r.shots : [];
   const shots = list
-    .map((s) => ({
+    .map((s): ConceptShot => ({
       beat: clip(s?.beat, 60),
       type: clip(s?.type, 120),
       frame: clip(s?.frame, 500),
       motion: clip(s?.motion, 400),
+      product: s?.product !== false,
+      keep: clip(s?.keep, 240),
     }))
     .filter((s) => s.frame && s.motion)
     .slice(0, count);
@@ -189,6 +213,7 @@ export function parseConceptPlan(raw: unknown, count: number, productName: strin
   while (shots.length < count) shots.splice(shots.length - 1, 0, fallback(false));
   shots.forEach((s, i) => {
     if (!s.beat) s.beat = beats[i];
+    if (i === shots.length - 1) s.product = true;
   });
   const voice = clip((raw as { voice?: unknown } | null)?.voice, 30);
   return {
@@ -337,9 +362,10 @@ export function conceptMotionPrompt(opts: {
   return [
     `A ${opts.shot.type || "cinematic"} shot from a ${opts.emotion.toLowerCase()} video ad for ${opts.productName}.`,
     opts.shot.motion,
+    opts.shot.keep ? `Stays true throughout: ${opts.shot.keep}` : "",
     opts.bible?.grade ? `Colour grade: ${opts.bible.grade}.` : "",
     opts.bible?.light ? `Light: ${opts.bible.light}.` : "",
-    "The product keeps exactly its shape, colours, size and label; every printed word stays the same and readable. The person keeps the same face and clothes. Natural physics, smooth cinematic motion, no cuts, no on-screen text.",
+    `${opts.shot.product === false ? "" : "The product keeps exactly its shape, colours, size and label. "}The person keeps the same face and clothes. Slow, small, natural movement with real weight. Nothing new appears, glows, melts, splits or changes shape. No cuts, no on-screen text.`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -402,6 +428,8 @@ export type ConceptReview = {
   label: string[];
   size: string;
   redos: number;
+  /** Per still: why it isn't good enough for video yet; empty when it is. */
+  issues?: string[][];
 };
 
 /** Move a still (and its shot) one place left or right. Out of range: unchanged. */
@@ -417,6 +445,7 @@ export function moveConceptFrame(review: ConceptReview, index: number, dir: -1 |
   return {
     ...review,
     frames: swap(review.frames),
+    ...(review.issues ? { issues: swap(review.issues) } : {}),
     plan: { ...review.plan, shots: swap(review.plan.shots) },
   };
 }

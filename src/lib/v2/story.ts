@@ -20,7 +20,9 @@ export const STORY_RULES = [
   "Swap test: if another product in the category could replace this one and the story still works, throw it away. The turn must come from this product's own use, shape, name or ritual.",
   "Mute test: a 12-year-old understands it with the sound off.",
   "Open in the middle of something odd, funny or tense, so the first second raises a question. The ending answers it with a surprise that makes sense in hindsight.",
-  "Keep it filmable: one person, one place, one prop, physical actions a camera can see. No crowds, no readable screens or letters apart from the product label.",
+  "Keep it filmable by today's video models: one person, one everyday place, one prop, small believable actions (a look, a pause, reaching, holding, turning, applying, opening). The surprise lives in the situation, the reaction or the cut between shots, never in an effect.",
+  "Never needs: glowing, beams, magic, melting, cutting, breaking, pouring precisely, fast hands, food being eaten, animals acting, mirrors, crowds, screens or any words apart from the product label.",
+  "Do not build it on the last drop, an empty bottle, a fight over the product, or a disaster with it.",
   `Never use: ${STORY_CLICHES.join("; ")}.`,
 ].join("\n");
 

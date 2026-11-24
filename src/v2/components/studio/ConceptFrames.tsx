@@ -43,6 +43,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
     act.mutate(a);
   };
   const n = review.frames.length;
+  const blocked = (review.issues ?? []).flatMap((list, i) => (list.length ? [i + 1] : []));
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -69,6 +70,11 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
                 {i + 1} · {review.shots[i]?.beat}
               </span>
             </div>
+            {review.issues?.[i]?.length ? (
+              <p role="status" className="font-inter-tight text-xs text-[#b26b00]">
+                Needs a redo: {review.issues[i].join("; ")}
+              </p>
+            ) : null}
             <input
               value={notes[i] ?? ""}
               onChange={(e) => setNotes((m) => ({ ...m, [i]: e.target.value }))}
@@ -110,13 +116,14 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
       </ol>
       <div className="flex flex-wrap items-center gap-3">
         <PillButton
-          disabled={act.isPending}
+          disabled={act.isPending || blocked.length > 0}
           onClick={() => run("approve", { action: "approve" })}
           className="h-11 px-6 text-sm"
         >
           {busy === "approve" ? "Starting the video…" : "Approve and make the video"}
         </PillButton>
         <span className="font-inter-tight text-xs text-v2-muted">
+          {blocked.length ? `Redo frame ${blocked.join(" and ")} first. ` : ""}
           Not approved within 2 hours? Your credits come back.
         </span>
       </div>

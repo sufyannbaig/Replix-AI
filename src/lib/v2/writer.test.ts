@@ -43,7 +43,10 @@ describe("story rules", () => {
       emotion: "Humor",
       shots: 3,
     });
-    ok(m[0].content.includes(STORY_RULES) && m[0].content.includes(FRAME_MOTION_RULE));
-    ok(m[1].content.includes("A cat steals the bottle"));
+    ok(
+      String(m[0].content).includes(STORY_RULES) &&
+        String(m[0].content).includes(FRAME_MOTION_RULE),
+    );
+    ok(String(m[1].content).includes("A cat steals the bottle"));
   });
 });

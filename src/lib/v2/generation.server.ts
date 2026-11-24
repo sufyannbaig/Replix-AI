@@ -60,8 +60,6 @@ import {
 } from "./ugc";
 import {
   CONCEPT_CLIP_MODEL,
-  CONCEPT_FRAME_COMPOSITION,
-  CONCEPT_FRAME_NOTE,
   CONCEPT_MERGE_MODEL,
   MERGE_PREFIX,
   conceptMotionPrompt,
@@ -71,7 +69,6 @@ import {
   falClipInput,
   falMergeInput,
   parseConceptPlan,
-  conceptFrameSet,
   CONCEPT_TTS_MODEL,
   CONCEPT_MUSIC_MODEL,
   CONCEPT_COMPOSE_MODEL,
@@ -89,7 +86,21 @@ import {
   CONCEPT_REVIEW,
   redoNote,
   type ConceptReview,
+  type ConceptShot,
+  type ContinuityBible,
 } from "./concept";
+import {
+  bestStill,
+  filmStillPrompt,
+  parseStillReview,
+  shotRefs,
+  stillIssues,
+  stillPasses,
+  stillReviewMessages,
+  UNREVIEWED,
+  type FilmRef,
+  type StillReview,
+} from "./concept-film";
 import {
   checkMessages,
   fixLine,
@@ -1028,28 +1039,66 @@ async function conceptRefs(ctx: Ctx, request: GenerationRequest) {
   return { inputs, product, refs };
 }
 
-function conceptStillPrompt(
-  product: Awaited<ReturnType<typeof loadProduct>>,
-  refs: Loaded[],
-  aspect: GenerationRequest["aspect"],
-  read: { label: string[]; size: string },
-  set: string,
-  i: number,
-  count: number,
-) {
-  return photoPrompt(
-    {
-      product,
-      refs,
-      aspect,
-      recipe: { set, notes: CONCEPT_FRAME_NOTE, composition: CONCEPT_FRAME_COMPOSITION },
-      mode: "diy",
-      label: read.label,
-      size: read.size,
-    },
-    i,
-    count,
+const ASPECT_FRAME: Record<string, string> = {
+  "1:1": "square 1:1",
+  "4:5": "vertical 4:5",
+  "9:16": "tall vertical 9:16",
+  "16:9": "wide 16:9",
+};
+
+type Still = { bytes: Uint8Array; type: string };
+const stillUrl = (s: Still) => toDataUrl(s.bytes.slice().buffer as ArrayBuffer, s.type);
+
+/** One reviewed attempt at a still. Throws only when the image itself couldn't be made. */
+async function tryStill(opts: {
+  product: { name: string; dataUrl: string };
+  refs: Loaded[];
+  film?: string;
+  aspect: string;
+  shot: ConceptShot;
+  bible: ContinuityBible;
+  label: string[];
+  size: string;
+  note?: string;
+  issues?: string[];
+}) {
+  const refs = shotRefs(opts.refs, opts.shot);
+  const named: FilmRef[] = refs.map((r) => ({ role: r.role as FilmRef["role"], name: r.name }));
+  if (opts.film) named.push({ role: "film", name: "" });
+  const prompt = filmStillPrompt({
+    productName: opts.product.name,
+    refs: named,
+    aspect: ASPECT_FRAME[opts.aspect] ?? opts.aspect,
+    shot: opts.shot,
+    bible: opts.bible,
+    label: opts.label,
+    size: opts.size,
+    note: opts.note,
+    issues: opts.issues,
+  });
+  const still: Still = await generateImage(
+    prompt,
+    opts.film ? [...refs, { role: "source", name: "", dataUrl: opts.film }] : refs,
   );
+  let review: StillReview = UNREVIEWED;
+  try {
+    const raw = await gatewayChat({
+      model: TEXT_MODEL,
+      response_format: { type: "json_object" },
+      messages: stillReviewMessages({
+        still: stillUrl(still),
+        shot: opts.shot,
+        product: opts.product.dataUrl,
+        character: refs.find((r) => r.role === "character")?.dataUrl,
+        film: opts.film,
+        label: opts.label,
+      }),
+    });
+    review = parseStillReview(parseJsonBlock(raw));
+  } catch (error) {
+    console.error("[v2 concept] still review failed", error);
+  }
+  return { still, review };
 }
 
 /**
@@ -1082,6 +1131,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
         script: inputs.script,
         shots: count,
         label: read.label,
+        images: refs,
       }),
     });
     cost += EST_USD.text * 2;
@@ -1089,45 +1139,66 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     const { bible, shots } = plan;
     await admin.from("generation_jobs").update({ progress: 0.1 }).eq("id", jobRow.id);
 
-    /* Stills two at a time, each checked against the product like a photo. */
+    /* Short ads: two tries of each still, and a third if neither passes. Longer ads: one try
+       and one more if it fails, so the job stays inside its time. Two image calls at a time. */
     const framePaths: string[] = new Array(count);
+    const tries = count <= 3 ? 2 : 1;
+    const startedAt = Date.now();
+    const issues: string[][] = new Array(count).fill(null).map(() => []);
     let made = 0;
-    const makeFrame = async (i: number) => {
-      const prompt = conceptStillPrompt(
-        product,
-        refs,
-        request.aspect,
-        read,
-        conceptFrameSet(shots[i], bible),
-        i,
-        count,
-      );
-      let frame = await generateImage(prompt, refs);
-      cost += EST_USD.image;
-      const result = await checkPhoto(product.dataUrl, frame, {
-        label: read.label,
-        person: refs.some((r) => r.role === "character"),
-      });
-      cost += EST_USD.text;
-      if (!result.pass) {
-        try {
-          frame = await generateImage(prompt + fixLine(result.issues), refs);
-          cost += EST_USD.image;
-        } catch (error) {
-          console.error("[v2 concept] frame retry failed", jobRow.id, error);
-        }
+    let film: string | undefined;
+    const attempt = async (i: number, last?: string[]) => {
+      try {
+        const result = await tryStill({
+          product,
+          refs,
+          film,
+          aspect: request.aspect,
+          shot: shots[i],
+          bible,
+          label: read.label,
+          size: read.size,
+          issues: last,
+        });
+        cost += EST_USD.image + EST_USD.text;
+        return result;
+      } catch (error) {
+        console.error("[v2 concept] still failed", jobRow.id, i, error);
+        return error instanceof Error ? error : new Error(String(error));
       }
-      const path = `${jobRow.user_id}/${jobRow.id}/${i + 1}-frame.${extension(frame.type)}`;
-      await saveOutput(path, frame.bytes, frame.type);
+    };
+    const makeFrame = async (i: number) => {
+      const first = await Promise.all(Array.from({ length: tries }, () => attempt(i)));
+      const stills = first.flatMap((r) => (r instanceof Error ? [] : [r]));
+      const busy = first.find((r) => r instanceof GenerationError);
+      if (!stills.length && busy) throw busy;
+      if (!stills.some((r) => stillPasses(r.review)) && Date.now() - startedAt < 240_000) {
+        const again = await attempt(
+          i,
+          stills.length ? bestStill(stills).review.blocking : undefined,
+        );
+        if (!(again instanceof Error)) stills.push(again);
+        else if (!stills.length) throw again;
+      }
+      if (!stills.length) throw first.find((r) => r instanceof Error) ?? new Error("No still.");
+      const { still, review: result } = bestStill(stills);
+      issues[i] = stillIssues(result);
+      const path = `${jobRow.user_id}/${jobRow.id}/${i + 1}-frame.${extension(still.type)}`;
+      await saveOutput(path, still.bytes, still.type);
       framePaths[i] = path;
+      /* Only a good first still sets the look the others must match. */
+      if (i === 0 && !issues[0].length) film = stillUrl(still);
       made += 1;
       await admin
         .from("generation_jobs")
         .update({ progress: 0.1 + (0.25 * made) / count })
         .eq("id", jobRow.id);
     };
-    for (let i = 0; i < count; i += 2) {
-      await Promise.all([i, i + 1].filter((n) => n < count).map(makeFrame));
+    await makeFrame(0);
+    for (let i = 1; i < count; i += 3 - tries) {
+      await Promise.all(
+        tries === 2 ? [makeFrame(i)] : [i, i + 1].filter((n) => n < count).map(makeFrame),
+      );
     }
     /* The first still is the poster until the video lands. */
     const ins = await admin.from("generation_outputs").insert({
@@ -1144,8 +1215,9 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       label: read.label,
       size: read.size,
       redos: 0,
+      issues,
     };
-    await admin
+    const parked = await admin
       .from("generation_jobs")
       .update({
         provider: CONCEPT_REVIEW,
@@ -1154,6 +1226,7 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
         request: { ...request, review } as ConceptRequest,
       })
       .eq("id", jobRow.id);
+    if (parked.error) throw new Error(parked.error.message);
   } catch (error) {
     console.error("[v2 concept] job failed", jobRow.id, error);
     const message =
@@ -1214,26 +1287,39 @@ export async function redoConceptFrame(
 ) {
   const { request, review } = reviewOf(jobRow);
   const { plan } = review;
-  const count = review.frames.length;
-  if (index < 0 || index >= count) throw new GenerationError("Pick a frame.");
+  if (index < 0 || index >= review.frames.length) throw new GenerationError("Pick a frame.");
   const ctx = await jobCtx(jobRow, site);
   const { product, refs } = await conceptRefs(ctx, request);
-  const set = [conceptFrameSet(plan.shots[index], plan.bible), redoNote(note)]
-    .filter(Boolean)
-    .join(" ");
-  const frame = await generateImage(
-    conceptStillPrompt(product, refs, request.aspect, review, set, index, count),
+  const issues = review.issues ?? review.frames.map(() => []);
+  /* Match a still that passed, if there is one (never the one being redone). */
+  const good = review.frames.findIndex((_, i) => i !== index && !issues[i]?.length);
+  const film = good >= 0 ? await fromStorage("outputs", review.frames[good]) : undefined;
+  const { still: frame, review: result } = await tryStill({
+    product,
     refs,
-  );
+    film,
+    aspect: request.aspect,
+    shot: plan.shots[index],
+    bible: plan.bible,
+    label: review.label,
+    size: review.size,
+    note: redoNote(note),
+    issues: issues[index],
+  });
   const path = `${jobRow.user_id}/${jobRow.id}/${index + 1}-frame-${review.redos + 1}.${extension(frame.type)}`;
-  const up = await admin.storage
-    .from("outputs")
-    .upload(path, frame.bytes, { contentType: frame.type, upsert: true });
-  if (up.error) throw new Error(up.error.message);
+  await saveOutput(path, frame.bytes, frame.type);
   const old = review.frames[index];
   const frames = [...review.frames];
   frames[index] = path;
-  await saveReview(jobRow, request, { ...review, frames, redos: review.redos + 1 }, EST_USD.image);
+  const nextIssues = review.frames.map((_, i) =>
+    i === index ? stillIssues(result) : (issues[i] ?? []),
+  );
+  await saveReview(
+    jobRow,
+    request,
+    { ...review, frames, redos: review.redos + 1, issues: nextIssues },
+    EST_USD.image + EST_USD.text,
+  );
   if (old && old !== path) await admin.storage.from("outputs").remove([old]);
 }
 

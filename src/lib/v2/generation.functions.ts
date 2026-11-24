@@ -28,6 +28,7 @@ import {
   moveConceptFrame,
   type ConceptReview,
 } from "./concept";
+import { blockedFrames } from "./concept-film";
 import type {
   AdDesign,
   AspectRatio,
@@ -354,6 +355,7 @@ async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobR
     frames: review.frames.map((p) => data?.find((d) => d.path === p)?.signedUrl ?? ""),
     shots: review.plan.shots.map((s) => ({ beat: s.beat, frame: s.frame })),
     redosLeft: Math.max(0, CONCEPT_REDO_LIMIT - review.redos),
+    issues: review.frames.map((_, i) => review.issues?.[i] ?? []),
   };
 }
 
@@ -478,6 +480,13 @@ export const reviewConceptFrames = createServerFn({ method: "POST" })
       }
       await server.redoConceptFrame(row, requestSite(), data.index, data.note ?? "");
       return { ok: true };
+    }
+    /* A still that isn't good enough never becomes video. */
+    const blocked = blockedFrames(review.issues);
+    if (blocked.length) {
+      throw new Error(
+        `Redo frame ${blocked.map((i) => i + 1).join(" and ")} before making the video.`,
+      );
     }
     /* Claim it first, so a double click can't send the clips twice. */
     const { data: claimed } = await server.admin

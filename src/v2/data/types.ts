@@ -445,5 +445,7 @@ export type GenerationJob = {
     frames: string[];
     shots: { beat: string; frame: string }[];
     redosLeft: number;
+    /** Per still: what must be fixed before video; empty when it is good. */
+    issues?: string[][];
   };
 };
