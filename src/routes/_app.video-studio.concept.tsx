@@ -217,9 +217,15 @@ function ConceptPage() {
   const [takeModel, setTakeModel] = useState<TakeModel | "">("");
   const [takeFormat, setTakeFormat] = useState<TakeFormat>("ritual");
   const [takeFrom, setTakeFrom] = useState("");
+  const [takeDry, setTakeDry] = useState(true);
   const take =
     canTake && takeModel
-      ? { model: takeModel, format: takeFormat, ...(takeFrom ? { from: takeFrom } : {}) }
+      ? {
+          model: takeModel,
+          format: takeFormat,
+          ...(takeFrom ? { from: takeFrom } : {}),
+          dry: takeDry,
+        }
       : undefined;
 
   const cost = take ? TAKE_MODELS[take.model].credits : videoGenerationCost(seconds);
@@ -382,6 +388,15 @@ function ConceptPage() {
                   </option>
                 ))}
               </select>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  aria-label="Dry run"
+                  checked={takeDry}
+                  onChange={(e) => setTakeDry(e.target.checked)}
+                />
+                Dry run: stop before the paid video
+              </label>
               <input
                 aria-label="Reuse plan from job"
                 value={takeFrom}

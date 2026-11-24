@@ -157,6 +157,7 @@ const Inputs = z.union([
         model: z.enum(TAKE_MODEL_KEYS as [TakeModel, ...TakeModel[]]),
         format: z.enum(TAKE_FORMAT_KEYS as [TakeFormat, ...TakeFormat[]]),
         from: z.string().uuid().optional(),
+        dry: z.boolean().optional(),
       })
       .optional(),
   }),

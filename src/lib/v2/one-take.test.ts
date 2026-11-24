@@ -1,7 +1,15 @@
 // Run with: node --test src/lib/v2/one-take.test.ts
 import { describe, test } from "node:test";
 import { strictEqual, ok, deepStrictEqual } from "node:assert";
-import { falTakeInput, parseTakePlan, takeAllowed, takeModelOf, takePrompt } from "./one-take.ts";
+import {
+  falTakeInput,
+  parseFaults,
+  parseTakePlan,
+  takeAllowed,
+  takeIssues,
+  takeModelOf,
+  takePrompt,
+} from "./one-take.ts";
 
 const raw = (secs: number[]) => ({
   shots: secs.map((seconds, i) => ({ seconds, action: `action ${i}` })),
@@ -47,5 +55,37 @@ describe("one take", () => {
   test("knows its own jobs", () => {
     strictEqual(takeModelOf("fal:bytedance/seedance-2.0/reference-to-video"), "seedance");
     strictEqual(takeModelOf("fal:fal-ai/kling-video/v2.5-turbo/pro/image-to-video"), null);
+  });
+});
+
+describe("checks before any paid call", () => {
+  const good = parseTakePlan(
+    {
+      shots: [
+        {
+          seconds: 3,
+          action: "She holds the keys and looks at the serum",
+          objects: "keys in hand",
+        },
+        { seconds: 2, action: "She sets the keys beside the bottle", objects: "keys on table" },
+        { seconds: 3, action: "The bottle in front, label to camera", objects: "keys on table" },
+      ],
+      line: "Cancel the morning for Acme Glow Serum",
+    },
+    8,
+  )!;
+  test("a sound plan passes", () => deepStrictEqual(takeIssues(good, 8), []));
+  test("catches effects, a missing product, no object notes and too many words", () => {
+    const shots = [
+      { seconds: 4, action: "A beam hits the butter", objects: "" },
+      { seconds: 4, action: "She leans back", objects: "x" },
+    ];
+    const bad = takeIssues({ ...good, shots, line: "word ".repeat(30).trim() }, 8).join("|");
+    for (const part of ["beam", "where things are", "show the product", "don't fit"])
+      ok(bad.includes(part), part);
+  });
+  test("supervisor replies are tidied", () => {
+    deepStrictEqual(parseFaults({ faults: ["  keys moved. ", 3, ""] }), ["keys moved"]);
+    deepStrictEqual(parseFaults(null), []);
   });
 });

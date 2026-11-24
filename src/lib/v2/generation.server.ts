@@ -107,11 +107,14 @@ import {
 } from "./concept-film";
 import {
   falTakeInput,
+  parseFaults,
   parseTakePlan,
   TAKE_MODELS,
   takeAllowed,
+  takeIssues,
   takeMessages,
   takeModelOf,
+  takeReviewMessages,
   type TakeInput,
   type TakePlan,
   type TakeRef,
@@ -1284,7 +1287,12 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
 }
 
 /** What a finished one-take job leaves for another model to reuse, so a test is fair. */
-type TakeRecord = { plan: TakePlan; refs: { role: TakeRef["role"]; path: string }[] };
+type TakeRecord = {
+  plan: TakePlan;
+  refs: { role: TakeRef["role"]; path: string }[];
+  /** Named faults left after the checks; the video model is never called with any. */
+  faults?: string[];
+};
 
 /**
  * One-take model test (preview only): plan the ad, make one look still, then film every shot
@@ -1312,25 +1320,49 @@ async function runOneTakeJob(jobRow: GenerationJobRow, site: Site, take: TakeInp
     } else {
       const { inputs, product, refs } = await conceptRefs(ctx, request);
       const read = await readProduct(product.dataUrl);
-      const raw = await gatewayChat({
-        model: TEXT_MODEL,
-        response_format: { type: "json_object" },
-        messages: takeMessages({
-          productName: product.name,
-          description: product.description,
-          label: read.label,
-          format: take.format,
-          concept: inputs.concept,
-          climax: inputs.climax,
-          emotion: inputs.emotion,
-          script: inputs.script,
-          seconds,
-          images: refs,
-        }),
-      });
-      cost += EST_USD.text * 2;
-      const plan = parseTakePlan(parseJsonBlock(raw), seconds);
+      const writePlan = async (issues?: string[]) => {
+        const raw = await gatewayChat({
+          model: TEXT_MODEL,
+          response_format: { type: "json_object" },
+          messages: takeMessages({
+            productName: product.name,
+            description: product.description,
+            label: read.label,
+            format: take.format,
+            concept: inputs.concept,
+            climax: inputs.climax,
+            emotion: inputs.emotion,
+            script: inputs.script,
+            seconds,
+            images: refs,
+            issues,
+          }),
+        });
+        const written = parseTakePlan(parseJsonBlock(raw), seconds);
+        cost += EST_USD.text * 2;
+        if (!written) return { plan: null, faults: ["the plan came back empty"] };
+        const faults = takeIssues(written, seconds);
+        try {
+          const check = await gatewayChat({
+            model: TEXT_MODEL,
+            response_format: { type: "json_object" },
+            messages: takeReviewMessages(written),
+          });
+          faults.push(...parseFaults(parseJsonBlock(check)));
+        } catch (error) {
+          console.error("[v2 one take] plan review failed", error);
+        }
+        return { plan: written, faults };
+      };
+      /* Up to three plans, each told what was wrong with the last; words cost next to nothing. */
+      let draft = await writePlan();
+      for (let i = 0; i < 2 && draft.faults.length; i++) {
+        const next = await writePlan(draft.faults);
+        if (next.plan && (!draft.plan || next.faults.length <= draft.faults.length)) draft = next;
+      }
+      const plan = draft.plan;
       if (!plan) throw new Error("The plan came back empty.");
+      const faults = [...draft.faults];
       await admin.from("generation_jobs").update({ progress: 0.12 }).eq("id", jobRow.id);
       const bible: ContinuityBible = {
         character: "",
@@ -1365,7 +1397,27 @@ async function runOneTakeJob(jobRow: GenerationJobRow, site: Site, take: TakeInp
       const made = tries.flatMap((t) => (t.status === "fulfilled" ? [t.value] : []));
       cost += made.length * (EST_USD.image + EST_USD.text);
       if (!made.length) throw tries.find((t) => t.status === "rejected")?.reason;
-      const { still } = bestStill(made);
+      if (!made.some((m) => stillPasses(m.review))) {
+        try {
+          made.push(
+            await tryStill({
+              product,
+              refs,
+              aspect: request.aspect,
+              shot: stillShot,
+              bible,
+              label: read.label,
+              size: read.size,
+              issues: bestStill(made).review.blocking,
+            }),
+          );
+          cost += EST_USD.image + EST_USD.text;
+        } catch (error) {
+          console.error("[v2 one take] still retry failed", jobRow.id, error);
+        }
+      }
+      const { still, review: stillReview } = bestStill(made);
+      faults.push(...stillIssues(stillReview).map((f) => `opening still: ${f}`));
       const save = async (name: string, file: Still) => {
         const path = `${jobRow.user_id}/${jobRow.id}/${name}.${extension(file.type)}`;
         await saveOutput(path, file.bytes, file.type);
@@ -1378,7 +1430,19 @@ async function runOneTakeJob(jobRow: GenerationJobRow, site: Site, take: TakeInp
         })),
       );
       saved.push({ role: "still", path: await save("1-frame", still) });
-      record = { plan, refs: saved };
+      record = { plan, refs: saved, faults };
+    }
+    /* Kept whatever happens next, so a dry or refused run can be read and reused. */
+    const kept = await admin
+      .from("generation_jobs")
+      .update({ request: { ...request, takeRecord: record } as GenerationRequest })
+      .eq("id", jobRow.id);
+    if (kept.error) throw new Error(kept.error.message);
+    if (take.dry)
+      throw new GenerationError("Dry run finished. Nothing was filmed, credits are back.");
+    /* Faults stop the paid step; reusing a dry run means someone has looked at it. */
+    if (!take.from && record.faults?.length) {
+      throw new GenerationError("The plan isn't good enough to film yet. Your credits are back.");
     }
     const poster = record.refs.find((r) => r.role === "still")?.path ?? record.refs[0].path;
     const ins = await admin.from("generation_outputs").insert({
