@@ -29,6 +29,15 @@ import {
   type ConceptReview,
 } from "./concept";
 import { blockedFrames, unplannedFrames } from "./concept-film";
+import {
+  TAKE_FORMAT_KEYS,
+  TAKE_MODEL_KEYS,
+  TAKE_MODELS,
+  TAKE_SECONDS,
+  takeAllowed,
+  type TakeFormat,
+  type TakeModel,
+} from "./one-take";
 import type {
   AdDesign,
   AspectRatio,
@@ -143,6 +152,13 @@ const Inputs = z.union([
     character: Upload.nullable(),
     scene: Upload.nullable(),
     reference: Upload.nullable().optional(),
+    take: z
+      .object({
+        model: z.enum(TAKE_MODEL_KEYS as [TakeModel, ...TakeModel[]]),
+        format: z.enum(TAKE_FORMAT_KEYS as [TakeFormat, ...TakeFormat[]]),
+        from: z.string().uuid().optional(),
+      })
+      .optional(),
   }),
   z.object({ studio: z.literal("shorts"), mode: z.literal("templates"), templateId: str(120) }),
   z.object({
@@ -204,12 +220,17 @@ export const startGeneration = createServerFn({ method: "POST" })
     const concept = data.studio === "concept";
     const seconds = kind === "video" ? (data.seconds ?? (ugc ? 8 : concept ? 15 : 5)) : null;
     if (kind === "video" && data.count !== 1) throw new Error("One video at a time.");
+    /* The one-take model test: preview only, one length, its own price. */
+    const take = data.inputs.studio === "concept" ? data.inputs.take : undefined;
+    if (take && !takeAllowed(requestSite().origin)) throw new Error("That isn't available yet.");
     /* Only the lengths the studio offers: each is priced and tested. */
-    const lengths: readonly number[] = ugc
-      ? VIDEO_LENGTHS.ugc
-      : concept
-        ? VIDEO_LENGTHS.concept
-        : VIDEO_LENGTHS.shorts;
+    const lengths: readonly number[] = take
+      ? [TAKE_SECONDS]
+      : ugc
+        ? VIDEO_LENGTHS.ugc
+        : concept
+          ? VIDEO_LENGTHS.concept
+          : VIDEO_LENGTHS.shorts;
     if (seconds !== null && !lengths.includes(seconds)) {
       throw new Error(
         ugc
@@ -249,7 +270,9 @@ export const startGeneration = createServerFn({ method: "POST" })
       throw new Error("You're generating very fast. Wait a minute and try again.");
     }
 
-    const cost = generationCost(data.kind, data.count, seconds ?? undefined, data.studio);
+    const cost = take
+      ? TAKE_MODELS[take.model].credits
+      : generationCost(data.kind, data.count, seconds ?? undefined, data.studio);
     const request = { ...storableRequest(data), ...(seconds ? { seconds } : {}), cost };
     const { data: jobId, error } = await admin.rpc("v2_create_generation_job", {
       _user_id: context.userId,

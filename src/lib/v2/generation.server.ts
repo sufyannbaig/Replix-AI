@@ -106,6 +106,17 @@ import {
   type StillReview,
 } from "./concept-film";
 import {
+  falTakeInput,
+  parseTakePlan,
+  TAKE_MODELS,
+  takeAllowed,
+  takeMessages,
+  takeModelOf,
+  type TakeInput,
+  type TakePlan,
+  type TakeRef,
+} from "./one-take";
+import {
   checkMessages,
   fixLine,
   labelMessages,
@@ -1272,6 +1283,168 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
   }
 }
 
+/** What a finished one-take job leaves for another model to reuse, so a test is fair. */
+type TakeRecord = { plan: TakePlan; refs: { role: TakeRef["role"]; path: string }[] };
+
+/**
+ * One-take model test (preview only): plan the ad, make one look still, then film every shot
+ * with voice and sound in a single generation. Finished by syncVideoJob. Never throws.
+ */
+async function runOneTakeJob(jobRow: GenerationJobRow, site: Site, take: TakeInput) {
+  const request = jobRow.request as GenerationRequest;
+  let cost = 0;
+  try {
+    const key = falKey();
+    if (!key) throw new GenerationError(NO_VIDEO);
+    if (!takeAllowed(site.origin)) throw new GenerationError("That isn't available yet.");
+    const seconds = jobRow.seconds ?? 8;
+    const ctx = await jobCtx(jobRow, site);
+    let record: TakeRecord | undefined;
+    if (take.from) {
+      const { data } = await admin
+        .from("generation_jobs")
+        .select("*")
+        .eq("id", take.from)
+        .eq("user_id", jobRow.user_id)
+        .maybeSingle();
+      record = (data?.request as { takeRecord?: TakeRecord } | undefined)?.takeRecord;
+      if (!record) throw new GenerationError("That plan can't be reused.");
+    } else {
+      const { inputs, product, refs } = await conceptRefs(ctx, request);
+      const read = await readProduct(product.dataUrl);
+      const raw = await gatewayChat({
+        model: TEXT_MODEL,
+        response_format: { type: "json_object" },
+        messages: takeMessages({
+          productName: product.name,
+          description: product.description,
+          label: read.label,
+          format: take.format,
+          concept: inputs.concept,
+          climax: inputs.climax,
+          emotion: inputs.emotion,
+          script: inputs.script,
+          seconds,
+          images: refs,
+        }),
+      });
+      cost += EST_USD.text * 2;
+      const plan = parseTakePlan(parseJsonBlock(raw), seconds);
+      if (!plan) throw new Error("The plan came back empty.");
+      await admin.from("generation_jobs").update({ progress: 0.12 }).eq("id", jobRow.id);
+      const bible: ContinuityBible = {
+        character: "",
+        wardrobe: plan.wardrobe,
+        location: plan.look,
+        timeOfDay: "",
+        light: "",
+        grade: "",
+        lens: "",
+        prop: "",
+        humanTouch: "",
+      };
+      const stillShot: ConceptShot = {
+        beat: "Opening",
+        type: "",
+        frame: plan.still,
+        motion: plan.shots[0].action,
+      };
+      const tries = await Promise.allSettled(
+        [0, 1].map(() =>
+          tryStill({
+            product,
+            refs,
+            aspect: request.aspect,
+            shot: stillShot,
+            bible,
+            label: read.label,
+            size: read.size,
+          }),
+        ),
+      );
+      const made = tries.flatMap((t) => (t.status === "fulfilled" ? [t.value] : []));
+      cost += made.length * (EST_USD.image + EST_USD.text);
+      if (!made.length) throw tries.find((t) => t.status === "rejected")?.reason;
+      const { still } = bestStill(made);
+      const save = async (name: string, file: Still) => {
+        const path = `${jobRow.user_id}/${jobRow.id}/${name}.${extension(file.type)}`;
+        await saveOutput(path, file.bytes, file.type);
+        return path;
+      };
+      const saved: TakeRecord["refs"] = await Promise.all(
+        refs.map(async (r) => ({
+          role: r.role as TakeRef["role"],
+          path: await save(`ref-${r.role}`, dataUrlImage(r.dataUrl)),
+        })),
+      );
+      saved.push({ role: "still", path: await save("1-frame", still) });
+      record = { plan, refs: saved };
+    }
+    const poster = record.refs.find((r) => r.role === "still")?.path ?? record.refs[0].path;
+    const ins = await admin.from("generation_outputs").insert({
+      job_id: jobRow.id,
+      user_id: jobRow.user_id,
+      position: 0,
+      image_path: poster,
+      spoken: record.plan.line || null,
+    });
+    if (ins.error) throw new Error(ins.error.message);
+    /* Everything is signed before anything is sent. */
+    const refs: TakeRef[] = await Promise.all(
+      record.refs.map(async (r) => {
+        const { data } = await admin.storage.from("outputs").createSignedUrl(r.path, 60 * 60);
+        if (!data?.signedUrl) throw new Error("Couldn't sign a picture.");
+        return { role: r.role, url: data.signedUrl };
+      }),
+    );
+    const model = TAKE_MODELS[take.model];
+    const hook = `${site.origin}/api/public/hooks/fal?job=${jobRow.id}`;
+    const res = await fetch(`${falUrls(model.id).submit}?fal_webhook=${encodeURIComponent(hook)}`, {
+      method: "POST",
+      headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(
+        falTakeInput({
+          model: take.model,
+          plan: record.plan,
+          refs,
+          seconds,
+          aspect: request.aspect,
+        }),
+      ),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+    if (!res.ok || typeof body?.request_id !== "string") {
+      console.error("[v2 one take] fal submit failed", jobRow.id, res.status, body);
+      throw new GenerationError(
+        falRefused(res.status)
+          ? VIDEO_PAUSED
+          : "The video service didn't take the job. Your credits are back.",
+      );
+    }
+    const stored = await admin
+      .from("generation_jobs")
+      .update({
+        provider: `fal:${model.id}`,
+        provider_job_ids: [body.request_id],
+        provider_cost_usd: Number(cost.toFixed(5)),
+        progress: 0.4,
+        request: { ...request, takeRecord: record } as GenerationRequest,
+      })
+      .eq("id", jobRow.id);
+    if (stored.error) throw new Error(stored.error.message);
+  } catch (error) {
+    console.error("[v2 one take] job failed", jobRow.id, error);
+    await settleFailed(
+      jobRow.id,
+      error instanceof GenerationError
+        ? error.message
+        : "Something went wrong. Your credits are back.",
+      cost,
+    );
+  }
+}
+
 /** Load a Concept job that is waiting on the user, or say why it can't be changed. */
 function reviewOf(jobRow: GenerationJobRow) {
   const request = jobRow.request as ConceptRequest;
@@ -1727,7 +1900,8 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
   lastVideoSync.set(row.id, now);
   const key = falKey();
   if (!key) return false;
-  if (row.studio === "concept") return syncConceptJob(row, key);
+  const take = takeModelOf(row.provider);
+  if (row.studio === "concept" && !take) return syncConceptJob(row, key);
   const urls = falUrls(row.provider.slice(4), requestId);
   const headers = { Authorization: `Key ${key}` };
   const frameCost = Number(row.provider_cost_usd ?? 0);
@@ -1782,7 +1956,11 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
       .eq("position", 0);
     if (saved.error) throw new Error(saved.error.message);
     const model = row.provider.slice(4);
-    const perSecond = row.studio === "ugc" ? UGC_USD_PER_SECOND : videoUsdPerSecond(model);
+    const perSecond = take
+      ? TAKE_MODELS[take].usdPerSecond
+      : row.studio === "ugc"
+        ? UGC_USD_PER_SECOND
+        : videoUsdPerSecond(model);
     const cost = frameCost + perSecond * (row.seconds ?? 5);
     await admin.rpc("v2_settle_generation_job", {
       _job_id: row.id,
@@ -1815,7 +1993,11 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
  */
 export async function runJob(jobRow: GenerationJobRow, site: Site) {
   if (jobRow.studio === "shorts" || jobRow.studio === "ugc") return runShortJob(jobRow, site);
-  if (jobRow.studio === "concept") return runConceptJob(jobRow, site);
+  if (jobRow.studio === "concept") {
+    const inputs = (jobRow.request as GenerationRequest).inputs;
+    const take = inputs?.studio === "concept" ? inputs.take : undefined;
+    return take ? runOneTakeJob(jobRow, site, take) : runConceptJob(jobRow, site);
+  }
   const request = jobRow.request as GenerationRequest;
   let ok = 0;
   let cost = 0;

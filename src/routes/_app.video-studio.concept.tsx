@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { AiButton } from "@/v2/components/studio/AiButton";
 import { toast } from "sonner";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGenerate } from "@/v2/components/studio/useGenerate";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
@@ -14,6 +14,15 @@ import { StudioSteps } from "@/v2/components/studio/StudioSteps";
 import type { UploadedImage } from "@/v2/components/studio/UploadCard";
 import { useWriteCopy, videoGenerationCost, type WriteField } from "@/v2/data/api";
 import { uploadRef } from "@/v2/data/inputs";
+import {
+  TAKE_FORMAT_KEYS,
+  TAKE_MODEL_KEYS,
+  TAKE_MODELS,
+  TAKE_SECONDS,
+  takeAllowed,
+  type TakeFormat,
+  type TakeModel,
+} from "@/lib/v2/one-take";
 import { VIDEO_LENGTHS } from "@/v2/data/pricing";
 import type { AspectRatio, PieceKind, Product } from "@/v2/data/types";
 import plusCircle from "@/assets/v2/icons/plus-circle.svg";
@@ -202,7 +211,18 @@ function ConceptPage() {
   const [seconds, setSeconds] = useState(15);
   const [note, setNote] = useState("");
 
-  const cost = videoGenerationCost(seconds);
+  /* Preview-only model test: the whole ad in one generation. */
+  const [canTake, setCanTake] = useState(false);
+  useEffect(() => setCanTake(takeAllowed(window.location.origin)), []);
+  const [takeModel, setTakeModel] = useState<TakeModel | "">("");
+  const [takeFormat, setTakeFormat] = useState<TakeFormat>("ritual");
+  const [takeFrom, setTakeFrom] = useState("");
+  const take =
+    canTake && takeModel
+      ? { model: takeModel, format: takeFormat, ...(takeFrom ? { from: takeFrom } : {}) }
+      : undefined;
+
+  const cost = take ? TAKE_MODELS[take.model].credits : videoGenerationCost(seconds);
   const productName = product?.name ?? "the product";
 
   /* "Suggest / Write with AI": the text model drafts the field from what's filled in. */
@@ -334,6 +354,43 @@ function ConceptPage() {
             onChange={setReference}
             acceptVideo
           />
+          {canTake ? (
+            <div className="flex flex-col gap-2 rounded-[12px] bg-v2-surface p-3 font-inter-tight text-xs text-v2-muted">
+              <span className="font-semibold text-v2-ink">One-take test (preview only)</span>
+              <select
+                aria-label="One-take model"
+                value={takeModel}
+                onChange={(e) => setTakeModel(e.target.value as TakeModel | "")}
+                className="h-8 rounded-[6px] bg-v2-canvas px-2 text-v2-ink"
+              >
+                <option value="">Off</option>
+                {TAKE_MODEL_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {TAKE_MODELS[k].name}, {TAKE_SECONDS} s
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="One-take format"
+                value={takeFormat}
+                onChange={(e) => setTakeFormat(e.target.value as TakeFormat)}
+                className="h-8 rounded-[6px] bg-v2-canvas px-2 text-v2-ink"
+              >
+                {TAKE_FORMAT_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+              <input
+                aria-label="Reuse plan from job"
+                value={takeFrom}
+                onChange={(e) => setTakeFrom(e.target.value.trim())}
+                placeholder="Reuse plan from job id (optional)"
+                className="h-8 rounded-[6px] bg-v2-canvas px-2 text-v2-ink"
+              />
+            </div>
+          ) : null}
         </aside>
       </div>
 
@@ -371,12 +428,13 @@ function ConceptPage() {
                   character: uploadRef(character),
                   scene: uploadRef(scene),
                   reference: uploadRef(reference),
+                  ...(take ? { take } : {}),
                 },
                 product: product!,
                 style: { label: `${emotion} concept`, imageUrl: scene?.url },
                 aspect,
                 count: 1,
-                seconds,
+                seconds: take ? TAKE_SECONDS : seconds,
                 note: concept.trim() || undefined,
                 cost,
               })

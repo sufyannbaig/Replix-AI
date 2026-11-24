@@ -1,3 +1,4 @@
+import type { TakeInput } from "@/lib/v2/one-take";
 /**
  * Domain types for the Replix 2.0 app. These describe the shapes the UI needs; the
  * backend will be adapted to return them (see ./api.ts for the single seam to replace).
@@ -348,6 +349,8 @@ export type GenerationInputs =
       character: UploadRef | null;
       scene: UploadRef | null;
       reference: UploadRef | null;
+      /** Preview-only model test: the whole ad in one generation (src/lib/v2/one-take.ts). */
+      take?: TakeInput;
     };
 
 /** Everything a studio sends when the user clicks Generate. */

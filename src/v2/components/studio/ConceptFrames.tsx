@@ -132,7 +132,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
       </ol>
       <div className="flex flex-wrap items-center gap-3">
         <PillButton
-          disabled={act.isPending || blocked.length > 0}
+          disabled={act.isPending || (planned && blocked.length > 0)}
           onClick={() => run("approve", { action: planned ? "approve" : "plan" })}
           className="h-11 px-6 text-sm"
         >
