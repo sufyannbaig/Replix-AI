@@ -16,6 +16,7 @@
  */
 import { NEGATIVE_PROMPT } from "./shorts.ts";
 import { cleanScript } from "./ugc.ts";
+import { FRAME_MOTION_RULE, STORY_RULES } from "./story.ts";
 
 export const CONCEPT_CLIP_MODEL = "fal-ai/kling-video/v2.5-turbo/pro/image-to-video";
 export const CONCEPT_CLIP_USD_PER_SECOND = 0.07;
@@ -106,11 +107,13 @@ export function conceptShotMessages(opts: {
       role: "system" as const,
       content: [
         "You are an award-winning commercial director. You take control; the AI only renders. Never give the first generic idea.",
+        `First find the story. Keep the user's premise, character and product, and sharpen how it is told:\n${STORY_RULES}\nGive each beat a job: the hook raises the question, the middle makes it worse or stranger, the last beat turns it through the product. If the user's own idea uses a cliché, keep it and make the telling fresh.`,
         "Method: 1) Decide ONE master shot and lock its continuity bible: the character's exact look (skin, face, hair, build, age), wardrobe, location, time of day, light direction, colour grade, lens. Pick the ONE prop that carries the concept (props are the strongest director tool) and ONE human touch (a small real, relatable detail). 2) Write one shot per beat. Every shot is 5 seconds with ONE main motion (one subject action and one camera move), no cuts inside a shot, no on-screen text, no other brands or logos.",
         `3) Avoid the storyboard-then-animate look: each shot uses a mind-hack shot type, at least two different ones across the film, chosen from: ${MIND_HACK_SHOTS.join("; ")}.`,
+        `Frame and motion: ${FRAME_MOTION_RULE}`,
         "4) The concept must be visible in the frame itself, not implied. The last shot is the ending aimed at the target emotion: the product is the hero, label towards the camera, the payoff readable in the final 2 seconds.",
         'Reply as JSON: {"bible": {"character": "", "wardrobe": "", "location": "", "timeOfDay": "", "light": "", "grade": "", "lens": "", "prop": "", "humanTouch": ""}, "shots": [{"beat": "", "type": "the mind-hack shot type", "frame": "the opening still: subject, action, product placement, foreground, camera angle", "motion": "the one subject action and the one camera move over 5 seconds"}], "vo": "the voiceover", "voice": "one voice name", "music": "the music brief"}',
-        "5) Voiceover: one calm narrator line per beat, spoken over the film, the last line the payoff with the product name. Plain words a person would say, no hashtags or stage directions. If a script is given, use its words. Pick the voice from: " +
+        "5) Voiceover: one narrator line per beat, spoken over the film, in a tone that suits the target emotion. Never describe what we already see; add a private thought, an irony or a joke. The last line is the payoff with the product name. Plain words a person would say, no hashtags or stage directions. If a script is given, use its words. Pick the voice from: " +
           `${ALL_VOICES.join(", ")} (female: ${CONCEPT_VOICES.female.join(", ")}).`,
         "6) Music brief (the ad film music method): genre, tempo in BPM, 2 to 4 instruments, the mood arc across the beats, one lift at the climax and a clean resolve on the brand ending. Instrumental only, quiet enough to sit under the voice.",
       ].join("\n"),
@@ -321,7 +324,7 @@ export function conceptFrameSet(shot: ConceptShot, bible: ContinuityBible) {
 }
 
 export const CONCEPT_FRAME_NOTE =
-  "One still from a premium video ad, cinematic and natural, not a collage: the product looks exactly like the PRODUCT reference, the person looks exactly like the CHARACTER reference.";
+  "One still from a premium video ad, cinematic and natural, not a collage: the product looks exactly like the PRODUCT reference, the person looks exactly like the CHARACTER reference. Follow this shot's framing and action exactly, even when only hands or part of the person are in frame.";
 export const CONCEPT_FRAME_COMPOSITION = "framed as a film still, the action readable at a glance";
 
 /** The text for one clip. */

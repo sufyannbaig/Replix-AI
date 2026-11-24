@@ -7,6 +7,7 @@
  * Pure: prompts and parsing. The call lives in generation.functions.ts (writeCopy).
  */
 import { conceptVoWords } from "./concept.ts";
+import { STORY_RULES } from "./story.ts";
 import { ugcWordBudget } from "./ugc.ts";
 
 export const WRITER_FIELDS = ["concept", "climax", "script", "ugcScript"] as const;
@@ -31,11 +32,11 @@ export type WriterContext = {
 
 const ASK: Record<WriterField, (c: WriterContext) => string> = {
   concept: (c) =>
-    `Write ONE fresh concept for a ${c.seconds ?? 15}-second ${c.emotion ?? ""} concept ad: a single visual idea the camera can show in a few shots, with a person, a place and a twist that makes the product the reason it happens. Not a slogan, not a list. One or two sentences, max 40 words.`,
+    `Write ONE fresh concept for a ${c.seconds ?? 15}-second ${c.emotion ?? ""} concept ad: a tiny story with a want, an obstacle and a turn caused by the product. First sketch five ideas in "ideas" (max 25 words each), each from a different human insight and a different kind of surprise. Then put the strongest in "text", the one a viewer would retell to a friend. Not a slogan, not a list. Two or three plain sentences, max 60 words.`,
   climax: (c) =>
-    `Write the climax and ending for this concept: the payoff moment that lands the ${c.emotion ?? "target"} emotion, and the final 2 seconds with the product as hero. One or two sentences, max 35 words.`,
+    `Write the climax and ending for this concept: the surprise that answers the question the opening raised, lands the ${c.emotion ?? "target"} emotion and only works because of this product. Then the final 2 seconds with the product as hero, still part of the joke or feeling. Two sentences, max 45 words.`,
   script: (c) =>
-    `Write the voiceover for this ad: one short narrator line per beat (hook, development, climax), the last line the payoff naming the product. At most ${conceptVoWords(c.seconds ?? 15)} words in total. Spoken words only.`,
+    `Write the voiceover for this ad: one short narrator line per beat (hook, development, climax), the last line the payoff naming the product. Never describe what we already see: the words add the character's private thought, an irony or a joke. Say it the way a person talks. At most ${conceptVoWords(c.seconds ?? 15)} words in total. Spoken words only.`,
   ugcScript: (c) =>
     `Write what one creator says to their phone camera about this product: hook in the first line, one honest reason, a natural close. First person, at most ${ugcWordBudget(c.seconds ?? 15)} words. Spoken words only.`,
 };
@@ -45,7 +46,11 @@ export function writerMessages(field: WriterField, c: WriterContext) {
     {
       role: "system" as const,
       content:
-        'You are an award-winning ad creative director. Never give the first generic idea. Plain English, no hashtags, no emojis, no stage directions, no quote marks, no claims about health, results or prices the product details don\'t state. Reply as JSON: {"text": "..."}.',
+        "You are an award-winning ad creative director. Never give the first generic idea. Plain English, no hashtags, no emojis, no stage directions, no quote marks, no claims about health, results or prices the product details don't state. " +
+        (field === "concept"
+          ? `Reply as JSON: {"ideas": ["...", "...", "...", "...", "..."], "text": "..."}.`
+          : `Reply as JSON: {"text": "..."}.`) +
+        (field === "ugcScript" ? "" : `\n${STORY_RULES}`),
     },
     {
       role: "user" as const,

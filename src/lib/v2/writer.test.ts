@@ -1,7 +1,9 @@
 // Run with: node --test src/lib/v2/writer.test.ts
 import { describe, test } from "node:test";
 import { strictEqual, ok } from "node:assert";
-import { parseWriter, writerMessages } from "./writer.ts";
+import { parseWriter, writerMessages, type WriterField } from "./writer.ts";
+import { FRAME_MOTION_RULE, STORY_RULES } from "./story.ts";
+import { conceptShotMessages } from "./concept.ts";
 
 describe("writer", () => {
   test("tidies and caps the reply", () => {
@@ -21,5 +23,27 @@ describe("writer", () => {
         "Concept: x",
       ),
     );
+  });
+});
+
+describe("story rules", () => {
+  const system = (f: WriterField) => writerMessages(f, { productName: "Glow" })[0].content;
+  test("concept, climax and script follow them; the creator script stays a plain review", () => {
+    for (const f of ["concept", "climax", "script"] as const) ok(system(f).includes(STORY_RULES));
+    ok(!system("ugcScript").includes(STORY_RULES));
+  });
+  test("a concept is picked from five ideas and only the pick is shown", () => {
+    ok(system("concept").includes('"ideas"') && !system("climax").includes('"ideas"'));
+    strictEqual(parseWriter({ ideas: ["a", "b"], text: "The pick." }, "concept"), "The pick.");
+  });
+  test("the shot writer gets the story and frame rules and keeps the user's premise", () => {
+    const m = conceptShotMessages({
+      productName: "Glow",
+      concept: "A cat steals the bottle",
+      emotion: "Humor",
+      shots: 3,
+    });
+    ok(m[0].content.includes(STORY_RULES) && m[0].content.includes(FRAME_MOTION_RULE));
+    ok(m[1].content.includes("A cat steals the bottle"));
   });
 });
