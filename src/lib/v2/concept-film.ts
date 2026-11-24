@@ -66,7 +66,7 @@ export function filmStillPrompt(opts: {
           .filter(Boolean)
           .join("\n")
       : "No product, bottle, pack or label anywhere in this frame.",
-    "Real: one motivated light source with honest shadows, skin with pores and small flaws, worn and slightly untidy surfaces, a caught expression rather than a pose.",
+    "Real: one motivated light source with honest shadows, skin with natural texture, a caught expression rather than a pose. The place is lived-in but well kept and styled the way this product's own brand would shoot it: tasteful, uncluttered, good materials, flattering light. Nothing chipped, stained, cheap or drab.",
     "Never: studio equipment, softboxes, glowing or magical effects, duplicate objects, floating things, waxy skin, perfect symmetry, extra people, extra or bent fingers, any text or logo apart from the product's own label.",
     opts.note ?? "",
     opts.issues?.length
@@ -100,6 +100,8 @@ export function stillReviewMessages(opts: {
     opts.shot.keep ? `This is true: ${opts.shot.keep}` : "",
     "Hands, fingers, face, eyes and teeth are anatomically right and hold things believably.",
     "Every object appears once, rests on something and makes physical sense; no studio equipment.",
+    "Each object is exactly where the shot says: in the hand, worn, or on the surface named. An object said to be held is held.",
+    "The place suits the product's brand: clean, tasteful and flattering, nothing chipped, cheap, cluttered or drab.",
     shows
       ? `The product appears exactly once, matches the real one at a believable size${opts.label.length ? `, and any readable label says ${opts.label.map((l) => `"${l}"`).join(" / ")}` : ""}.`
       : "No product or label is in the frame.",
@@ -113,7 +115,7 @@ export function stillReviewMessages(opts: {
     {
       role: "system" as const,
       content:
-        'You are a commercial director rejecting AI-looking frames before money is spent on them. Judge only what you can see. Reply with JSON only: {"score": 1-10, "blocking": ["..."], "minor": ["..."]}. "blocking": faults an ordinary viewer would notice, each in under 12 words. Never blocking: left or right hand, a slightly different shot size or camera angle, or tiny details nobody would notice; put those in \"minor\". Always blocking: a missing story object, changed clothes, a head cut by the frame in a shot about the person. Every blocking fault names the exact thing that is wrong; a low score alone is not a fault. How it will move is decided later. 10 is a frame from a real commercial, 7 is usable, under 7 is not. Do not be kind, and do not invent faults.',
+        'You are a commercial director rejecting AI-looking frames before money is spent on them. Judge only what you can see. Reply with JSON only: {"score": 1-10, "blocking": ["..."], "minor": ["..."]}. "blocking": faults an ordinary viewer would notice, each in under 12 words. Never blocking: left or right hand, a slightly different shot size or camera angle, or tiny details nobody would notice; put those in \"minor\". Always blocking: a missing or misplaced story object, a shabby or drab place, changed clothes, a head cut by the frame in a shot about the person. Every blocking fault names the exact thing that is wrong; a low score alone is not a fault. How it will move is decided later. 10 is a frame from a real commercial, 7 is usable, under 7 is not. Do not be kind, and do not invent faults.',
     },
     {
       role: "user" as const,
