@@ -252,7 +252,8 @@ const REF_USE: Record<TakeRef["role"], string> = {
   product: "the exact product: same shape, colours, cap and label words",
   character: "the actor: same face, age, hair and build",
   scene: "the place: its surfaces and palette only, no studio equipment",
-  still: "the look: same actor, clothes, room, light and colour as this frame",
+  still:
+    "the look: same actor, clothes, room, light and colour as this frame (the product is added from its own picture)",
 };
 
 const CARE =
