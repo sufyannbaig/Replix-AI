@@ -1380,6 +1380,8 @@ async function runOneTakeJob(jobRow: GenerationJobRow, site: Site, take: TakeInp
         type: "",
         frame: plan.still,
         motion: plan.shots[0].action,
+        /* It sets the actor, clothes, room and light; the label comes from the product photo. */
+        product: false,
       };
       const tries = await Promise.allSettled(
         [0, 1].map(() =>

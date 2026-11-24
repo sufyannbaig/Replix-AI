@@ -67,7 +67,7 @@ export function filmStillPrompt(opts: {
           .join("\n")
       : "No product, bottle, pack or label anywhere in this frame.",
     "Real: one motivated light source with honest shadows, skin with natural texture, a caught expression rather than a pose. The place is lived-in but well kept and styled the way this product's own brand would shoot it: tasteful, uncluttered, good materials, flattering light. Nothing chipped, stained, cheap or drab.",
-    "Never: studio equipment, softboxes, glowing or magical effects, duplicate objects, floating things, waxy skin, perfect symmetry, extra people, extra or bent fingers, any text or logo apart from the product's own label.",
+    "Never: mirrors or reflections of the person, studio equipment, softboxes, glowing or magical effects, duplicate objects, floating things, waxy skin, perfect symmetry, extra people, extra or bent fingers, any text or logo apart from the product's own label.",
     opts.note ?? "",
     opts.issues?.length
       ? `A previous attempt was rejected for: ${opts.issues.join("; ")}. Do not repeat this.`
@@ -99,7 +99,7 @@ export function stillReviewMessages(opts: {
     `It tells this story moment, with every object and body position the story needs: ${opts.shot.frame}`,
     opts.shot.keep ? `This is true: ${opts.shot.keep}` : "",
     "Hands, fingers, face, eyes and teeth are anatomically right and hold things believably.",
-    "Every object appears once, rests on something and makes physical sense; no studio equipment.",
+    "Every object appears once, rests on something and makes physical sense; no studio equipment and no mirrors or reflected faces.",
     "Each object is exactly where the shot says: in the hand, worn, or on the surface named. An object said to be held is held.",
     "The place suits the product's brand: clean, tasteful and flattering, nothing chipped, cheap, cluttered or drab.",
     shows
