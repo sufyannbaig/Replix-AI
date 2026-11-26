@@ -57,7 +57,7 @@ export function filmStillPrompt(opts: {
     `THE SHOT (this decides everything): ${shot.frame}`,
     shot.keep ? `Must be true in this frame: ${shot.keep}` : "",
     facts.map(([k, v]) => `${k}: ${v}.`).join(" "),
-    `Frame: ${opts.aspect}, natural off-centre composition, real depth between foreground and background.`,
+    `Frame: ${opts.aspect}, full bleed: the picture fills the whole canvas edge to edge, composed for ${opts.aspect}. No letterbox or black bars, no borders, no blank or empty bands. Natural off-centre composition, real depth between foreground and background.`,
     shows
       ? [
           `The product appears once, only where the shot puts it, at its true size.`,
@@ -102,6 +102,7 @@ export function stillReviewMessages(opts: {
   const asks = [
     `It tells this story moment, with every object and body position the story needs: ${opts.shot.frame}`,
     opts.shot.keep ? `This is true: ${opts.shot.keep}` : "",
+    "The picture fills the whole frame edge to edge: no letterbox or black bars, borders or blank bands.",
     "Hands, fingers, face, eyes and teeth are anatomically right and hold things believably.",
     "Every object appears once and makes physical sense (floating or heightened only where the shot asks for it); no studio equipment and no mirrors or reflected faces.",
     "Each object is exactly where the shot says: in the hand, worn, or on the surface named. An object said to be held is held.",
