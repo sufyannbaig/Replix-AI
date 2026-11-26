@@ -27,9 +27,9 @@ describe("video prices", () => {
   });
 
   test("Concept ads and UGC keep their prices", () => {
-    strictEqual(generationCost("video", 1, 15, "concept"), 15);
-    strictEqual(generationCost("video", 1, 30, "concept"), 25);
-    strictEqual(videoGenerationCost(15), 15);
+    strictEqual(generationCost("video", 1, 15, "concept"), 18);
+    strictEqual(generationCost("video", 1, 30, "concept"), 30);
+    strictEqual(videoGenerationCost(15), 18);
     strictEqual(generationCost("video", 1, 8, "ugc"), 15);
     strictEqual(generationCost("video", 1, 15, "ugc"), 30);
   });

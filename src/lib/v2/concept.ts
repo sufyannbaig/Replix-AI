@@ -204,7 +204,7 @@ export function conceptShotMessages(opts: {
     `Target emotion: ${opts.emotion}.`,
     opts.script ? `Script or story notes: ${opts.script.slice(0, 600)}` : "",
     opts.aspect ? `Frame: ${opts.aspect}.` : "",
-    "The pictures are the casting, the location and the product, in the order named. The bible must describe exactly what you see (real age, hair, build, room), not invent others. If the location picture is an empty studio, choose a real place the big idea needs, with the same palette, and say so.",
+    "The pictures are the casting, the location and the product, in the order named. The bible must describe exactly what you see (real age, hair, build, room), not invent others. If there is no location picture, or it is an empty studio, choose the real, specific place the big idea needs (a dark cinema, an airport at night, a rooftop in the rain) and describe it in the bible.",
     `Write exactly ${opts.shots} shots, one per beat in this order: ${beats.join(", ")}. The hook grabs attention in the first second.`,
     `Voiceover: at most ${conceptVoWords(conceptSecondsFor(opts.shots))} words in total.`,
   ]

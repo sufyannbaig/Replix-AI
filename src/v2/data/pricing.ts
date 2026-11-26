@@ -8,11 +8,12 @@ import type { GenerationKind } from "./types";
 export const PHOTO_CREDITS_PER_IMAGE = 2;
 export const AD_CREDITS_PER_IMAGE = 2;
 /**
- * Concept ads by length (raised 2026-11-26 from 10 / 20). Stills are made twice and reviewed,
- * and fal bills music per started minute, so a 15 s ad costs us about $2.45-2.80: at 10 credits
- * it lost money on Scale ($0.197 a credit). See docs/V2_GENERATION_COSTS.md, last section.
+ * Concept ads by length. Raised 2026-11-26 from 10 / 20, first to 15 / 25 and then to 18 / 30
+ * once the 4-shot format with its end card measured $2.80-3.00 per 15 s ad live (stills made
+ * twice and reviewed, 4 clips, music billed per started minute). 18 credits is $3.54 on Scale
+ * ($0.197 a credit). See docs/V2_GENERATION_COSTS.md, last section.
  */
-export const CONCEPT_CREDITS_BY_SECONDS: Record<number, number> = { 15: 15, 30: 25 };
+export const CONCEPT_CREDITS_BY_SECONDS: Record<number, number> = { 15: 18, 30: 30 };
 /** Lengths not in the table: charged per started 15 seconds. */
 export const VIDEO_CREDITS_PER_15S = 15;
 /**

@@ -269,7 +269,7 @@ function ConceptPage() {
           steps={[
             { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
             { label: "Concept", done: !!concept.trim() },
-            { label: "Cast & scene", done: !!character && !!scene },
+            { label: "Cast & scene", done: !!character },
             { label: "Generate", done: false },
           ]}
         />
@@ -347,8 +347,8 @@ function ConceptPage() {
             onChange={setCharacter}
           />
           <SlotUpload
-            label="Scene"
-            hint="Click to upload"
+            label="Scene (optional)"
+            hint="Leave it empty and the director picks the place your idea needs"
             libraryKind="scene"
             value={scene}
             onChange={setScene}
@@ -423,11 +423,10 @@ function ConceptPage() {
             onNoteChange={setNote}
             notePlaceholder="Anything else the director should know? (optional)"
             cost={cost}
-            canGenerate={!!product && !!concept.trim() && !!character && !!scene}
+            canGenerate={!!product && !!concept.trim() && !!character}
             generateHint={missingHint([
               !concept.trim() && "a concept",
               !character && "a character",
-              !scene && "a scene",
               !product && "a product",
             ])}
             onGenerate={() =>
