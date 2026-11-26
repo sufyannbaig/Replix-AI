@@ -79,24 +79,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Replix AI — AI ad creatives for any product" },
+      { title: "Replix AI | On-brand product photos, ads and videos from one photo" },
       {
         name: "description",
         content:
-          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       { property: "og:site_name", content: "Replix AI" },
-      { property: "og:title", content: "Replix AI — AI ad creatives for any product" },
-      { name: "twitter:title", content: "Replix AI — AI ad creatives for any product" },
+      {
+        property: "og:title",
+        content: "Replix AI | On-brand product photos, ads and videos from one photo",
+      },
+      {
+        name: "twitter:title",
+        content: "Replix AI | On-brand product photos, ads and videos from one photo",
+      },
       {
         property: "og:description",
         content:
-          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       {
         name: "twitter:description",
         content:
-          "Turn any product photo into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },

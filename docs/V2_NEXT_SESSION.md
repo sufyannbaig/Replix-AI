@@ -263,3 +263,15 @@ Details in `docs/V2_VIDEO_PLAN.md` 5e. All on `v2`. Lovable was kept current thr
 - **2026-11-26, done while Sufyan was away (he left the calls to Claude):** Concept ads now cost 15 credits (15 s) and 25 (30 s) instead of 10 / 20. The approve screen shows and lets the user edit the voiceover and music brief before any fal money is spent. fal's music price was confirmed at $0.60 per started minute; Lyria 2 ($0.10 per 30 s) is written up as the cheaper option to try live first (`V2_GENERATION_COSTS.md`).
 
 Still waiting: Ben tops up fal; then one live Concept ad with sound (approve flow, the new voiceover panel), the Lyria 2 music try, and the one-take comparison on both models. **Lovable:** imported through `08b5153` on Nov 24; `29211b4` (prices and the voiceover panel) sent for import 2026-11-26 (`routeTree.gen.ts` left out, it is generated). Before launch: reset the test account.
+
+## 12. QA before the handover to Ben (2026-11-26)
+
+Preview `preview--replixai.lovable.app` with everything up to `29211b4` imported (Lovable confirmed the files byte-for-byte).
+
+- **Local:** production build passes, type check clean, 422 tests pass. Lint: no errors in v2 code; the 1,697 reported are formatting in Lovable-generated files (email routes, Supabase types) plus 23 old `any` types.
+- **Public pages:** landing, login, privacy, terms and pricing load with no console errors or broken images; landing videos load as you scroll; no sideways scroll at 375 px. Fixed: the 404 page and any page without its own title used the old "AI ad creatives for any product" title and description (`__root.tsx`).
+- **Signed in (test account):** all 25 app routes load with no console errors; old v1 links redirect to v2 pages. Help shows the new Concept prices.
+- **Live ad** (Feature → Benefit, acme glow serum, 1:1): done in about a minute, label intact, brand logo and fonts applied, post copy written, 2 credits charged. Job `f6354c5a`.
+- **Live Concept ad up to approval** (Humor, Robert M., Bathroom vanity, 15 s): Suggest/Write with AI take 8-25 s each and gave a coherent funny story; Generate shows 15 credits and charged 15; stills ready in about 2.5 minutes, same actor, clothes and room across shots. The review flagged real faults in stills 1 and 3 and blocked approval until redone or accepted. The voiceover panel shows the narrator's words, voice, read time and music; editing and saving works and survives a reload; the too-long warning shows. A redo with a note took 38 s, followed the note, and used 1 of 6 free redos. Not approved (fal); the sweeper refunds it after 2 hours. Job `8c024a08`.
+- **Watch:** the still reviewer can flag things the story wants (here, the drop on his glasses was the joke). Users can overrule it with "Use this still", but it may push them to spend redos.
+- **Not testable until fal is topped up:** any video (Shorts, UGC, Concept animation, one-take), the sound mix, and Lyria 2 music.
