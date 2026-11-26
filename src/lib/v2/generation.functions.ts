@@ -923,6 +923,7 @@ export const writeCopy = createServerFn({ method: "POST" })
         emotion: data.emotion,
         script: data.script,
         seconds: data.seconds,
+        imageDataUrl: product.dataUrl,
       }),
     });
     const text = parseWriter(parseJsonBlock(raw), data.field);

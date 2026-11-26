@@ -5,6 +5,12 @@ import { parseWriter, writerMessages, type WriterField } from "./writer.ts";
 import { FRAME_MOTION_RULE, STORY_RULES } from "./story.ts";
 import { conceptShotMessages } from "./concept.ts";
 
+/** A message's text, whether it is plain text or text plus the product photo. */
+const textOf = (content: unknown): string =>
+  typeof content === "string"
+    ? content
+    : (content as { text?: string }[]).map((p) => p.text ?? "").join("\n");
+
 describe("writer", () => {
   test("tidies and caps the reply", () => {
     strictEqual(parseWriter({ text: ' "One drop.  Glow." ' }, "climax"), "One drop. Glow.");
@@ -17,17 +23,24 @@ describe("writer", () => {
       concept: "Tired morning",
       emotion: "Desire",
     });
-    ok(m[1].content.includes("Product: Glow.") && m[1].content.includes("Concept: Tired morning"));
+    ok(textOf(m[1].content).includes("Product: Glow."));
+    ok(textOf(m[1].content).includes("Concept: Tired morning"));
     ok(
-      !writerMessages("concept", { productName: "G", concept: "x" })[1].content.includes(
+      !textOf(writerMessages("concept", { productName: "G", concept: "x" })[1].content).includes(
         "Concept: x",
       ),
     );
   });
+  test("the writer sees the product photo, so a name like Charge is never guessed", () => {
+    const m = writerMessages("concept", { productName: "Acme Charge", imageDataUrl: "data:x" });
+    const parts = m[1].content as { type: string; image_url?: { url: string } }[];
+    ok(parts.some((p) => p.type === "image_url" && p.image_url?.url === "data:x"));
+    ok(/never guess from the name/i.test(textOf(m[1].content)));
+  });
 });
 
 describe("story rules", () => {
-  const system = (f: WriterField) => writerMessages(f, { productName: "Glow" })[0].content;
+  const system = (f: WriterField) => textOf(writerMessages(f, { productName: "Glow" })[0].content);
   test("concept, climax and script follow them; the creator script stays a plain review", () => {
     for (const f of ["concept", "climax", "script"] as const) ok(system(f).includes(STORY_RULES));
     ok(!system("ugcScript").includes(STORY_RULES));

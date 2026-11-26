@@ -28,6 +28,8 @@ export type WriterContext = {
   emotion?: string;
   script?: string;
   seconds?: number;
+  /** The product photo, so the writer knows what the product really is (not just its name). */
+  imageDataUrl?: string;
 };
 
 const ASK: Record<WriterField, (c: WriterContext) => string> = {
@@ -40,6 +42,15 @@ const ASK: Record<WriterField, (c: WriterContext) => string> = {
   ugcScript: (c) =>
     `Write what one creator says to their phone camera about this product: hook in the first line, one honest reason, a natural close. First person, at most ${ugcWordBudget(c.seconds ?? 15)} words. Spoken words only.`,
 };
+
+/** Text alone, or text then the product photo (the gateway takes OpenAI-style parts). */
+function withProductImage(text: string, dataUrl?: string) {
+  if (!dataUrl) return text;
+  return [
+    { type: "text" as const, text },
+    { type: "image_url" as const, image_url: { url: dataUrl } },
+  ];
+}
 
 export function writerMessages(field: WriterField, c: WriterContext) {
   return [
@@ -54,17 +65,23 @@ export function writerMessages(field: WriterField, c: WriterContext) {
     },
     {
       role: "user" as const,
-      content: [
-        `Product: ${c.productName}.`,
-        c.description ? `Details: ${c.description.slice(0, 500)}` : "",
-        c.emotion ? `Target emotion: ${c.emotion}.` : "",
-        c.concept && field !== "concept" ? `Concept: ${c.concept.slice(0, 600)}` : "",
-        c.climax && field !== "climax" ? `Climax or ending: ${c.climax.slice(0, 400)}` : "",
-        c.script && field === "concept" ? `Script notes: ${c.script.slice(0, 400)}` : "",
-        ASK[field](c),
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      content: withProductImage(
+        [
+          `Product: ${c.productName}.`,
+          c.imageDataUrl
+            ? "The picture is the product. Say what it really is from the picture and its label (a drink, a cream, a device...); never guess from the name alone."
+            : "",
+          c.description ? `Details: ${c.description.slice(0, 500)}` : "",
+          c.emotion ? `Target emotion: ${c.emotion}.` : "",
+          c.concept && field !== "concept" ? `Concept: ${c.concept.slice(0, 600)}` : "",
+          c.climax && field !== "climax" ? `Climax or ending: ${c.climax.slice(0, 400)}` : "",
+          c.script && field === "concept" ? `Script notes: ${c.script.slice(0, 400)}` : "",
+          ASK[field](c),
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        c.imageDataUrl,
+      ),
     },
   ];
 }
