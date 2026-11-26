@@ -285,3 +285,15 @@ fal was topped up with $30 (Sufyan). Ben approved the Concept prices (15 / 25) a
 - **First finished Concept ad with sound (job `ab271cc2`):** new story ("You don't need ten jars to look rested... Everything your morning actually needs."), Sara M., Bathroom vanity, Desire. Stills 2:44, video 3.2 minutes after approval; 15.1 s, 1072×1928, audio track, captions. Same actor, clothes and room throughout; reads with the sound off. **Measured cost $2.38** (15 credits = $2.95 on Scale, $4.35 on Pro).
 - **Weak spot fixed, not yet re-tested (`a64a6e8`):** the ending face was neutral. When the person is in the last shot, the shot and its movement must now land a small real expression of the target emotion (never a smile to the camera).
 - Handover brief for the call with Ben: "Replix Web Handover & Mobile App Approach" (Claude Docs).
+
+## 14. Concept rebuilt, end card, scene optional: ready for team testing (2026-11-26, late)
+
+Details in `docs/V2_VIDEO_PLAN.md` 5f. Everything is on `v2` up to `5724c2e` and imported into Lovable.
+
+- Concept ads rebuilt on Sufyan's reference ads and course skills: one bold visual idea, 4 cuts in 15 s (clips trimmed by fal), a Product hero shot, art-directed palette and light, and a designed end card in the brand's fonts, colours and logo with an editable tagline.
+- The writer sees the product photo; the scene picture is optional (the director picks the place the idea needs).
+- Concept prices are now **18 / 30 credits** for 15 / 30 s (measured $2.80-3.00 per 15 s ad).
+- Live checks: "Become the light" with end card (job `71cbec8b`, 15.0 s, $2.97); "Power above the panic" (`cafcea63`, $2.80); a no-scene run (`4ef93de3`, stills only, not approved: its credits refund automatically).
+- fal balance: $30 topped up; about $15 used on today's tests.
+- How the team tests (access, tester credits, what to try): the "How to test it" section of the handover brief "Replix Web Handover & Mobile App Approach" (Claude Docs).
+- Next ideas: a mid-film kinetic type card; check end card sizes on 1:1 and 16:9; dialogue needs a talking model.
