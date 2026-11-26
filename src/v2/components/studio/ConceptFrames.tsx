@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { reviewConceptFrames } from "@/lib/v2/generation.functions";
-import { queryKeys } from "@/v2/data/api";
+import { makeConceptEndCard, queryKeys } from "@/v2/data/api";
 import type { AspectRatio, GenerationJob } from "@/v2/data/types";
 import { PillButton } from "@/v2/components/primitives";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ const FRAME: Record<AspectRatio, string> = {
 
 type Action =
   | { action: "approve" }
-  | { action: "sound"; voiceover: string; music: string }
+  | { action: "sound"; voiceover: string; music: string; tagline?: string }
   | { action: "plan" }
   | { action: "accept"; index: number }
   | { action: "redo"; index: number; note?: string }
@@ -41,10 +41,45 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
   const sound = review.sound;
   const [vo, setVo] = useState<string | null>(null);
   const [music, setMusic] = useState<string | null>(null);
+  const [tagline, setTagline] = useState<string | null>(null);
   const soundEdited =
     !!sound &&
     ((vo !== null && vo.trim() !== sound.voiceover) ||
-      (music !== null && music.trim() !== sound.music));
+      (music !== null && music.trim() !== sound.music) ||
+      (tagline !== null && tagline.trim() !== (sound.tagline ?? "")));
+  const currentTagline = (tagline ?? sound?.tagline ?? "").trim();
+
+  /* The designed end card, previewed as the user edits the tagline and uploaded on approval. */
+  const [card, setCard] = useState<{ tagline: string; blob: Blob; url: string } | null>(null);
+  const cardRef = useRef(card);
+  cardRef.current = card;
+  const heroStill = review.frames[review.heroFrame ?? 0] ?? "";
+  useEffect(() => {
+    if (!heroStill) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      makeConceptEndCard(job, currentTagline)
+        .then((blob) => {
+          if (!live || !blob) return;
+          setCard((old) => {
+            if (old) URL.revokeObjectURL(old.url);
+            return { tagline: currentTagline, blob, url: URL.createObjectURL(blob) };
+          });
+        })
+        .catch((e) => console.warn("[v2 concept] end card preview failed", e));
+    }, 500);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroStill, currentTagline]);
+  useEffect(
+    () => () => {
+      if (cardRef.current) URL.revokeObjectURL(cardRef.current.url);
+    },
+    [],
+  );
   const act = useMutation({
     mutationFn: async (a: Action) => {
       /* Unsaved sound edits go in first, so the approved ad says what the user wrote. */
@@ -55,8 +90,25 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
             action: "sound",
             voiceover: (vo ?? sound.voiceover).trim(),
             music: (music ?? sound.music).trim(),
+            tagline: currentTagline,
           },
         });
+      }
+      /* The end card is made here, with the brand's fonts, and closes the ad. If it can't be
+         made the ad still goes ahead without it. */
+      if (a.action === "approve") {
+        try {
+          const ready = cardRef.current?.tagline === currentTagline ? cardRef.current.blob : null;
+          const blob = ready ?? (await makeConceptEndCard(job, currentTagline));
+          if (blob) {
+            const { blobToBase64 } = await import("@/v2/data/compose-ad");
+            await reviewConceptFrames({
+              data: { jobId: job.id, action: "endcard", image: await blobToBase64(blob) },
+            });
+          }
+        } catch (e) {
+          console.warn("[v2 concept] end card skipped", e);
+        }
       }
       return reviewConceptFrames({ data: { jobId: job.id, ...a } });
     },
@@ -64,6 +116,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
       if (a.action === "sound" || a.action === "approve") {
         setVo(null);
         setMusic(null);
+        setTagline(null);
       }
     },
     onSettled: () => {
@@ -210,6 +263,31 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
               className="h-8 rounded-[6px] bg-v2-surface px-2 font-inter-tight text-xs text-v2-ink outline-none"
             />
           </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-inter-tight text-xs font-semibold text-v2-ink">
+              Tagline on the end card
+            </span>
+            <input
+              value={tagline ?? sound.tagline ?? ""}
+              onChange={(e) => setTagline(e.target.value)}
+              maxLength={60}
+              placeholder="A few words, e.g. Become the light."
+              aria-label="Tagline on the end card"
+              className="h-8 rounded-[6px] bg-v2-surface px-2 font-inter-tight text-xs text-v2-ink outline-none placeholder:text-v2-muted"
+            />
+          </label>
+          {card ? (
+            <div className="flex items-start gap-3">
+              <img
+                src={card.url}
+                alt="End card preview"
+                className={cn("w-28 rounded-[6px] object-cover", FRAME[job.request.aspect])}
+              />
+              <p className="font-inter-tight text-xs text-v2-muted">
+                Your ad ends on this card for 2.5 seconds, in your brand&apos;s fonts and colours.
+              </p>
+            </div>
+          ) : null}
           {soundEdited ? (
             <button
               type="button"
@@ -221,6 +299,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
                   action: "sound",
                   voiceover: (vo ?? sound.voiceover).trim(),
                   music: (music ?? sound.music).trim(),
+                  tagline: currentTagline,
                 })
               }
               className="self-start rounded-[6px] bg-v2-surface px-3 py-1.5 font-inter-tight text-xs font-semibold text-v2-ink disabled:opacity-40"

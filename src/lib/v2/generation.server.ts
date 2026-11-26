@@ -84,6 +84,10 @@ import {
   falMusicInput,
   falComposeInput,
   falTrimInput,
+  falCardInput,
+  CARD_PREFIX,
+  CONCEPT_CARD_MS,
+  CONCEPT_MERGE_USD,
   CONCEPT_TRIM_MODEL,
   TRIM_PREFIX,
   CLIP_PREFIX,
@@ -1264,6 +1268,13 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     });
     if (ins.error) throw new Error(ins.error.message);
 
+    /* The end card is set in the brand the ads use (name, colours, fonts, logo). */
+    const kit = await loadBrand(ctx.userId, {
+      brandKitId: request.brandKitId,
+      productId: request.product.id,
+    }).catch(() => ({}) as BrandHints);
+    const fonts = adFonts(kit.fonts, ctx.plan);
+    const logo = adLogo(kit.logos);
     const review: ConceptReview = {
       plan,
       frames: framePaths,
@@ -1272,6 +1283,12 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
       redos: 0,
       issues,
       motions,
+      brand: {
+        ...(kit.name ? { name: kit.name.slice(0, 80) } : {}),
+        ...(kit.colors?.length ? { colors: kit.colors.slice(0, 6) } : {}),
+        ...(fonts ? { fonts } : {}),
+        ...(logo ? { logo } : {}),
+      },
     };
     const parked = await admin
       .from("generation_jobs")
@@ -1563,14 +1580,34 @@ export async function reorderConceptFrames(jobRow: GenerationJobRow, review: Con
 /** The user's own voiceover words and music brief, checked before any video is paid for. */
 export async function saveConceptSound(
   jobRow: GenerationJobRow,
-  edit: { voiceover: string; music: string },
+  edit: { voiceover: string; music: string; tagline?: string },
 ) {
   const { request, review } = reviewOf(jobRow);
   const vo = cleanScript(edit.voiceover, 60);
   if (!vo) throw new GenerationError("Write what the narrator says.");
   const music = edit.music.replace(/\s+/g, " ").trim();
   if (!music) throw new GenerationError("Describe the music.");
-  await saveReview(jobRow, request, { ...review, vo, music });
+  const tagline = edit.tagline
+    ?.replace(/["“”\s]+/g, " ")
+    .trim()
+    .slice(0, 60);
+  await saveReview(jobRow, request, {
+    ...review,
+    vo,
+    music,
+    ...(tagline !== undefined ? { tagline } : {}),
+  });
+}
+
+/** The designed end card the browser made on approval: a JPEG beside the stills. */
+export async function saveConceptEndCard(jobRow: GenerationJobRow, bytes: Uint8Array) {
+  const { request, review } = reviewOf(jobRow);
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+    throw new GenerationError("That end card isn't a JPEG.");
+  }
+  const path = `${jobRow.user_id}/${jobRow.id}/endcard.jpg`;
+  await saveOutput(path, bytes, "image/jpeg");
+  await saveReview(jobRow, request, { ...review, endCard: path });
 }
 
 export async function acceptConceptFrame(jobRow: GenerationJobRow, index: number) {
@@ -1763,6 +1800,19 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
         ),
       ])
     ).filter((id): id is string => !!id);
+    /* The designed end card becomes a short clip of its own (compose takes one picture). */
+    if (review.endCard) {
+      const signed = await admin.storage
+        .from("outputs")
+        .createSignedUrl(review.endCard, 60 * 60 * 6);
+      const card = signed.data?.signedUrl
+        ? await queueAudio(CONCEPT_COMPOSE_MODEL, falCardInput(signed.data.signedUrl), CARD_PREFIX)
+        : null;
+      if (card) {
+        audioIds.push(card);
+        cost += CONCEPT_MERGE_USD;
+      }
+    }
     if (voText && audioIds.some((id) => id.startsWith(VO_PREFIX))) {
       await admin
         .from("generation_outputs")
@@ -1887,6 +1937,9 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
     };
     const voId = ids.find((id) => id.startsWith(VO_PREFIX));
     const musicId = ids.find((id) => id.startsWith(MUSIC_PREFIX));
+    const cardId = ids.find((id) => id.startsWith(CARD_PREFIX));
+    const askCard = () =>
+      cardId ? ask(CONCEPT_COMPOSE_MODEL, cardId.slice(CARD_PREFIX.length)) : null;
     const askAudio = () =>
       Promise.all([
         voId ? ask(CONCEPT_TTS_MODEL, voId.slice(VO_PREFIX.length)) : null,
@@ -1911,10 +1964,10 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       return !!data?.length;
     };
     /* The join: clips in order (already cut to length), voice and music. */
-    const stitch = async (clips: string[], clipMs: number) => {
+    const stitch = async (clips: string[], clipMs: number, card?: string) => {
       const [vo, music] = await askAudio();
       const [voUrl, musicUrl] = await Promise.all([audioUrl(vo), audioUrl(music)]);
-      const composed = !!(voUrl || musicUrl) || clipMs < CONCEPT_SHOT_SECONDS * 1000;
+      const composed = !!(voUrl || musicUrl || card) || clipMs < CONCEPT_SHOT_SECONDS * 1000;
       const res = await fetch(
         falUrls(composed ? CONCEPT_COMPOSE_MODEL : CONCEPT_MERGE_MODEL).submit,
         {
@@ -1922,7 +1975,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
           headers: { ...headers, "Content-Type": "application/json" },
           body: JSON.stringify(
             composed
-              ? falComposeInput({ clips, clipMs, vo: voUrl, music: musicUrl })
+              ? falComposeInput({ clips, clipMs, vo: voUrl, music: musicUrl, card })
               : falMergeInput(clips),
           ),
           signal: AbortSignal.timeout(30_000),
@@ -1974,22 +2027,33 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         await settleFailed(row.id, VIDEO_FAILED, frameCost);
         return true;
       }
-      const clipMs = conceptShotMs(row.seconds ?? conceptSecondsFor(clips.length), clips.length);
-      return stitch(clips as string[], clipMs);
+      /* The trims left room for the card; stage 1 waited for it, so it is ready. */
+      const cardState = await askCard();
+      const card =
+        cardState?.state === "done" ? await result(cardState.urls, parseFinishedVideo) : undefined;
+      const clipMs = conceptShotMs(
+        row.seconds ?? conceptSecondsFor(clips.length),
+        clips.length,
+        cardId ? CONCEPT_CARD_MS : 0,
+      );
+      return stitch(clips as string[], clipMs, card);
     }
 
     /* Stage 1: the clips. */
     const clipIds = ids.filter((id) => !id.includes(":"));
-    const [states, [vo, music]] = await Promise.all([
+    const [states, [vo, music], cardState] = await Promise.all([
       Promise.all(clipIds.map((id) => ask(CONCEPT_CLIP_MODEL, id))),
       askAudio(),
+      askCard(),
     ]);
     if (states.some((s) => s.state === "failed")) {
       await settleFailed(row.id, VIDEO_FAILED, frameCost);
       return true;
     }
     const done = states.filter((s) => s.state === "done").length;
-    const audioWaiting = [vo, music].some((a) => a && a.state === "running");
+    const audioWaiting = [vo, music, cardState].some(
+      (a) => a && (a.state === "running" || a.state === "queued"),
+    );
     if (done < clipIds.length || audioWaiting) {
       await admin
         .from("generation_jobs")
@@ -2005,8 +2069,15 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       await settleFailed(row.id, VIDEO_FAILED, frameCost);
       return true;
     }
-    const clipMs = conceptShotMs(row.seconds ?? conceptSecondsFor(clips.length), clips.length);
-    if (clipMs >= CONCEPT_SHOT_SECONDS * 1000) return stitch(clips as string[], clipMs);
+    /* A card that failed is left out and the shots keep the whole length. */
+    const card =
+      cardState?.state === "done" ? await result(cardState.urls, parseFinishedVideo) : undefined;
+    const clipMs = conceptShotMs(
+      row.seconds ?? conceptSecondsFor(clips.length),
+      clips.length,
+      card ? CONCEPT_CARD_MS : 0,
+    );
+    if (clipMs >= CONCEPT_SHOT_SECONDS * 1000) return stitch(clips as string[], clipMs, card);
 
     /* Shorter shots: cut every clip to its share, then stitch (stage 1b). */
     const trims = await Promise.all(
@@ -2023,7 +2094,9 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       }),
     );
     /* No trim could start: stitch the full clips rather than lose the ad. */
-    if (trims.every((t) => !t)) return stitch(clips as string[], CONCEPT_SHOT_SECONDS * 1000);
+    if (trims.every((t) => !t)) {
+      return stitch(clips as string[], CONCEPT_SHOT_SECONDS * 1000, card);
+    }
     const stored = await admin
       .from("generation_jobs")
       .update({
@@ -2032,6 +2105,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
           ...clipIds.map((id) => `${CLIP_PREFIX}${id}`),
           ...(voId ? [voId] : []),
           ...(musicId ? [musicId] : []),
+          ...(card && cardId ? [cardId] : []),
         ],
         progress: 0.9,
       })

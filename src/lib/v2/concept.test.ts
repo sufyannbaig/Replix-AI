@@ -5,6 +5,8 @@ import {
   conceptAudioCost,
   conceptShotCount,
   falTrimInput,
+  conceptTagline,
+  CONCEPT_CARD_MS,
   conceptShotMs,
   conceptSecondsFor,
   submitAllClips,
@@ -244,5 +246,36 @@ describe("each clip is cut to its share before the stitch", () => {
       start_time: 0,
       duration: 3.75,
     });
+  });
+});
+
+describe("the end card closes the ad", () => {
+  test("the shots leave room for the 2.5 s card in a 15 s ad", () => {
+    strictEqual(CONCEPT_CARD_MS, 2500);
+    strictEqual(conceptShotMs(15, 4, CONCEPT_CARD_MS), 3125);
+  });
+  test("the card is the last keyframe and the sound covers it", () => {
+    const { tracks } = falComposeInput({
+      clips: ["a", "b", "c", "d"],
+      clipMs: 3125,
+      music: "m",
+      card: "card.mp4",
+    }) as {
+      tracks: { id: string; keyframes: { url: string; timestamp: number; duration: number }[] }[];
+    };
+    const video = tracks.find((t) => t.id === "video")!;
+    deepStrictEqual(video.keyframes[4], { url: "card.mp4", timestamp: 12500, duration: 2500 });
+    strictEqual(tracks.find((t) => t.id === "music")!.keyframes[0].duration, 15000);
+  });
+  test("the tagline is the plan's, else the voiceover's last short sentence without the product", () => {
+    strictEqual(conceptTagline({ tagline: "Become the light.", vo: "x" }), "Become the light.");
+    strictEqual(
+      conceptTagline(
+        { vo: "They came for the screen. Acme Glow Serum. Become the light." },
+        "Acme Glow Serum",
+      ),
+      "Become the light.",
+    );
+    strictEqual(conceptTagline({ vo: "" }), "");
   });
 });

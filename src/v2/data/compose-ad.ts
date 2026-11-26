@@ -58,7 +58,7 @@ type SatoriFont = {
 
 let fontsLoading: Promise<SatoriFont[]> | null = null;
 
-function loadFonts() {
+export function loadFonts() {
   fontsLoading ??= Promise.all(
     FONT_FILES.map(async (f) => {
       const res = await fetch(`${CDN}/${f.file}`);
@@ -158,7 +158,7 @@ async function measurer(data: ArrayBuffer) {
 }
 
 /** Load the design's brand fonts. Anything that fails is left out; the layout font stays. */
-async function brandFonts(design: AdDesign) {
+export async function brandFonts(design: Pick<AdDesign, "fonts">) {
   const f = design.fonts;
   const [heading, body] = await Promise.all([
     brandFontData(f?.heading, f?.files?.heading, [700, 800, 600, 400]),
@@ -203,7 +203,7 @@ async function logoImage(url: string) {
 }
 
 /** The design's logo, analysed for the layouts. Null if it can't be loaded. */
-async function loadLogo(design: AdDesign): Promise<AdLogo | null> {
+export async function loadLogo(design: Pick<AdDesign, "logo">): Promise<AdLogo | null> {
   if (!design.logo?.main) return null;
   try {
     const [main, light] = await Promise.all([
@@ -219,7 +219,7 @@ async function loadLogo(design: AdDesign): Promise<AdLogo | null> {
 }
 
 /** The photo inlined, so the SVG has no outside links and the canvas stays exportable. */
-async function inlinePhoto(url: string) {
+export async function inlinePhoto(url: string) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Photo: ${res.status}`);
   const blob = await res.blob();

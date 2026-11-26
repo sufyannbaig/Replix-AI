@@ -466,6 +466,17 @@ export type GenerationJob = {
       music: string;
       seconds: number;
       readSeconds: number;
+      /** The end card's brand line. */
+      tagline?: string;
     };
+    /** The brand the end card is set in (font files and logo as storage paths). */
+    brand?: {
+      name?: string;
+      colors?: string[];
+      fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+      logo?: { main: string; light?: string };
+    };
+    /** Which still the end card sits on (the product hero). */
+    heroFrame?: number;
   };
 };

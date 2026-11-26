@@ -1649,3 +1649,36 @@ export function useSaveFeedback(jobId: string) {
     onSuccess: (clean, input) => qc.setQueryData(["v2", "feedback", input.outputId], clean),
   });
 }
+
+/**
+ * A Concept ad's designed end card, made in the browser from the review: the brand's fonts
+ * and logo (signed here), the tagline and the product hero still. Resolves to a JPEG.
+ */
+export async function makeConceptEndCard(
+  job: GenerationJob,
+  tagline: string,
+): Promise<Blob | null> {
+  const review = job.review;
+  if (!review) return null;
+  const still = review.frames[review.heroFrame ?? 0] ?? review.frames[0];
+  if (!still) return null;
+  const brand = review.brand ?? {};
+  const design = await withFileLinks({
+    layout: "poster",
+    aspect: job.request.aspect,
+    copy: { headline: "", subline: "", cta: "" },
+    ...(brand.fonts ? { fonts: brand.fonts } : {}),
+    ...(brand.logo ? { logo: brand.logo } : {}),
+  } as AdDesign);
+  const { composeEndCard } = await import("./compose-endcard");
+  return composeEndCard({
+    aspect: job.request.aspect,
+    stillUrl: still,
+    tagline,
+    brandName: brand.name ?? "",
+    productName: job.request.product.name,
+    colors: brand.colors,
+    fonts: design.fonts,
+    logo: design.logo,
+  });
+}

@@ -66,7 +66,49 @@ export type ConceptPlan = {
   vo: string;
   voice: string;
   music: string;
+  /** The brand line on the end card (a few words); older plans have none. */
+  tagline?: string;
 };
+
+/**
+ * The designed end card (ad-micro-graphics-kit): the browser sets the brand's logo or name,
+ * the tagline and a button over the product hero still, and it closes the ad.
+ */
+export const CONCEPT_CARD_MS = 2500;
+export const CARD_PREFIX = "card:";
+
+/** The brand the end card is set in: as on designed ads (paths until the browser signs them). */
+export type EndCardBrand = {
+  name?: string;
+  colors?: string[];
+  fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+  logo?: { main: string; light?: string };
+};
+
+/** fal compose with one picture: the end card image held as a short clip. */
+export function falCardInput(imageUrl: string) {
+  return {
+    tracks: [
+      {
+        id: "card",
+        type: "image" as const,
+        keyframes: [{ url: imageUrl, timestamp: 0, duration: CONCEPT_CARD_MS }],
+      },
+    ],
+  };
+}
+
+/** The tagline: the plan's, else the voiceover's last sentence, a few words at most. */
+export function conceptTagline(plan: Pick<ConceptPlan, "tagline" | "vo">, productName = "") {
+  const pick = (plan.tagline ?? "").trim();
+  if (pick) return pick.replace(/["“”]/g, "").slice(0, 60);
+  const lines = (plan.vo ?? "")
+    .split(/(?<=[.!?])\s+/)
+    .map((l) => l.trim().replace(/["“”]/g, ""))
+    .filter((l) => l && l.toLowerCase().replace(/[.!?]/g, "") !== productName.toLowerCase());
+  const last = lines[lines.length - 1] ?? "";
+  return last.split(/\s+/).length <= 8 ? last.slice(0, 60) : "";
+}
 
 /** ElevenLabs voices on fal the plan can cast. */
 export const CONCEPT_VOICES = {
@@ -86,9 +128,9 @@ export function conceptSecondsFor(shots: number) {
   return known ? Number(known[0]) : shots * CONCEPT_SHOT_SECONDS;
 }
 
-/** How long each shot stays on screen, in milliseconds. */
-export function conceptShotMs(seconds: number, shots: number) {
-  return Math.round((seconds * 1000) / Math.max(1, shots));
+/** How long each shot stays on screen, in milliseconds (the end card takes its share first). */
+export function conceptShotMs(seconds: number, shots: number, cardMs = 0) {
+  return Math.round((seconds * 1000 - cardMs) / Math.max(1, shots));
 }
 
 /** The story beats for a shot count: hook first, the brand ending last. */
@@ -180,7 +222,7 @@ export function conceptShotMessages(opts: {
         'Only show the product where the story needs it; set "product" to false in the other shots. Set "hero": true on the Product hero shot: the product alone (no person, or only a hand), macro or floating or on a sculpted surface in dramatic light on the palette, label towards the camera. Camera moves are purposeful: a push-in, a crane, an orbit around the product, a handheld creep for tension, or locked off for a reaction.',
         "Story objects carry through: once something is put down, dropped or opened, every later frame must name it where it was left. In the bible's wardrobe name every piece, top to shoes.",
         "4) The concept must be visible in the frame itself, not implied. The last shot is the ending aimed at the target emotion: the product is the hero, label towards the camera, the payoff readable in the final 2 seconds. When the person is in that shot, the payoff shows on them: face visible, a small real expression of the target emotion (relief, a quiet confident smile, pride), never a smile to the camera.",
-        'Reply as JSON: {"bible": {"character": "", "wardrobe": "", "location": "", "timeOfDay": "", "light": "", "grade": "", "lens": "", "prop": "", "humanTouch": "", "palette": ""}, "shots": [{"beat": "", "type": "the mind-hack shot type", "product": true or false, "hero": true or false, "frame": "the opening still: shot size, subject, action, foreground, camera angle", "motion": "the one subject action and the one camera move over 5 seconds", "keep": "what must stay true from the first to the last moment, including the one thing that must NOT happen"}], "vo": "the voiceover", "voice": "one voice name", "music": "the music brief"}',
+        'Reply as JSON: {"bible": {"character": "", "wardrobe": "", "location": "", "timeOfDay": "", "light": "", "grade": "", "lens": "", "prop": "", "humanTouch": "", "palette": ""}, "shots": [{"beat": "", "type": "the mind-hack shot type", "product": true or false, "hero": true or false, "frame": "the opening still: shot size, subject, action, foreground, camera angle", "motion": "the one subject action and the one camera move over 5 seconds", "keep": "what must stay true from the first to the last moment, including the one thing that must NOT happen"}], "vo": "the voiceover", "voice": "one voice name", "music": "the music brief", "tagline": "the brand line for the end card, at most 6 words, the same as or close to the last voiceover line, without the product name"}',
         "5) Voiceover: one narrator line per beat, spoken over the film, in a tone that suits the target emotion. Never describe what we already see; add the feeling or the reason it works. The last line is a short tagline-like payoff with the product name; never a joke at the product's expense. Plain words a person would say, no hashtags or stage directions. If a script is given, use its words. Pick the voice from: " +
           `${ALL_VOICES.join(", ")} (female: ${CONCEPT_VOICES.female.join(", ")}).`,
         "6) Music brief (the ad film music method): genre, tempo in BPM, 2 to 4 instruments, the mood arc across the beats, one lift at the climax and a clean resolve on the brand ending. Instrumental only, quiet enough to sit under the voice.",
@@ -254,6 +296,7 @@ export function parseConceptPlan(raw: unknown, count: number, productName: strin
     vo: clip((raw as { vo?: unknown } | null)?.vo, 600),
     voice: ALL_VOICES.find((v) => v.toLowerCase() === voice.toLowerCase()) ?? "Sarah",
     music: clip((raw as { music?: unknown } | null)?.music, 500),
+    tagline: clip((raw as { tagline?: unknown } | null)?.tagline, 60),
   };
 }
 
@@ -315,15 +358,16 @@ export function falComposeInput(opts: {
   clipMs?: number;
   vo?: string;
   music?: string;
+  /** The end card clip, played after the shots. */
+  card?: string;
 }) {
   const clipMs = opts.clipMs ?? CONCEPT_SHOT_SECONDS * 1000;
-  const total = clipMs * opts.clips.length;
+  const shotsMs = clipMs * opts.clips.length;
+  const total = shotsMs + (opts.card ? CONCEPT_CARD_MS : 0);
+  const keyframes = opts.clips.map((url, i) => ({ url, timestamp: i * clipMs, duration: clipMs }));
+  if (opts.card) keyframes.push({ url: opts.card, timestamp: shotsMs, duration: CONCEPT_CARD_MS });
   const tracks: { id: string; type: "video" | "audio"; keyframes: object[] }[] = [
-    {
-      id: "video",
-      type: "video",
-      keyframes: opts.clips.map((url, i) => ({ url, timestamp: i * clipMs, duration: clipMs })),
-    },
+    { id: "video", type: "video", keyframes },
   ];
   if (opts.music) {
     tracks.push({
@@ -482,6 +526,12 @@ export type ConceptReview = {
   /** The narrator's words and the music brief as the user edited them before approving. */
   vo?: string;
   music?: string;
+  /** The end card's brand line as the user edited it. */
+  tagline?: string;
+  /** The brand the end card is set in, read when the stills were made. */
+  brand?: EndCardBrand;
+  /** Storage path of the designed end card the browser uploaded on approval. */
+  endCard?: string;
 };
 
 /** About how many words a narrator says in a second (the same pace the cut uses). */
@@ -499,6 +549,7 @@ export function conceptSound(review: ConceptReview, script: string | undefined) 
     voiceover,
     voice: review.plan.voice,
     music: (review.music ?? review.plan.music).trim(),
+    tagline: (review.tagline ?? conceptTagline(review.plan)).trim(),
     seconds,
     /** How long the words take to say. */
     readSeconds: Math.round(words / VO_WORDS_PER_SECOND),

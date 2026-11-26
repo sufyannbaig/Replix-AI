@@ -419,6 +419,12 @@ async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobR
       review.accepted?.includes(p) ? [] : (review.issues?.[i] ?? []),
     ),
     sound: conceptSound(review, conceptScript(row)),
+    /* The end card: its brand (file paths; the browser signs them) and the still behind it. */
+    brand: review.brand ?? {},
+    heroFrame: Math.max(
+      0,
+      review.plan.shots.findIndex((s) => s.hero),
+    ),
   };
 }
 
@@ -518,6 +524,13 @@ const ConceptAction = z.discriminatedUnion("action", [
     action: z.literal("sound"),
     voiceover: z.string().trim().min(1).max(600),
     music: z.string().trim().min(1).max(300),
+    tagline: z.string().max(80).optional(),
+  }),
+  z.object({
+    jobId: z.string().uuid(),
+    action: z.literal("endcard"),
+    /** The designed end card as base64 JPEG (no data: prefix). */
+    image: z.string().min(100).max(8_000_000),
   }),
   z.object({
     jobId: z.string().uuid(),
@@ -562,6 +575,14 @@ export const reviewConceptFrames = createServerFn({ method: "POST" })
     }
     if (data.action === "sound") {
       await server.saveConceptSound(row, data);
+      return { ok: true };
+    }
+    if (data.action === "endcard") {
+      const bin = atob(data.image);
+      if (bin.length > 5 * 1024 * 1024) throw new Error("That end card is too large.");
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      await server.saveConceptEndCard(row, bytes);
       return { ok: true };
     }
     if (data.action === "plan") {
