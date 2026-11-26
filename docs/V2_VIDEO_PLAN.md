@@ -142,9 +142,12 @@ Sufyan judged the Concept output "total bezar" and pointed at four reference ads
 - The bible locks a 2-3 colour palette; stills are cinematic and full-bleed (the first try painted letterbox bars inside 9:16).
 - Live: "Become the light" (cinema, job `b04e81aa`, $2.96 with 2 redos) is the first ad that looks like the references in its stills; it ran 20 s before the trim fix.
 
+**Designed end card, built (`7b2c1e0`, course skill ad-micro-graphics-kit):** the shot planner writes a tagline (editable on the approve screen, with a live preview of the card). On approval the browser renders the card with satori, the same way designed ads are set: the brand's logo (light version, or a light chip behind a dark logo) or name as a wordmark, an accent line, the tagline in the brand's heading font, the product name, and a "Shop now" button in the brand colour, over the darkened product hero still, at 1072×1928 to match Kling's 9:16 clips (`src/lib/v2/end-card.ts`, `src/v2/data/compose-endcard.ts`). It is uploaded as `endcard.jpg`; fal compose turns it into a 2.5 s clip (one image track) that joins last, and the four shots get 3.125 s each so the ad stays 15 s. If the card can't be made, the ad goes ahead without it. Live: job `71cbec8b`, 15.0 s with sound, card in the brand's Playfair, $2.97 with one redo (`cafcea63` without a card: $2.80).
+
 **Still missing (next):**
 
-1. Designed title and end card (ad-micro-graphics-kit): compose allows one visual track, so the end card has to be its own image clip at the end, rendered with the brand's fonts and colours.
+1. An opening title or mid-film kinetic type (like "WILD IS CALLING YOU!"): same method as the end card, as a short card between shots.
 2. The scene upload is required; big ideas need their own location. Make it optional and let the director pick the place.
-3. Price: the 4-shot format costs about $2.70-3.00 per 15 s ad, break-even on Scale at 15 credits; about 18 credits keeps a margin.
+3. Price: the 4-shot format costs about $2.80-3.00 per 15 s ad, break-even on Scale at 15 credits; about 18 credits keeps a margin.
 4. Dialogue and lip-sync scenes (like the lipstick reference) are not possible with image-to-video clips; that needs a talking model (the UGC path) for one shot.
+5. Non-9:16 end cards use estimated clip sizes (16:9 1928×1072, 1:1 1440×1440); check them on the first live 1:1 or 16:9 Concept ad.
