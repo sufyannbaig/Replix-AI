@@ -249,3 +249,15 @@ Done, tested, pushed to `v2` and imported into Lovable (5b4d86f, e61b5f4, 6eb377
 - Edit text and B2B step 1 were already done earlier.
 
 Still waiting: Ben tops up fal, then one live Concept ad with sound (approve flow included). Before launch: reset the test account (about 1542 credits, Pro).
+
+## 11. Sessions 2026-11-23 to 2026-11-26: Concept stills, cost guards, one-take test
+
+Details in `docs/V2_VIDEO_PLAN.md` 5e. All on `v2` up to `3a2df5a`; **not yet imported into Lovable** (imports since 2975dad need checking).
+
+- Stripe webhook: a missing key no longer breaks every page (200aa72).
+- Concept ads: guards so fal is never paid for clips that get lost; better stories; film-style stills, made twice and reviewed strictly; movement written from the finished still; the user can overrule the reviewer.
+- One-take test (preview only): a whole 8 s ad with sound in one generation, Kling O3 Pro against Seedance 2.0, with a free dry run first.
+- **Pricing flag:** with music billed per started minute and stills made twice, a 15 s Concept ad is estimated at about $2.45-2.80 against $1.97 paid on Scale. Needs a decision from Sufyan and Ben once the first live run is measured (`V2_GENERATION_COSTS.md`, last section).
+- **Machine:** work now also happens on Sufyan's Mac (`/Users/sufyanbaig/Cluade Work/Replix-AI`). Node v26 is in `~/.local/node/bin`; put it on PATH before the checks.
+
+Still waiting: Ben tops up fal; then one live Concept ad with sound (approve flow), and the one-take comparison on both models. Before launch: reset the test account.

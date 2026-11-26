@@ -111,6 +111,15 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 - **Write with AI**: the Concept form's Suggest/Write buttons and the UGC custom script button call `writeCopy` (`src/lib/v2/writer.ts`).
 - **fal refusals** (401/402/403, e.g. empty balance) now tell users video making is paused instead of "the video didn't come out".
 
+## 5e. Status: Concept stills rework, cost guards and the one-take test (2026-11-23 to 2026-11-26)
+
+- **Don't pay fal for lost work** (f064468, c276423, 3a2df5a): the first clip is sent alone so a refusal (empty balance, bad input) costs nothing, a partial failure cancels the clips already sent (`submitAllClips` in `concept.ts`), audio is queued last, and the join, download and save are retried instead of failing the job. A save that stops halfway (closed tab) can be taken over by the next check after 150 s (`claimable` in `generation.server.ts`).
+- **Story writer** (eb163b5, `story.ts`, `writer.ts`): real small stories instead of ad clichés, and each still written so it can actually move the way its shot says.
+- **Film stills** (28b9ab9, fc863d9, 5f5d979, `concept-film.ts`): a film-still prompt instead of the Photo Studio product prompt (the product only in shots that need it, later stills match the first one, brand-level places, objects exactly where the shot puts them). Short ads make two of each still and keep the better; a strict vision review scores each one and lists blocking faults (missing story object, changed clothes, cut-off head; never which hand). A third try runs when neither passes, inside a 4-minute budget.
+- **Movement from the finished still** (ee01f31): after the stills are chosen, a director call looks at each picture and writes one small movement that can start from what is visible (`motionMessages`). On the approve screen the user can accept a still the reviewer flagged (`accepted` in the review, `blockedFrames`).
+- **One-take test, preview only** (11ecf38 to 08b5153, `one-take.ts`): the whole 8 s ad with voice and sound in ONE reference-to-video generation, comparing Kling O3 Pro ($0.14/s) and Seedance 2.0 ($0.30/s) on the same plan and pictures. Formats: ritual, review, unboxing, demo, fix. A "dry run" plans the ad, makes the opening look still (no product, no mirrors) and checks both (spoken brand name, full wardrobe) before any paid video; the result page shows the check. A job id can be reused so both models get the same plan. Only shown on `preview--` hosts and localhost (`takeAllowed`).
+- **Not run live yet:** the video half of all of this. fal's balance is still empty. Cost impact: `V2_GENERATION_COSTS.md`, "Concept ads after the stills rework".
+
 ## 6. What needs no one
 
 The fal client, the webhook route, the Shorts recipes and motion templates, the video player, downloads and the Assets playback can all be written and tested with a stubbed fal response while the key is pending.

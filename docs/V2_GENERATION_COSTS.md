@@ -64,8 +64,8 @@ v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, Prod
 | Product Short, 8 s     | 10      | $1.97 to $3.33               | $0.63 to $1.99   | OK on Kling / Veo Fast; thin on Seedance at Scale |
 | AI UGC, 8 s            | 15      | $2.95 to $5.00               | $1.30 to $3.30   | Profit on every plan with Veo Fast / Kling 3.0    |
 | AI UGC, 15 s           | 30      | $5.90 to $9.99               | $2.35 to $6.10   | Profit on every plan; Veo 3.1 audio breaks even   |
-| Concept ad, 15 s       | 10      | $1.97 to $3.33               | ≈ $1.65          | Kling 2.5 Turbo + voice and music (2026-11-22)    |
-| Concept ad, 30 s       | 20      | $3.93 to $6.66               | ≈ $3.30          | Kling 2.5 Turbo + voice and music (2026-11-22)    |
+| Concept ad, 15 s       | 10      | $1.97 to $3.33               | ≈ $2.45 (est.)   | **Loses on Scale** since 2026-11-24, see below    |
+| Concept ad, 30 s       | 20      | $3.93 to $6.66               | ≈ $3.50 (est.)   | Thin on Scale since 2026-11-24, see below         |
 | Free plan (10 credits) | 10      | $0                           | 5 photos ≈ $0.35 | Fine for photos and ads                           |
 
 **Product Shorts after the live model test (2026-11-16, `V2_VIDEO_PLAN.md` section 5).** Our cost per Short is the video plus about $0.15 for the first frame and its checks. Kling 3 Pro keeps the label as well as the dearer models, so it stays the model for every template.
@@ -123,3 +123,17 @@ Then compare the total with the drop in Lovable's **Run credits** for the same p
 Voice (ElevenLabs multilingual v2 on fal, $0.10 per 1000 characters, about $0.02 for a 15 s voiceover) and music (ElevenLabs music on fal, about $0.80 a minute, so $0.20 for 15 s) add about $0.21 to a 15 s Concept ad, which now costs about $1.65. At 10 credits that still earns on every plan: about $0.32 kept on Scale (the cheapest credit, $0.197), more on the others. 30 s keeps about $0.63 on Scale. No price change needed; the audio prices are fal list prices until the first live run is measured (blocked on the fal top-up). If Scale margin matters more, dropping music saves $0.20 and keeps the voice.
 
 The "Write with AI" and "Suggest with AI" buttons are one text call each (about $0.001), free to users, capped at 60 a day per user (`v2_write` in usage_events).
+
+## Concept ads after the stills rework (2026-11-24, estimate, needs a decision)
+
+Two changes since the 2026-11-22 numbers raise the cost of a Concept ad. Neither has been measured live yet (fal balance still empty).
+
+- **Music is billed per started minute** ($0.60, fal list price checked 2026-11-23, `CONCEPT_MUSIC_USD_PER_MINUTE` in `src/lib/v2/concept.ts`). A 15 s or 30 s ad pays the full $0.60, not $0.20.
+- **Stills are made more than once.** Ads of 3 shots or fewer make two of each still and keep the better one, with a third try when neither passes the review (`tries` in `generation.server.ts`). Longer ads make one and retry a failure. Each still is also reviewed by a vision call, and each chosen still gets a motion-writing call.
+
+| Concept ad | Stills          | Clips | Voice + music | Compose | Total (est.) | Scale pays | Pro pays |
+| ---------- | --------------- | ----- | ------------- | ------- | ------------ | ---------- | -------- |
+| 15 s       | ≈ $0.76 to 1.10 | $1.05 | ≈ $0.62       | $0.01   | ≈ $2.45-2.80 | $1.97      | $2.90    |
+| 30 s       | ≈ $0.75 to 1.10 | $2.10 | ≈ $0.64       | $0.01   | ≈ $3.50-3.85 | $3.93      | $5.80    |
+
+At 10 credits a 15 s Concept ad now **loses about $0.50-0.80 on Scale** and is thin on Pro. Options (Sufyan and Ben to choose): raise 15 s to about 15 credits, keep two tries but drop music on 15 s (saves $0.60), or use one try per still on 15 s too. Measure the first live run before changing prices: `select provider_cost_usd, seconds from generation_jobs where studio = 'concept' and status = 'done' order by created_at desc;`.
