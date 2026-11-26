@@ -8,6 +8,12 @@ import type { AspectRatio, GenerationJob } from "@/v2/data/types";
 import { PillButton } from "@/v2/components/primitives";
 import { cn } from "@/lib/utils";
 
+/** How long a line takes to say, at the pace the server cuts voiceovers to. */
+function readSeconds(text: string) {
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  return Math.round(words / 2.3);
+}
+
 const FRAME: Record<AspectRatio, string> = {
   "1:1": "aspect-square",
   "4:5": "aspect-[4/5]",
@@ -17,6 +23,7 @@ const FRAME: Record<AspectRatio, string> = {
 
 type Action =
   | { action: "approve" }
+  | { action: "sound"; voiceover: string; music: string }
   | { action: "plan" }
   | { action: "accept"; index: number }
   | { action: "redo"; index: number; note?: string }
@@ -31,8 +38,34 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const sound = review.sound;
+  const [vo, setVo] = useState<string | null>(null);
+  const [music, setMusic] = useState<string | null>(null);
+  const soundEdited =
+    !!sound &&
+    ((vo !== null && vo.trim() !== sound.voiceover) ||
+      (music !== null && music.trim() !== sound.music));
   const act = useMutation({
-    mutationFn: (a: Action) => reviewConceptFrames({ data: { jobId: job.id, ...a } }),
+    mutationFn: async (a: Action) => {
+      /* Unsaved sound edits go in first, so the approved ad says what the user wrote. */
+      if (a.action === "approve" && soundEdited && sound) {
+        await reviewConceptFrames({
+          data: {
+            jobId: job.id,
+            action: "sound",
+            voiceover: (vo ?? sound.voiceover).trim(),
+            music: (music ?? sound.music).trim(),
+          },
+        });
+      }
+      return reviewConceptFrames({ data: { jobId: job.id, ...a } });
+    },
+    onSuccess: (_r, a) => {
+      if (a.action === "sound" || a.action === "approve") {
+        setVo(null);
+        setMusic(null);
+      }
+    },
     onSettled: () => {
       setBusy(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.job(job.id) });
@@ -130,6 +163,73 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
           </li>
         ))}
       </ol>
+      {sound ? (
+        <div className="flex flex-col gap-3 rounded-[12px] bg-v2-canvas p-3">
+          <div>
+            <p className="font-inter-tight text-sm font-semibold text-v2-ink">
+              Voiceover and music
+            </p>
+            <p className="mt-0.5 font-inter-tight text-xs text-v2-muted">
+              This is exactly what your ad will say and play. Change it now: once approved, it can't
+              be changed.
+            </p>
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="font-inter-tight text-xs font-semibold text-v2-ink">
+              Narrator ({sound.voice})
+            </span>
+            <textarea
+              value={vo ?? sound.voiceover}
+              onChange={(e) => setVo(e.target.value)}
+              maxLength={600}
+              rows={3}
+              aria-label="What the narrator says"
+              className="rounded-[6px] bg-v2-surface px-2 py-1.5 font-inter-tight text-xs text-v2-ink outline-none"
+            />
+            <span
+              className={cn(
+                "font-inter-tight text-[11px]",
+                readSeconds(vo ?? sound.voiceover) > sound.seconds - 2
+                  ? "text-[#b26b00]"
+                  : "text-v2-muted",
+              )}
+            >
+              About {readSeconds(vo ?? sound.voiceover)} s to say, in a {sound.seconds} s ad.
+              {readSeconds(vo ?? sound.voiceover) > sound.seconds - 2
+                ? " Too long: the end will be cut. Shorten it."
+                : ""}
+            </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-inter-tight text-xs font-semibold text-v2-ink">Music</span>
+            <input
+              value={music ?? sound.music}
+              onChange={(e) => setMusic(e.target.value)}
+              maxLength={300}
+              aria-label="What the music sounds like"
+              className="h-8 rounded-[6px] bg-v2-surface px-2 font-inter-tight text-xs text-v2-ink outline-none"
+            />
+          </label>
+          {soundEdited ? (
+            <button
+              type="button"
+              disabled={
+                act.isPending || !(vo ?? sound.voiceover).trim() || !(music ?? sound.music).trim()
+              }
+              onClick={() =>
+                run("sound", {
+                  action: "sound",
+                  voiceover: (vo ?? sound.voiceover).trim(),
+                  music: (music ?? sound.music).trim(),
+                })
+              }
+              className="self-start rounded-[6px] bg-v2-surface px-3 py-1.5 font-inter-tight text-xs font-semibold text-v2-ink disabled:opacity-40"
+            >
+              {busy === "sound" ? "Saving…" : "Save voiceover and music"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <PillButton
           disabled={act.isPending || (planned && blocked.length > 0)}

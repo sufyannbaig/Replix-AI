@@ -49,7 +49,7 @@ Failed generations: the credits go back to the user, but the provider may still 
 
 ## 4. Against what the user pays
 
-v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, Product Shorts at 8 / 11 / 13 credits for 5 / 8 / 10 s (changed 2026-11-16), 10 credits per started 15 s of Concept video, and AI UGC at 15 credits for 8 s or 30 credits for 15 s** (about 2 credits a second, changed 2026-11-06). What a credit is worth depends on the plan (current plans in `src/lib/pricing-plans.ts`):
+v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, Product Shorts at 8 / 11 / 13 credits for 5 / 8 / 10 s (changed 2026-11-16), Concept ads at 15 / 25 credits for 15 / 30 s (raised 2026-11-26 from 10 / 20), and AI UGC at 15 credits for 8 s or 30 credits for 15 s** (about 2 credits a second, changed 2026-11-06). What a credit is worth depends on the plan (current plans in `src/lib/pricing-plans.ts`):
 
 | Plan    | Price / credits | Value of 1 credit |
 | ------- | --------------- | ----------------- |
@@ -64,8 +64,8 @@ v2 prices today (in `src/v2/data/pricing.ts`): **2 credits per photo or ad, Prod
 | Product Short, 8 s     | 10      | $1.97 to $3.33               | $0.63 to $1.99   | OK on Kling / Veo Fast; thin on Seedance at Scale |
 | AI UGC, 8 s            | 15      | $2.95 to $5.00               | $1.30 to $3.30   | Profit on every plan with Veo Fast / Kling 3.0    |
 | AI UGC, 15 s           | 30      | $5.90 to $9.99               | $2.35 to $6.10   | Profit on every plan; Veo 3.1 audio breaks even   |
-| Concept ad, 15 s       | 10      | $1.97 to $3.33               | ≈ $2.45 (est.)   | **Loses on Scale** since 2026-11-24, see below    |
-| Concept ad, 30 s       | 20      | $3.93 to $6.66               | ≈ $3.50 (est.)   | Thin on Scale since 2026-11-24, see below         |
+| Concept ad, 15 s       | 15      | $2.95 to $5.00               | ≈ $2.45 (est.)   | Raised 2026-11-26; thin on Scale, see below       |
+| Concept ad, 30 s       | 25      | $4.92 to $8.33               | ≈ $3.50 (est.)   | Raised 2026-11-26, see below                      |
 | Free plan (10 credits) | 10      | $0                           | 5 photos ≈ $0.35 | Fine for photos and ads                           |
 
 **Product Shorts after the live model test (2026-11-16, `V2_VIDEO_PLAN.md` section 5).** Our cost per Short is the video plus about $0.15 for the first frame and its checks. Kling 3 Pro keeps the label as well as the dearer models, so it stays the model for every template.
@@ -137,3 +137,7 @@ Two changes since the 2026-11-22 numbers raise the cost of a Concept ad. Neither
 | 30 s       | ≈ $0.75 to 1.10 | $2.10 | ≈ $0.64       | $0.01   | ≈ $3.50-3.85 | $3.93      | $5.80    |
 
 At 10 credits a 15 s Concept ad now **loses about $0.50-0.80 on Scale** and is thin on Pro. Options (Sufyan and Ben to choose): raise 15 s to about 15 credits, keep two tries but drop music on 15 s (saves $0.60), or use one try per still on 15 s too. Measure the first live run before changing prices: `select provider_cost_usd, seconds from generation_jobs where studio = 'concept' and status = 'done' order by created_at desc;`.
+
+**Decided 2026-11-26 (Sufyan left it to Claude): Concept ads are now 15 credits for 15 s and 25 for 30 s** (`CONCEPT_CREDITS_BY_SECONDS` in `src/v2/data/pricing.ts`). On Scale that is $2.95 and $4.92, above the $2.45-2.80 and $3.50-3.85 estimates; on Pro $4.35 and $7.25. Check it against the first live run and lower it again if the measured cost is lower.
+
+**Music price confirmed 2026-11-26** on fal's model page: ElevenLabs music is "$0.6 per output audio minute", rounded up to the minute, so every Concept ad pays $0.60 for music. **Cheaper option, not switched yet:** Google Lyria 2 on fal (`fal-ai/lyria2`) is $0.10 per 30 s, saving $0.50 per ad. Its input is `{prompt, negative_prompt, seed}` (no length) and its output is `{audio: {url}}`, which `parseFalAudio` already reads. It makes a clip of about 30 s, and compose cuts music at the video length, so a 15 s ad would stop it mid-phrase. Try it in the first live run on a 30 s ad (and a 15 s one to hear the cut) before switching. Cassette (`cassetteai/music-generator`, $0.02 a minute) is cheaper still but untried.

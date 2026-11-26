@@ -7,8 +7,14 @@ import type { GenerationKind } from "./types";
 
 export const PHOTO_CREDITS_PER_IMAGE = 2;
 export const AD_CREDITS_PER_IMAGE = 2;
-/** Charged per started 15 seconds of video (Concept ads). */
-export const VIDEO_CREDITS_PER_15S = 10;
+/**
+ * Concept ads by length (raised 2026-11-26 from 10 / 20). Stills are made twice and reviewed,
+ * and fal bills music per started minute, so a 15 s ad costs us about $2.45-2.80: at 10 credits
+ * it lost money on Scale ($0.197 a credit). See docs/V2_GENERATION_COSTS.md, last section.
+ */
+export const CONCEPT_CREDITS_BY_SECONDS: Record<number, number> = { 15: 15, 30: 25 };
+/** Lengths not in the table: charged per started 15 seconds. */
+export const VIDEO_CREDITS_PER_15S = 15;
 /**
  * Product Shorts are priced by length: about 1 credit a second plus 3 for the first frame
  * (decided 2026-11-16 after the model test). On Kling 3 Pro this keeps at least half of what
@@ -83,7 +89,7 @@ export function adGenerationCost(adCount: number) {
 }
 
 export function videoGenerationCost(seconds: number) {
-  return Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
+  return CONCEPT_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
 }
 
 export function shortsGenerationCost(seconds: number) {

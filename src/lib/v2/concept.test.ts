@@ -12,6 +12,8 @@ import {
   falMergeInput,
   parseConceptPlan,
   conceptVoText,
+  conceptSound,
+  type ConceptReview,
   conceptVoWords,
   falComposeInput,
   falMusicInput,
@@ -180,5 +182,48 @@ describe("concept spend", () => {
   test("a later refusal cancels the clips already sent", async () => {
     deepStrictEqual((await run(1)).cancelled, ["c0", "c2"]);
     strictEqual((await run(2)).error, "refused");
+  });
+});
+
+describe("the sound the user checks before approving", () => {
+  const review = (extra: Partial<ConceptReview> = {}): ConceptReview => ({
+    plan: {
+      bible: {} as never,
+      shots: [],
+      vo: "Morning light, one drop, and the day starts right.",
+      voice: "Aria",
+      music: "soft piano, warm, slow build",
+    },
+    frames: ["a.png", "b.png", "c.png"],
+    label: [],
+    size: "",
+    redos: 0,
+    ...extra,
+  });
+
+  test("shows the plan's words, voice and music for a 15 s ad", () => {
+    const s = conceptSound(review(), undefined);
+    strictEqual(s.seconds, 15);
+    strictEqual(s.voice, "Aria");
+    strictEqual(s.music, "soft piano, warm, slow build");
+    strictEqual(s.voiceover, "Morning light, one drop, and the day starts right.");
+    ok(s.readSeconds > 0 && s.readSeconds < 15);
+  });
+
+  test("the user's script wins over the plan, and their edit wins over both", () => {
+    strictEqual(conceptSound(review(), "My own line.").voiceover, "My own line.");
+    const edited = conceptSound(
+      review({ vo: "Edited line.", music: "lo-fi beat" }),
+      "My own line.",
+    );
+    strictEqual(edited.voiceover, "Edited line.");
+    strictEqual(edited.music, "lo-fi beat");
+  });
+
+  test("what is shown is already cut to fit, so it matches what fal gets", () => {
+    const long = Array.from({ length: 80 }, () => "word").join(" ");
+    const s = conceptSound(review({ vo: long }), undefined);
+    strictEqual(s.voiceover, conceptVoText(long, "", 15));
+    ok(s.readSeconds <= 14);
   });
 });

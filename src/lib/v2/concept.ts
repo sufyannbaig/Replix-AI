@@ -435,7 +435,31 @@ export type ConceptReview = {
   accepted?: string[];
   /** Movement by still path, written from the finished picture. */
   motions?: Record<string, { motion: string; keep: string }>;
+  /** The narrator's words and the music brief as the user edited them before approving. */
+  vo?: string;
+  music?: string;
 };
+
+/** About how many words a narrator says in a second (the same pace the cut uses). */
+export const VO_WORDS_PER_SECOND = 2.3;
+
+/**
+ * What the ad will sound like, exactly as it goes to fal on approval: the words the narrator
+ * reads (already cut to fit), the voice, the music brief and the ad's length.
+ */
+export function conceptSound(review: ConceptReview, script: string | undefined) {
+  const seconds = review.frames.length * CONCEPT_SHOT_SECONDS;
+  const voiceover = conceptVoText(review.vo ?? script, review.plan.vo, seconds);
+  const words = voiceover ? voiceover.split(/\s+/).length : 0;
+  return {
+    voiceover,
+    voice: review.plan.voice,
+    music: (review.music ?? review.plan.music).trim(),
+    seconds,
+    /** How long the words take to say. */
+    readSeconds: Math.round(words / VO_WORDS_PER_SECOND),
+  };
+}
 
 /** Move a still (and its shot) one place left or right. Out of range: unchanged. */
 export function moveConceptFrame(review: ConceptReview, index: number, dir: -1 | 1): ConceptReview {

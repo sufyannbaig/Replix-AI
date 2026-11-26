@@ -18,7 +18,7 @@ Status: draft for review (2026-11-06). Nothing here is built yet. The v2 front e
 | Tracking | Browser registration tracking in a shared tested helper (`src/lib/meta-registration.ts`). Must stay as is (AGENTS.md).                                                                                                                                        |                                                                                                   |
 
 **v1 credit unit:** 1 credit = 1 ad. Plans: Free 10, Starter 30, Pro 100, Scale 300 a month (`src/lib/pricing-plans.ts`).
-**v2 credit unit (front end today):** 2 credits per photo or ad, 10 credits per started 15 s of video, packs of 100 / 500 / 1,000. These two don't match yet (see decision D1).
+**v2 credit unit (front end today):** 2 credits per photo or ad, 10 credits per started 15 s of video (Concept ads are 15 / 25 credits for 15 / 30 s since 2026-11-26), packs of 100 / 500 / 1,000. These two don't match yet (see decision D1).
 
 ## 2. What the v2 front end asks for (every mock in `api.ts`)
 

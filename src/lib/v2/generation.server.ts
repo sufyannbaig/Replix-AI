@@ -75,7 +75,7 @@ import {
   VO_PREFIX,
   MUSIC_PREFIX,
   COMPOSE_PREFIX,
-  conceptVoText,
+  conceptSound,
   conceptAudioCost,
   falTtsInput,
   falMusicInput,
@@ -1553,6 +1553,19 @@ export async function reorderConceptFrames(jobRow: GenerationJobRow, review: Con
 }
 
 /** The user keeps a still the reviewer faulted. */
+/** The user's own voiceover words and music brief, checked before any video is paid for. */
+export async function saveConceptSound(
+  jobRow: GenerationJobRow,
+  edit: { voiceover: string; music: string },
+) {
+  const { request, review } = reviewOf(jobRow);
+  const vo = cleanScript(edit.voiceover, 60);
+  if (!vo) throw new GenerationError("Write what the narrator says.");
+  const music = edit.music.replace(/\s+/g, " ").trim();
+  if (!music) throw new GenerationError("Describe the music.");
+  await saveReview(jobRow, request, { ...review, vo, music });
+}
+
 export async function acceptConceptFrame(jobRow: GenerationJobRow, index: number) {
   const { request, review } = reviewOf(jobRow);
   const path = review.frames[index];
@@ -1713,8 +1726,10 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
     );
 
     /* Sent once every clip is accepted; a failed submit only drops that track. */
-    const seconds = count * 5;
-    const voText = conceptVoText(inputs.script, plan.vo, seconds);
+    /* The same words and brief the user saw on the approve screen. */
+    const sound = conceptSound(review, inputs.script);
+    const seconds = sound.seconds;
+    const voText = sound.voiceover;
     const queueAudio = async (model: string, input: object, prefix: string) => {
       try {
         const res = await fetch(falUrls(model).submit, {
@@ -1736,7 +1751,7 @@ export async function animateConcept(jobRow: GenerationJobRow, site: Site) {
         voText ? queueAudio(CONCEPT_TTS_MODEL, falTtsInput(voText, plan.voice), VO_PREFIX) : null,
         queueAudio(
           CONCEPT_MUSIC_MODEL,
-          falMusicInput(plan.music, inputs.emotion, seconds),
+          falMusicInput(sound.music || plan.music, inputs.emotion, seconds),
           MUSIC_PREFIX,
         ),
       ])

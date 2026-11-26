@@ -27,6 +27,7 @@ import {
   CONCEPT_REVIEW,
   moveConceptFrame,
   type ConceptReview,
+  conceptSound,
 } from "./concept";
 import { blockedFrames, unplannedFrames } from "./concept-film";
 import {
@@ -394,7 +395,12 @@ async function takeDryRun(db: SupabaseClient<V2Database>, row: GenerationJobRow)
   };
 }
 
-/** A Concept ad waiting on the user: its stills (signed), shots and redos left. */
+function conceptScript(row: GenerationJobRow) {
+  const inputs = (row.request as GenerationRequest).inputs;
+  return inputs?.studio === "concept" ? inputs.script : undefined;
+}
+
+/** A Concept ad waiting on the user: its stills (signed), shots, sound and redos left. */
 async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobRow) {
   const review = (row.request as { review?: ConceptReview }).review;
   if (row.status !== "running" || row.provider !== CONCEPT_REVIEW || !review) return undefined;
@@ -410,6 +416,7 @@ async function conceptReview(db: SupabaseClient<V2Database>, row: GenerationJobR
     issues: review.frames.map((p, i) =>
       review.accepted?.includes(p) ? [] : (review.issues?.[i] ?? []),
     ),
+    sound: conceptSound(review, conceptScript(row)),
   };
 }
 
@@ -500,6 +507,12 @@ const ConceptAction = z.discriminatedUnion("action", [
   z.object({ jobId: z.string().uuid(), action: z.literal("approve") }),
   z.object({
     jobId: z.string().uuid(),
+    action: z.literal("sound"),
+    voiceover: z.string().trim().min(1).max(600),
+    music: z.string().trim().min(1).max(300),
+  }),
+  z.object({
+    jobId: z.string().uuid(),
     action: z.literal("redo"),
     index: z.number().int().min(0).max(11),
     note: z.string().max(200).optional(),
@@ -537,6 +550,10 @@ export const reviewConceptFrames = createServerFn({ method: "POST" })
     }
     if (data.action === "accept") {
       await server.acceptConceptFrame(row, data.index);
+      return { ok: true };
+    }
+    if (data.action === "sound") {
+      await server.saveConceptSound(row, data);
       return { ok: true };
     }
     if (data.action === "plan") {

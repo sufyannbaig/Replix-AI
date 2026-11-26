@@ -459,5 +459,13 @@ export type GenerationJob = {
     redosLeft: number;
     /** Per still: what must be fixed before video; empty when it is good. */
     issues?: string[][];
+    /** Exactly what goes to fal for sound on approval; the user can edit it first. */
+    sound?: {
+      voiceover: string;
+      voice: string;
+      music: string;
+      seconds: number;
+      readSeconds: number;
+    };
   };
 };

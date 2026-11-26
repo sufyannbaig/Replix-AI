@@ -260,4 +260,6 @@ Details in `docs/V2_VIDEO_PLAN.md` 5e. All on `v2` up to `3a2df5a`; **not yet im
 - **Pricing flag:** with music billed per started minute and stills made twice, a 15 s Concept ad is estimated at about $2.45-2.80 against $1.97 paid on Scale. Needs a decision from Sufyan and Ben once the first live run is measured (`V2_GENERATION_COSTS.md`, last section).
 - **Machine:** work now also happens on Sufyan's Mac (`/Users/sufyanbaig/Cluade Work/Replix-AI`). Node v26 is in `~/.local/node/bin`; put it on PATH before the checks.
 
-Still waiting: Ben tops up fal; then one live Concept ad with sound (approve flow), and the one-take comparison on both models. Before launch: reset the test account.
+- **2026-11-26, done while Sufyan was away (he left the calls to Claude):** Concept ads now cost 15 credits (15 s) and 25 (30 s) instead of 10 / 20. The approve screen shows and lets the user edit the voiceover and music brief before any fal money is spent. fal's music price was confirmed at $0.60 per started minute; Lyria 2 ($0.10 per 30 s) is written up as the cheaper option to try live first (`V2_GENERATION_COSTS.md`).
+
+Still waiting: Ben tops up fal; then one live Concept ad with sound (approve flow, the new voiceover panel), the Lyria 2 music try, and the one-take comparison on both models. **Lovable has none of the work after 2975dad as far as these notes show:** import it before testing on the preview. Before launch: reset the test account.
