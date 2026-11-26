@@ -49,6 +49,7 @@ export function filmStillPrompt(opts: {
     ["Light", bible.light],
     ["Colour", bible.grade],
     ["Lens", bible.lens],
+    ["Palette", bible.palette ?? ""],
   ].filter(([, v]) => v);
   return [
     "One frame from a live-action film, shot on location by a cinematographer. Not a stock photo, not an advert poster, not a render.",
@@ -66,8 +67,11 @@ export function filmStillPrompt(opts: {
           .filter(Boolean)
           .join("\n")
       : "No product, bottle, pack or label anywhere in this frame.",
-    "Real: one motivated light source with honest shadows, skin with natural texture, a caught expression rather than a pose. The place is lived-in but well kept and styled the way this product's own brand would shoot it: tasteful, uncluttered, good materials, flattering light. Nothing chipped, stained, cheap or drab.",
-    "Never: mirrors or reflections of the person, studio equipment, softboxes, glowing or magical effects, duplicate objects, floating things, waxy skin, perfect symmetry, extra people, extra or bent fingers, any text or logo apart from the product's own label.",
+    shot.hero
+      ? "PRODUCT HERO: the product alone is the subject (at most a hand), styled like a premium commercial: macro detail, dramatic light, on a surface or floating in the film's palette, the label sharp and exact, facing the camera."
+      : "Art direction: cinematic, not stock. Motivated dramatic light with real shadows and contrast, the bible's palette in set, wardrobe and light, real depth with a foreground, skin with natural texture, a caught expression rather than a pose.",
+    "Anything heightened or impossible (weather, fire, light, an animal, things in the air) appears only where THE SHOT names it, lit and grounded as if it were really there.",
+    "Never: mirrors or reflections of the person, studio equipment, softboxes, duplicate objects, waxy skin, people the shot doesn't name, extra or bent fingers, any text or logo apart from the product's own label.",
     opts.note ?? "",
     opts.issues?.length
       ? `A previous attempt was rejected for: ${opts.issues.join("; ")}. Do not repeat this.`
@@ -99,9 +103,9 @@ export function stillReviewMessages(opts: {
     `It tells this story moment, with every object and body position the story needs: ${opts.shot.frame}`,
     opts.shot.keep ? `This is true: ${opts.shot.keep}` : "",
     "Hands, fingers, face, eyes and teeth are anatomically right and hold things believably.",
-    "Every object appears once, rests on something and makes physical sense; no studio equipment and no mirrors or reflected faces.",
+    "Every object appears once and makes physical sense (floating or heightened only where the shot asks for it); no studio equipment and no mirrors or reflected faces.",
     "Each object is exactly where the shot says: in the hand, worn, or on the surface named. An object said to be held is held.",
-    "The place suits the product's brand: clean, tasteful and flattering, nothing chipped, cheap, cluttered or drab.",
+    "It looks like a frame from a cinematic, art-directed commercial, not a stock photo: deliberate palette, dramatic light, real depth; nothing cheap or drab.",
     shows
       ? `The product appears exactly once, matches the real one at a believable size${opts.label.length ? `, and any readable label says ${opts.label.map((l) => `"${l}"`).join(" / ")}` : ""}.`
       : "No product or label is in the frame.",
@@ -192,7 +196,7 @@ export function motionMessages(opts: {
     {
       role: "system" as const,
       content:
-        'You direct image-to-video. You get the finished first frame; the video model animates it for 5 seconds. Write ONE small movement that can truly start from exactly what is visible, finishes inside 5 seconds and moves the story on. Only what is in the frame may move; never bring in or describe anything outside it. If only a hand is visible, only the hand moves. No walking, sitting down, standing up, turning round, eating, pouring, or objects changing shape. Letting go, a finger moving, a breath, a look, a lean, hair or cloth shifting are good. In the LAST shot, if the face is visible, the movement lands the ad emotion on it: a small real change of expression (eyes lift, a quiet smile, shoulders relax), never towards the camera. One gentle camera move: locked off, a slow push or a slight drift. Reply with JSON only: {"motion": "the movement, then the camera, max 45 words", "keep": "what must stay exactly as it is and what must not happen, max 30 words"}.',
+        'You direct image-to-video. You get the finished first frame; the video model animates it for 5 seconds and the ad keeps only the first 3.5. Write ONE clear movement that can truly start from exactly what is visible, lands within the first 3 seconds and moves the story on. Only what is in the frame may move; never bring in or describe anything outside it. If only a hand is visible, only the hand moves. No sitting down, standing up, eating, pouring, or objects changing shape unless the shot idea needs it; a few steps, a turn of the head or a heightened beat the shot names are fine. Letting go, a finger moving, a breath, a look, a lean, hair or cloth shifting are good. In the LAST shot, if the face is visible, the movement lands the ad emotion on it: a small real change of expression (eyes lift, a quiet smile, shoulders relax), never towards the camera. One gentle camera move: locked off, a slow push or a slight drift. Reply with JSON only: {"motion": "the movement, then the camera, max 45 words", "keep": "what must stay exactly as it is and what must not happen, max 30 words"}.',
     },
     {
       role: "user" as const,

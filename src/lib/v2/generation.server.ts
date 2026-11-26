@@ -64,6 +64,9 @@ import {
   MERGE_PREFIX,
   conceptMotionPrompt,
   conceptShotCount,
+  conceptShotMs,
+  conceptSecondsFor,
+  CONCEPT_SHOT_SECONDS,
   conceptShotMessages,
   conceptVideoCost,
   falClipInput,
@@ -1183,10 +1186,10 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     const { bible, shots } = plan;
     await admin.from("generation_jobs").update({ progress: 0.1 }).eq("id", jobRow.id);
 
-    /* Short ads: two tries of each still, and a third if neither passes. Longer ads: one try
+    /* Ads of up to 4 shots: two tries of each still, and a third if neither passes. Longer: one try
        and one more if it fails, so the job stays inside its time. Two image calls at a time. */
     const framePaths: string[] = new Array(count);
-    const tries = count <= 3 ? 2 : 1;
+    const tries = count <= 4 ? 2 : 1;
     const startedAt = Date.now();
     const issues: string[][] = new Array(count).fill(null).map(() => []);
     let made = 0;
@@ -1922,7 +1925,10 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       return r.ok ? parseFalAudio(await r.json()) : undefined;
     };
     const [voUrl, musicUrl] = await Promise.all([audioUrl(vo), audioUrl(music)]);
-    const withSound = !!(voUrl || musicUrl);
+    /* Each 5 s clip keeps only its share of the ad (3.75 s in a 15 s ad), so compose does the
+       join whenever there is sound or a trim; the plain merge only for old 5 s-a-shot ads. */
+    const clipMs = conceptShotMs(row.seconds ?? conceptSecondsFor(clips.length), clips.length);
+    const withSound = !!(voUrl || musicUrl) || clipMs < CONCEPT_SHOT_SECONDS * 1000;
     const res = await fetch(
       falUrls(withSound ? CONCEPT_COMPOSE_MODEL : CONCEPT_MERGE_MODEL).submit,
       {
@@ -1930,7 +1936,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(
           withSound
-            ? falComposeInput({ clips: clips as string[], vo: voUrl, music: musicUrl })
+            ? falComposeInput({ clips: clips as string[], clipMs, vo: voUrl, music: musicUrl })
             : falMergeInput(clips as string[]),
         ),
         signal: AbortSignal.timeout(30_000),

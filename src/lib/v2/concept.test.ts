@@ -4,6 +4,8 @@ import { strictEqual, ok, deepStrictEqual } from "node:assert";
 import {
   conceptAudioCost,
   conceptShotCount,
+  conceptShotMs,
+  conceptSecondsFor,
   submitAllClips,
   moveConceptFrame,
   redoNote,
@@ -23,9 +25,13 @@ import {
 } from "./concept.ts";
 
 describe("concept", () => {
-  test("one shot per 5 seconds", () => {
-    strictEqual(conceptShotCount(15), 3);
-    strictEqual(conceptShotCount(30), 6);
+  test("faster cutting: 4 shots in 15 s, 7 in 30 s, each kept about 3.5-4.3 s", () => {
+    strictEqual(conceptShotCount(15), 4);
+    strictEqual(conceptShotCount(30), 7);
+    strictEqual(conceptShotMs(15, 4), 3750);
+    strictEqual(conceptSecondsFor(4), 15);
+    strictEqual(conceptSecondsFor(7), 30);
+    strictEqual(conceptSecondsFor(3), 15);
   });
   test("keeps the model's shots, capped to the count", () => {
     const raw = {
@@ -55,10 +61,12 @@ describe("concept", () => {
   });
   test("beats run hook to brand ending", () => {
     deepStrictEqual(conceptBeats(3), ["Hook", "Development", "Climax and brand ending"]);
-    const six = conceptBeats(6);
-    strictEqual(six.length, 6);
-    strictEqual(six[0], "Hook");
-    strictEqual(six[5], "Brand ending");
+    deepStrictEqual(conceptBeats(4), ["Hook", "Turn", "Product hero", "Payoff and brand ending"]);
+    const seven = conceptBeats(7);
+    strictEqual(seven.length, 7);
+    strictEqual(seven[0], "Hook");
+    strictEqual(seven[5], "Product hero");
+    strictEqual(seven[6], "Payoff and brand ending");
   });
   test("every frame repeats the locked continuity", () => {
     const { bible, shots } = parseConceptPlan(

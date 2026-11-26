@@ -51,11 +51,18 @@ describe("story rules", () => {
   });
 });
 
-describe("stories sell the product (2026-11-26)", () => {
-  test("the rules ask for a true insight and the product's benefit as the payoff", () => {
+describe("stories are bold ideas that sell the product (2026-11-26)", () => {
+  test("the rules ask for one bold visual idea on a true insight, turned by the product", () => {
+    ok(/big idea/i.test(STORY_RULES));
+    ok(/visual metaphor/i.test(STORY_RULES));
     ok(/insight/i.test(STORY_RULES));
-    ok(/benefit/i.test(STORY_RULES));
-    ok(/one.read/i.test(STORY_RULES));
+    ok(/product hero/i.test(STORY_RULES));
+    ok(/one-read/i.test(STORY_RULES));
+  });
+
+  test("the old bans on heightened moments are gone", () => {
+    ok(!/never needs: glowing/i.test(STORY_RULES));
+    ok(!/animals acting/i.test(STORY_RULES));
   });
 
   test("no rule asks for a twist past real life or a joke at the product's expense", () => {

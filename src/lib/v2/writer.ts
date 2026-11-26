@@ -32,11 +32,11 @@ export type WriterContext = {
 
 const ASK: Record<WriterField, (c: WriterContext) => string> = {
   concept: (c) =>
-    `Write ONE concept for a ${c.seconds ?? 15}-second ${c.emotion ?? ""} ad. First sketch five ideas in "ideas" (max 25 words each), each from a different true insight about the people who buy this product (the moment they reach for it, the small problem it solves, how it makes them feel). Then put in "text" the one that is simplest and most relatable and shows the product's real benefit best: the one a viewer gets in one read and a brand would happily run. Say who, the recognisable moment, the product in use and the payoff. Two or three plain sentences, max 60 words.`,
+    `Write ONE concept for a ${c.seconds ?? 15}-second ${c.emotion ?? ""} ad film. First sketch five ideas in "ideas" (max 25 words each), each a different bold visual idea for what this product does: a visual metaphor, a borrowed genre, or one heightened impossible moment, each grown from a different true feeling of the people who buy it. Then put in "text" the one with the strongest image that is still simple: the one people would stop scrolling for and a brand would proudly run. Say who, where, the hook image, the big moment and how the product causes it. Two or three plain sentences, max 60 words.`,
   climax: (c) =>
-    `Write the ending for this concept: the moment the product's real benefit pays off for the person, visible in their face or their moment, landing the ${c.emotion ?? "target"} emotion. Then the final 2 seconds: the product as hero, label to camera, where the tagline or product name lands. Two sentences, max 45 words.`,
+    `Write the climax and ending for this concept: the big moment lands because of the product, then the payoff shows on the person's face (the ${c.emotion ?? "target"} emotion), then the product hero and the brand line. Two sentences, max 45 words.`,
   script: (c) =>
-    `Write the voiceover for this ad: one short line per beat. The first names the moment the viewer recognises, the middle adds what the picture can't show (the feeling or the reason it works), and the last is a short tagline-like payoff with the product name. Warm, plain and confident, the way a person talks; never a joke at the product's expense. At most ${conceptVoWords(c.seconds ?? 15)} words in total. Spoken words only.`,
+    `Write the voiceover for this ad: few words, one short line per beat, said with confidence. Lines add what the picture can't (the feeling, the reason, the promise), never describe what we see. The last line is a short memorable tagline with the product name. At most ${conceptVoWords(c.seconds ?? 15)} words in total. Spoken words only.`,
   ugcScript: (c) =>
     `Write what one creator says to their phone camera about this product: hook in the first line, one honest reason, a natural close. First person, at most ${ugcWordBudget(c.seconds ?? 15)} words. Spoken words only.`,
 };
@@ -46,7 +46,7 @@ export function writerMessages(field: WriterField, c: WriterContext) {
     {
       role: "system" as const,
       content:
-        "You are an award-winning ad creative director who writes simple ads people get instantly. Avoid the first generic idea, but never trade clarity for cleverness. Plain English, no hashtags, no emojis, no stage directions, no quote marks, no claims about health, results or prices the product details don't state. " +
+        "You are an award-winning ad creative director known for bold, cinematic ideas that are still simple to get. Never give the first generic idea and never a flat everyday scene. Plain English, no hashtags, no emojis, no stage directions, no quote marks, no claims about health, results or prices the product details don't state. " +
         (field === "concept"
           ? `Reply as JSON: {"ideas": ["...", "...", "...", "...", "..."], "text": "..."}.`
           : `Reply as JSON: {"text": "..."}.`) +
