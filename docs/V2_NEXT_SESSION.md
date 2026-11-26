@@ -252,7 +252,7 @@ Still waiting: Ben tops up fal, then one live Concept ad with sound (approve flo
 
 ## 11. Sessions 2026-11-23 to 2026-11-26: Concept stills, cost guards, one-take test
 
-Details in `docs/V2_VIDEO_PLAN.md` 5e. All on `v2` up to `3a2df5a`; **not yet imported into Lovable** (imports since 2975dad need checking).
+Details in `docs/V2_VIDEO_PLAN.md` 5e. All on `v2`. Lovable was kept current through `08b5153` (Nov 24 imports); later commits are imported as noted below.
 
 - Stripe webhook: a missing key no longer breaks every page (200aa72).
 - Concept ads: guards so fal is never paid for clips that get lost; better stories; film-style stills, made twice and reviewed strictly; movement written from the finished still; the user can overrule the reviewer.
@@ -262,4 +262,4 @@ Details in `docs/V2_VIDEO_PLAN.md` 5e. All on `v2` up to `3a2df5a`; **not yet im
 
 - **2026-11-26, done while Sufyan was away (he left the calls to Claude):** Concept ads now cost 15 credits (15 s) and 25 (30 s) instead of 10 / 20. The approve screen shows and lets the user edit the voiceover and music brief before any fal money is spent. fal's music price was confirmed at $0.60 per started minute; Lyria 2 ($0.10 per 30 s) is written up as the cheaper option to try live first (`V2_GENERATION_COSTS.md`).
 
-Still waiting: Ben tops up fal; then one live Concept ad with sound (approve flow, the new voiceover panel), the Lyria 2 music try, and the one-take comparison on both models. **Lovable has none of the work after 2975dad as far as these notes show:** import it before testing on the preview. Before launch: reset the test account.
+Still waiting: Ben tops up fal; then one live Concept ad with sound (approve flow, the new voiceover panel), the Lyria 2 music try, and the one-take comparison on both models. **Lovable:** imported through `08b5153` on Nov 24; `29211b4` (prices and the voiceover panel) sent for import 2026-11-26 (`routeTree.gen.ts` left out, it is generated). Before launch: reset the test account.
