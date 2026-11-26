@@ -61,6 +61,8 @@ const STALE_QUEUED_MS = 10 * 60_000;
 const STALE_RUNNING_MS = 6 * 60_000;
 /** Shorts: the first frame, then fal's queue (one to three minutes, sometimes more). */
 const STALE_VIDEO_MS = 15 * 60_000;
+/** Concept ads after approval: up to six clips, voice and music, then the stitch. */
+const STALE_CONCEPT_MS = 30 * 60_000;
 const MAX_JOBS_PER_MINUTE = 6;
 /** Free AI helpers cost us money too, so each has a generous daily allowance per user. */
 const DAILY_INSIGHTS = 60;
@@ -468,7 +470,13 @@ export const getGenerationJob = createServerFn({ method: "POST" })
     const age = Date.now() - Date.parse(row.started_at ?? row.created_at);
     const stalled =
       (row.status === "queued" && age > STALE_QUEUED_MS) ||
-      (row.status === "running" && age > (video ? STALE_VIDEO_MS : STALE_RUNNING_MS));
+      (row.status === "running" &&
+        age >
+          (row.studio === "concept"
+            ? STALE_CONCEPT_MS
+            : video
+              ? STALE_VIDEO_MS
+              : STALE_RUNNING_MS));
     if (stalled && row.provider !== CONCEPT_REVIEW) {
       const { admin } = await import("./generation.server");
       /* A Short's first frame alone isn't a result: only a finished video counts. */
@@ -578,7 +586,8 @@ export const reviewConceptFrames = createServerFn({ method: "POST" })
     /* Claim it first, so a double click can't send the clips twice. */
     const { data: claimed } = await server.admin
       .from("generation_jobs")
-      .update({ provider: "approved", progress: 0.38 })
+      /* The video's clock starts now: the stills may have waited hours for this click. */
+      .update({ provider: "approved", progress: 0.38, started_at: new Date().toISOString() })
       .eq("id", row.id)
       .eq("provider", CONCEPT_REVIEW)
       .select("*");
