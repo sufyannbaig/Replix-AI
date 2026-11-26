@@ -273,6 +273,18 @@ export function conceptVoText(script: string | undefined, planVo: string, second
 export const CONCEPT_TTS_MODEL = "fal-ai/elevenlabs/tts/multilingual-v2";
 export const CONCEPT_MUSIC_MODEL = "fal-ai/elevenlabs/music";
 export const CONCEPT_COMPOSE_MODEL = "fal-ai/ffmpeg-api/compose";
+/**
+ * Compose plays every clip in full (it ignores a shorter keyframe duration), so each 5 s clip is
+ * cut to its share first. $0.001 per compute second on fal.
+ */
+export const CONCEPT_TRIM_MODEL = "fal-ai/workflow-utilities/trim-video";
+export const TRIM_PREFIX = "trim:";
+/** The untrimmed clip, kept so a failed trim can fall back to it. */
+export const CLIP_PREFIX = "clip:";
+
+export function falTrimInput(videoUrl: string, ms: number) {
+  return { video_url: videoUrl, start_time: 0, duration: Math.round(ms) / 1000 };
+}
 /** fal list prices (2026-11-23): $0.10 per 1000 characters; music $0.60 per started minute. */
 export const CONCEPT_TTS_USD_PER_CHAR = 0.0001;
 export const CONCEPT_MUSIC_USD_PER_MINUTE = 0.6;

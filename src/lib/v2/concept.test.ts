@@ -4,6 +4,7 @@ import { strictEqual, ok, deepStrictEqual } from "node:assert";
 import {
   conceptAudioCost,
   conceptShotCount,
+  falTrimInput,
   conceptShotMs,
   conceptSecondsFor,
   submitAllClips,
@@ -233,5 +234,15 @@ describe("the sound the user checks before approving", () => {
     const s = conceptSound(review({ vo: long }), undefined);
     strictEqual(s.voiceover, conceptVoText(long, "", 15));
     ok(s.readSeconds <= 14);
+  });
+});
+
+describe("each clip is cut to its share before the stitch", () => {
+  test("a 15 s ad cuts its 4 clips to 3.75 s from the start", () => {
+    deepStrictEqual(falTrimInput("https://x/c.mp4", conceptShotMs(15, 4)), {
+      video_url: "https://x/c.mp4",
+      start_time: 0,
+      duration: 3.75,
+    });
   });
 });
