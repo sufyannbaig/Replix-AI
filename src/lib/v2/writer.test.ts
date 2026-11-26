@@ -50,3 +50,23 @@ describe("story rules", () => {
     ok(String(m[1].content).includes("A cat steals the bottle"));
   });
 });
+
+describe("stories sell the product (2026-11-26)", () => {
+  test("the rules ask for a true insight and the product's benefit as the payoff", () => {
+    ok(/insight/i.test(STORY_RULES));
+    ok(/benefit/i.test(STORY_RULES));
+    ok(/one.read/i.test(STORY_RULES));
+  });
+
+  test("no rule asks for a twist past real life or a joke at the product's expense", () => {
+    ok(!/nobody saw coming/i.test(STORY_RULES));
+    ok(!/one step further than real life/i.test(STORY_RULES));
+    for (const f of ["concept", "climax", "script"] as const) {
+      const all = writerMessages(f, { productName: "Acme" })
+        .map((m) => String(m.content))
+        .join("\n");
+      ok(!/irony/i.test(all), `${f} asks for irony`);
+      ok(!/retell/i.test(all), `${f} asks for a retellable gag`);
+    }
+  });
+});
