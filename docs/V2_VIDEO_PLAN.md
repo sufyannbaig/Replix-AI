@@ -125,3 +125,26 @@ The fal key is the Lovable secret `FAL_AI_KEY`. It was first saved as `FAl_AI_KE
 ## 6. What needs no one
 
 The fal client, the webhook route, the Shorts recipes and motion templates, the video player, downloads and the Assets playback can all be written and tested with a stubbed fal response while the key is pending.
+
+## 5f. Concept ads rebuilt on Sufyan's references and course skills (2026-11-26)
+
+Sufyan judged the Concept output "total bezar" and pointed at four reference ads (Instagram, rajeevmehtain) and his course skills (ai-ad-master-shot, mind-travel-shot-list, ai-ad-storyboard, ad-ending-variants, ad-micro-graphics-kit, ai-ad-film-pipeline).
+
+**What the references do** (studied frame by frame): a lipstick film with dialogue and reaction shots, then a styled product sequence (floating lipsticks on brand red, macro lips) and a designed end card; a safari ad that turns a burnt-out night at the office into a horror-style tiger reveal, kinetic type "WILD IS CALLING YOU!", then the safari and "BOOK YOUR TIGER SAFARI TODAY"; a showreel of bold art-directed metaphors (oranges bursting round a drink, confetti through a sunroof); an energy drink where lightning sets a tree ablaze as a cold couple open the can, then a "RANGER" title. Common: one bold visual idea, borrowed genre or heightened moment, 8-15 cuts, a product hero sequence, art-directed palette and light, designed type.
+
+**What Replix did instead:** rules that banned glowing, magic, animals, weather and floating things; one person, one everyday place; 3 slow shots of 5 s; no hero shot; flat daylight; no graphics.
+
+**Rebuilt** (`d752e53`, `f26ee13`, `10268ab`, `e241cd6`):
+
+- Story rules and the writer: one bold visual idea (metaphor, genre or heightened beat) on a true insight, turned by the product; the writer now sees the product photo (it guessed "Acme Charge" was a charger; it is a drink).
+- 4 shots in 15 s and 7 in 30 s; each 5 s Kling clip is cut to its share by `fal-ai/workflow-utilities/trim-video` before compose (compose ignores shorter keyframe durations: the first 4-shot ad ran 20 s).
+- Beats: Hook, Turn, Product hero, Payoff and brand ending (30 s adds Setup, Development, Climax). The Product hero still is the product alone, styled on the palette, label exact.
+- The bible locks a 2-3 colour palette; stills are cinematic and full-bleed (the first try painted letterbox bars inside 9:16).
+- Live: "Become the light" (cinema, job `b04e81aa`, $2.96 with 2 redos) is the first ad that looks like the references in its stills; it ran 20 s before the trim fix.
+
+**Still missing (next):**
+
+1. Designed title and end card (ad-micro-graphics-kit): compose allows one visual track, so the end card has to be its own image clip at the end, rendered with the brand's fonts and colours.
+2. The scene upload is required; big ideas need their own location. Make it optional and let the director pick the place.
+3. Price: the 4-shot format costs about $2.70-3.00 per 15 s ad, break-even on Scale at 15 credits; about 18 credits keeps a margin.
+4. Dialogue and lip-sync scenes (like the lipstick reference) are not possible with image-to-video clips; that needs a talking model (the UGC path) for one shot.
