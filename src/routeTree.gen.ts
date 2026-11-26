@@ -35,6 +35,7 @@ import { Route as AppProductsRouteImport } from './routes/_app.products'
 import { Route as AppReferRouteImport } from './routes/_app.refer'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppUpgradeRouteImport } from './routes/_app.upgrade'
+import { Route as AppWelcomeRouteImport } from './routes/_app.welcome'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as InstallSelectPlanRouteImport } from './routes/install.select-plan'
@@ -196,6 +197,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppUpgradeRoute = AppUpgradeRouteImport.update({
   id: '/upgrade',
   path: '/upgrade',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWelcomeRoute = AppWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -402,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/refer': typeof AppReferRoute
   '/settings': typeof AppSettingsRoute
   '/upgrade': typeof AppUpgradeRoute
+  '/welcome': typeof AppWelcomeRoute
   '/api/health': typeof ApiHealthRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/install/select-plan': typeof InstallSelectPlanRoute
@@ -462,6 +469,7 @@ export interface FileRoutesByTo {
   '/refer': typeof AppReferRoute
   '/settings': typeof AppSettingsRoute
   '/upgrade': typeof AppUpgradeRoute
+  '/welcome': typeof AppWelcomeRoute
   '/api/health': typeof ApiHealthRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/install/select-plan': typeof InstallSelectPlanRoute
@@ -524,6 +532,7 @@ export interface FileRoutesById {
   '/_app/refer': typeof AppReferRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/upgrade': typeof AppUpgradeRoute
+  '/_app/welcome': typeof AppWelcomeRoute
   '/api/health': typeof ApiHealthRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/install/select-plan': typeof InstallSelectPlanRoute
@@ -586,6 +595,7 @@ export interface FileRouteTypes {
     | '/refer'
     | '/settings'
     | '/upgrade'
+    | '/welcome'
     | '/api/health'
     | '/email/unsubscribe'
     | '/install/select-plan'
@@ -646,6 +656,7 @@ export interface FileRouteTypes {
     | '/refer'
     | '/settings'
     | '/upgrade'
+    | '/welcome'
     | '/api/health'
     | '/email/unsubscribe'
     | '/install/select-plan'
@@ -707,6 +718,7 @@ export interface FileRouteTypes {
     | '/_app/refer'
     | '/_app/settings'
     | '/_app/upgrade'
+    | '/_app/welcome'
     | '/api/health'
     | '/email/unsubscribe'
     | '/install/select-plan'
@@ -956,6 +968,13 @@ declare module '@tanstack/react-router' {
       path: '/upgrade'
       fullPath: '/upgrade'
       preLoaderRoute: typeof AppUpgradeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/welcome': {
+      id: '/_app/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof AppWelcomeRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/health': {
@@ -1223,6 +1242,7 @@ interface AppRouteChildren {
   AppReferRoute: typeof AppReferRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppUpgradeRoute: typeof AppUpgradeRoute
+  AppWelcomeRoute: typeof AppWelcomeRoute
   AppAdsAdIdRoute: typeof AppAdsAdIdRoute
   AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
   AppGenerateProductIdRoute: typeof AppGenerateProductIdRoute
@@ -1255,6 +1275,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReferRoute: AppReferRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppUpgradeRoute: AppUpgradeRoute,
+  AppWelcomeRoute: AppWelcomeRoute,
   AppAdsAdIdRoute: AppAdsAdIdRoute,
   AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
   AppGenerateProductIdRoute: AppGenerateProductIdRoute,

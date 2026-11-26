@@ -1815,7 +1815,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
         .update({ progress: 0.99 })
         .eq("id", row.id)
         .eq("status", "running")
-        .lt("progress", 0.99)
+        .or(claimable(0.99))
         .select("id");
       if (!claimed?.length) return false;
       retryAt = 0.95;
@@ -1885,7 +1885,7 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
       .update({ progress: 0.9 })
       .eq("id", row.id)
       .eq("status", "running")
-      .lt("progress", 0.9)
+      .or(claimable(0.9))
       .select("id");
     if (!claimed?.length) return false;
     retryAt = 0.85;
@@ -1951,6 +1951,17 @@ async function syncConceptJob(row: GenerationJobRow, key: string) {
   }
 }
 
+/**
+ * Who may finish a video: nobody has started (progress below the mark), or whoever did went
+ * quiet. A closed tab can end the request in the middle of a save, and the paid video must not
+ * be lost with it.
+ */
+const CLAIM_MS = 150_000;
+function claimable(mark: number) {
+  const quiet = new Date(Date.now() - CLAIM_MS).toISOString();
+  return `progress.lt.${mark},updated_at.lt.${quiet}`;
+}
+
 /** Last fal check per job, so a fast poll doesn't call fal every time. */
 const lastVideoSync = new Map<string, number>();
 
@@ -1995,7 +2006,7 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
       .update({ progress: 0.99 })
       .eq("id", row.id)
       .eq("status", "running")
-      .lt("progress", 0.99)
+      .or(claimable(0.99))
       .select("id");
     if (!claimed?.length) return false;
 
