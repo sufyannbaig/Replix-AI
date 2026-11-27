@@ -297,3 +297,9 @@ Details in `docs/V2_VIDEO_PLAN.md` 5f. Everything is on `v2` up to `5724c2e` and
 - fal balance: $30 topped up; about $15 used on today's tests.
 - How the team tests (access, tester credits, what to try): the "How to test it" section of the handover brief "Replix Web Handover & Mobile App Approach" (Claude Docs).
 - Next ideas: a mid-film kinetic type card; check end card sizes on 1:1 and 16:9; dialogue needs a talking model.
+
+## 15. Brand kit for sites that block bots (2026-11-27)
+
+- Ben reported "The operation was aborted due to timeout" on Read my website with adidas.com. Big brands (adidas) block automatic visits: a 403, or the request hangs until the 12 s fetch limit.
+- Fix (commit 5d740e9, `src/lib/v2/v2.functions.ts`): if the page can't be read, the AI builds the kit from what it knows about the brand at that domain. An unknown brand gets a clear message pointing to "I don't have a website". No logo in this case; the user uploads it in Brand Kit.
+- Verified on the preview: adidas.com now gives adidas, Oswald, black/white/blue/grey, tone and audience.
