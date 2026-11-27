@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { APP_PLANS, type AppPlanKey } from "@/lib/shopify-app.constants";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { creditPack, creditsAfterReset } from "@/v2/data/pricing";
 
 /**
  * Stripe webhook — fires on every checkout completion and subscription
@@ -15,16 +15,21 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Created per request: at module level, a missing key would crash every page.
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+        if (!secretKey || !webhookSecret) {
+          console.error("Stripe webhook: STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is not set");
+          return new Response("Stripe is not configured", { status: 500 });
+        }
+        const stripe = new Stripe(secretKey);
+
         const rawBody = await request.text();
         const signature = request.headers.get("stripe-signature");
 
         let event: Stripe.Event;
         try {
-          event = stripe.webhooks.constructEvent(
-            rawBody,
-            signature ?? "",
-            process.env.STRIPE_WEBHOOK_SECRET!,
-          );
+          event = stripe.webhooks.constructEvent(rawBody, signature ?? "", webhookSecret);
         } catch {
           return new Response("Invalid signature", { status: 401 });
         }
@@ -42,12 +47,23 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
           // subscription item, not the subscription object.
           const item = sub.items?.data?.[0];
 
+          /* Bought credit packs survive a renewal or downgrade (see creditsAfterReset). */
+          const { data: current } = await (supabaseAdmin as unknown as SupabaseClient)
+            .from("user_credits")
+            .select("credits, pack_credits")
+            .eq("user_id", userId)
+            .maybeSingle();
+          const carry = (planCredits: number) =>
+            creditsAfterReset(planCredits, current?.credits ?? 0, current?.pack_credits ?? 0);
+
           if (active) {
-            await supabaseAdmin.from("user_credits").upsert(
+            const next = carry(APP_PLANS[planKey].credits);
+            await (supabaseAdmin as unknown as SupabaseClient).from("user_credits").upsert(
               {
                 user_id: userId,
                 plan: planKey,
-                credits: APP_PLANS[planKey].credits,
+                credits: next.credits,
+                pack_credits: next.packCredits,
                 current_period_end: item?.current_period_end
                   ? new Date(item.current_period_end * 1000).toISOString()
                   : null,
@@ -59,9 +75,16 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
           } else {
             // Any non-active state, cancelled, unpaid, incomplete_expired — revoke
             // paid access, same behavior as the Shopify webhook's downgrade path.
-            await supabaseAdmin
+            const next = carry(0);
+            await (supabaseAdmin as unknown as SupabaseClient)
               .from("user_credits")
-              .update({ plan: "free", credits: 0, current_period_end: null, updated_at: now })
+              .update({
+                plan: "free",
+                credits: next.credits,
+                pack_credits: next.packCredits,
+                current_period_end: null,
+                updated_at: now,
+              })
               .eq("user_id", userId);
           }
         }
@@ -69,6 +92,24 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
         switch (event.type) {
           case "checkout.session.completed": {
             const session = event.data.object as Stripe.Checkout.Session;
+            /* One-off credit pack: granted once per paid session (v2_grant_credit_pack). */
+            if (
+              session.mode === "payment" &&
+              session.metadata?.kind === "credit_pack" &&
+              session.payment_status === "paid"
+            ) {
+              const credits = Number(session.metadata.credits);
+              const userId = session.client_reference_id ?? session.metadata.user_id;
+              if (userId && creditPack(credits)) {
+                await (supabaseAdmin as unknown as SupabaseClient).rpc("v2_grant_credit_pack", {
+                  _session: session.id,
+                  _user: userId,
+                  _credits: credits,
+                  _amount_cents: session.amount_total ?? null,
+                });
+              }
+              break;
+            }
             if (session.mode === "subscription" && session.subscription) {
               const sub = await stripe.subscriptions.retrieve(session.subscription as string);
               await upsertFromSubscription(sub);

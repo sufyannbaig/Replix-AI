@@ -11,11 +11,11 @@ import {
 } from "@tanstack/react-router";
 
 import { AuthProvider } from "@/hooks/use-auth";
+import { ReplixLogo } from "@/v2/components/brand/ReplixLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { StaleModuleRecovery } from "@/components/stale-module-recovery";
 import { ApiHealthBanner } from "@/components/api-health-banner";
 import { ClientErrorLogger } from "@/components/client-error-logger";
-import { PromoPopup } from "@/components/PromoPopup";
 import { logClientError, type LoggedError } from "@/lib/client-error-logger";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
@@ -24,17 +24,26 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
+        <Link to="/" aria-label="Replix AI home" className="mx-auto mb-8 inline-flex">
+          <ReplixLogo className="h-8 w-auto" />
+        </Link>
+        <title>Page not found · Replix AI</title>
         <h1 className="font-display text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
-        <Link
-          to="/"
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-colors hover:brightness-110"
-        >
-          Go home
-        </Link>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-colors hover:brightness-110"
+          >
+            Go to your dashboard
+          </Link>
+          <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Replix home
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -50,9 +59,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Something went wrong on our end.</p>
         {logged ? (
           <p className="mt-2 text-xs text-muted-foreground">
             Reference ID:{" "}
@@ -82,32 +89,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Replix AI — AI ad creatives for Shopify" },
+      { title: "Replix AI | On-brand product photos, ads and videos from one photo" },
       {
         name: "description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       { property: "og:site_name", content: "Replix AI" },
-      { property: "og:title", content: "Replix AI — AI ad creatives for Shopify" },
-      { name: "twitter:title", content: "Replix AI — AI ad creatives for Shopify" },
+      {
+        property: "og:title",
+        content: "Replix AI | On-brand product photos, ads and videos from one photo",
+      },
+      {
+        name: "twitter:title",
+        content: "Replix AI | On-brand product photos, ads and videos from one photo",
+      },
       {
         property: "og:description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       {
         name: "twitter:description",
         content:
-          "Turn Shopify products into scroll-stopping Instagram and Facebook ads with AI — copy, hook and visuals in seconds.",
+          "Paste your website and Replix builds your brand kit, then turns one product photo into on-brand photoshoots, ads, UGC and product videos. Start free with 10 credits, no credit card.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/favicon.png?v=3" },
-      { rel: "apple-touch-icon", href: "/favicon.png?v=3" },
+      { rel: "icon", type: "image/png", href: "/favicon.png?v=4" },
+      { rel: "apple-touch-icon", href: "/favicon.png?v=4" },
     ],
   }),
   shellComponent: RootShell,
@@ -118,7 +131,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
@@ -126,8 +139,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+        />
+        {/* Apply the saved app theme before first paint so dark mode never flashes light. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('replix-theme');var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}catch(e){}`,
+          }}
         />
 
         <script
@@ -139,7 +158,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <noscript>
-          <img height="1" width="1" style={{ display: "none" }} alt="" src="https://www.facebook.com/tr?id=28605365312439799&ev=PageView&noscript=1" />
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            alt=""
+            src="https://www.facebook.com/tr?id=28605365312439799&ev=PageView&noscript=1"
+          />
         </noscript>
         {children}
         <Scripts />
@@ -152,7 +177,9 @@ function AuthInvalidator() {
   const router = useRouter();
   const queryClient = useQueryClient();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
@@ -186,7 +213,6 @@ function RootComponent() {
         <ClientErrorLogger />
         <StaleModuleRecovery />
         <ApiHealthBanner />
-        <PromoPopup />
         <Outlet />
         <Toaster theme="light" position="top-right" richColors />
       </AuthProvider>

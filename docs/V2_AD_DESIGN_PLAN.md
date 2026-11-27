@@ -1,0 +1,144 @@
+# Ad Studio: designed ads plan
+
+Status: steps 1–6 done 2026-11-07 (17b83c3, f7e994b) and live on the Lovable preview. Phase 2 (step 7) written and checked locally 2026-11-08; not yet tried live. Next: phase 3 (step 8).
+
+## 1. Why
+
+The ads work but don't look designed. In the first test batch (9 ads, all five themes):
+
+- Four were the same split screen: a sad person on the left, the can on grey on the right.
+- The product looks pasted in, with its own studio light and no shadows from the scene.
+- People are stock-photo clichés (head in hands at a desk, gym towel).
+- The type is a default bold sans with no grid, no size system and a different button style every time.
+- Every ad carries a headline, a subline and a button, even when the picture should do the talking.
+- Because the image model draws the letters, text is a gamble: copied words from the layout reference, a repeated headline, a can label redrawn as "350ml". Prompt fixes only lower the odds.
+
+The cause is one image model doing three jobs: photographer, art director and typesetter. It is good at the first, so we keep it for that and do the other two ourselves.
+
+## 2. The new pipeline
+
+One ad = one text call + one image call + one render, so the cost stays the same as today (about $0.073 per ad).
+
+1. **Creative direction (text model, already exists, extended).** For each ad it returns:
+   - the copy: headline (max 6 words), an optional subline (max 10 words) and a CTA;
+   - `layout`: one of the theme's layouts (section 3);
+   - `scene`: one or two sentences of photo direction (who, where, what moment, light) for this layout's text zone;
+   - `accent`: one colour from the product photo, used when there's no brand kit.
+
+   It still sees the product photo and the Product Insights.
+
+2. **Photo (image model).** The prompt asks for a photograph with **no text at all**. The product stays exactly as in its photo, is lit by the scene and casts its shadows, and is at least a third of the frame height. The layout's text zone is left as calm, empty space, so the photo is composed for the type.
+3. **Type layer (our code).** A layout renders the copy over the photo with real fonts, a grid, a type scale and a scrim where it's needed, and produces the final PNG.
+4. **Store.** The final ad is saved as `outputs/{user}/{job}/{n}.png`, the path everything already reads, so the result screen, Download, Assets and Save need no changes. The clean photo is saved next to it as `{n}-photo.png`, and the layout id goes into the existing `copy` jsonb. **No migration.**
+
+## 3. Layout system
+
+A layout is data plus one render function (`src/lib/v2/ad-layouts.ts`, pure, unit-tested):
+
+- the text zone for each aspect ratio (1:1, 4:5, 9:16, 16:9), with a 6% safe margin;
+- the photo direction for that zone (for example "top 40% is a calm, light, out-of-focus wall");
+- the type: family, weight, headline size from word count (it fits the zone and never wraps to more than 3 lines), line height, tracking and alignment;
+- the CTA: pill, underline or none, coloured from the brand or the accent;
+- the scrim: none, a gradient or a solid field.
+
+**First set: one layout per theme, then a second for each.**
+
+| Theme          | Layout A                                                                                              | Layout B (phase 2)                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Problem → Fix  | **Hook:** a large question at the top left, with the product scene filling the frame                  | **Caption bar:** a full-bleed photo with a solid bar at the bottom carrying the headline and CTA |
+| Before / After | **Split:** one photo composed as two halves, with our own "Before" and "After" labels and divider     | **Stacked:** before above, after below, for 4:5 and 9:16                                         |
+| Testimonial    | **Quote card:** a large serif quote with hanging quote marks over a soft scrim, no names or stars     | **Note:** a handwritten-style quote on a paper card placed in the scene                          |
+| Bold offer     | **Poster:** a solid brand-colour field with huge condensed type and the product on top of it          | **Stamp:** a centred product, with the headline set on a curve or in a badge                     |
+| Lifestyle      | **Editorial:** a small, elegant headline at the bottom left over a gradient, the photo doing the work | **Magazine:** a masthead-style headline at the top with a thin rule and the CTA as text          |
+
+**Fonts.** Ship four open-licence families in the `catalog` bucket: Inter Tight (body), Archivo (the app's own), one display condensed (Anton) and one serif (Instrument Serif). If the brand kit names a Google Font, load that instead; otherwise use the theme default.
+
+**Colour.** Use the brand kit colours first, then the accent from the photo, then black and white. Pick the text colour from the zone's tone, and use a scrim whenever contrast would be under 4.5:1.
+
+## 4. Where the render runs
+
+**Spike result (2026-11-07): render in the browser.**
+
+The plan was to render on the server with satori (layout to SVG) and resvg-wasm (SVG to PNG). Measured locally with satori 0.12 and resvg-wasm 2.6:
+
+- **satori** takes 30–340 ms per ad. That's fine.
+- **resvg** takes 0.8–2.4 s per 1080×1080 ad and about 3.3 s per 1080×1920. Most of that is drawing the large gradients; the photo itself costs little. A drop shadow on the poster card pushed it to 13.7 s, so the layouts use no blurs.
+
+That is too much CPU to count on in Lovable's Workers hosting, whose limits we can't see, and the dev preview runs on Node, so it can't show the problem. A browser draws the same satori SVG on a canvas almost instantly.
+
+**So:**
+
+1. The server stores the clean photo (`{n}-photo.png`) and puts `{ layout, composed: false }` in the output's `copy`.
+2. The result page builds the SVG with `buildAdLayout` and satori, draws it to a canvas, and uploads the PNG through a server function that checks the job belongs to the user. That function sets `image_path` to `{n}.png` and `composed: true`.
+3. Any view that meets an uncomposed ad (Assets, a reopened result) composes it the same way. Until then it shows the clean photo.
+
+Fonts (about 400 KB) are fetched once from the `catalog` bucket and cached.
+
+## 5. Steps
+
+1. **Spike: done.** The render runs in the browser (section 4).
+2. **Approve the look: approved by Sufyan.** Seven mockups (all five layouts in 1:1, plus Hook and Editorial in 9:16) over 8 new text-free photos made with Photo Studio notes. Lessons from them:
+   - The photo model doesn't reliably leave empty space, even when told to. The Poster therefore shows the whole photo as a framed card on the brand colour, and the Quote puts the text on a solid cream panel beside a crop of the photo. Neither depends on the photo following the brief.
+   - 9:16 needs story safe zones: text stays below the top 12% and above the bottom 17%.
+   - Small products still come back with redrawn labels ("200ml", "250ml"). The hero-size rule has to be part of the photo prompt for ads.
+3. **Layout engine: first version done.** `src/lib/v2/ad-layouts.ts` (pure) and `ad-layouts.test.ts` (25 tests: every layout × every aspect gives the right size, the exact copy and finite styles; label rules; colour fallbacks).
+4. **Prompts: done.** The layout comes from the theme (`THEME_LAYOUT`; no theme uses Hook), not from the model. The copy call is told the layout's composition and returns, per ad, the copy plus `scene` (photo direction) and `accent` (a colour from the product). `adPhotoPrompt` replaces `adImagePrompt`: no text at all, the layout's `LAYOUT_PHOTO_BRIEF`, the scene, scene-matched light and shadows, the hero-size rule. The theme reference images are no longer sent.
+5. **Wire in: done.** `runJob` stores the ad photo as `{n}-photo.png` and writes `copy` = `{headline, subline, cta, layout, colors, labels?, photo, composed: false}` (colours: Brand Kit first, then the accent). `getGenerationJob` sends uncomposed ads with a `design` field. `useGenerationJob` (api.ts) composes each one in the browser with `src/v2/data/compose-ad.ts`, shows it at once from a blob link, and saves it with `saveComposedAd`. That server function checks that the output is the caller's own uncomposed ad and that the file is a JPEG under 8 MB, writes `{n}.jpg` (the name comes from the row) and sets `image_path` and `composed: true`. If composing fails, the photo stays and the next visit to the result page tries again. Fonts come from jsdelivr (`@fontsource` 5.1.0, static latin woff, about 160 KB) rather than the `catalog` bucket, so nothing binary had to be uploaded. Measured in a local browser: 0.3–0.7 s per ad, 100–300 KB JPEG. The Editorial link lost its "→" because the latin font files have no arrow glyph.
+   - **Unopened ads (added after the batch, 861ec0c):** `listGenerations` now sends `outputId` and `design` for uncomposed ads, and `useRecentGenerations` and `useAssets` compose them with the same code (`composeListed` in `api.ts`): the thumbnail switches to the finished ad at once, then the save refreshes Recent, Assets and any open result page. **Verified live** in batch 2 below: all 10 ads finished with their result pages closed, and opening Home composed and saved all 10. The Assets path uses the same code but wasn't tried separately (only saved ads appear there).
+6. **Test batch: done on the Lovable preview, 2026-11-07.** Lovable imported the 10 files byte-for-byte and installed satori. One product (Acme Charge) × 5 themes × 2 sizes (1:1, 9:16), 10 ads, 20 test credits. Every ad composed in the browser and saved as `{n}.jpg` (1080×1080 or 1080×1920) with `composed: true`; the clean `{n}-photo.png` is kept and the layout matched the theme each time. No photo had stray text; the copy model picked a blue accent from the can every time (#0A4CB0 to #145DB7).
+   - The first run after the import still used the old code, because the preview hadn't finished rebuilding. Wait for the preview to rebuild before testing after an import.
+   - **Fixed after the batch (f7e994b):** Editorial ran a long CTA ("Try Acme Charge") off the right edge, so the text now gets only the room the CTA leaves. Hook on 9:16 wrapped "Hitting the mid-afternoon wall?" to four lines, because the size estimate was too narrow for Archivo 800; Hook and Split now use 0.56 em per character, checked against the real font metrics. Both have tests.
+   - **Still seen:** in one Testimonial 9:16 the model made the can small in the photo, despite the hero-size rule. The quote panel covers the top, so it still reads, but the label is small. The quote brief now asks for the product close to camera, at least 40% of the frame height and vertically centred (the band a 9:16 quote shows). Not re-tested yet. A second product hasn't been tested yet.
+   - **Batch 2, 2026-11-07 (second product).** Acme Glow Serum (a dropper bottle, uploaded from the app's sample image) × 5 themes × 1:1 and 9:16, 20 test credits, on the preview with 861ec0c. All 10 finished, composed and saved at 1080×1080 / 1080×1920. No stray text in any photo, and the label ("ACME GLOW SERUM · 30 ml") stayed correct in all 10. The copy model picked amber-brown accents from the bottle (#7A3E1D to #A65A20). Theme → layout: Problem → Fix uses Hook, Before / After Split, Testimonials Quote, Bold offer Poster, Lifestyle Editorial.
+     - The new quote brief worked: the bottle is large in both Testimonial ads, including 9:16.
+     - **Issue:** both Poster ads had a small bottle inside the card (about a quarter of the card height on 9:16). The poster brief now asks for the product to fill about 70% of the frame height (016c96d). Re-tested on the preview with two more serum Bold offer ads (4 credits): on 1:1 the bottle now fills about 70% of the card (it was about 60%), and on 9:16 about half the card (it was about a quarter). Better, though 9:16 still falls short of the 70% asked for. Both composed from Home with their result pages closed.
+     - Copy: one headline used "three drops", which came from the Product Insights angles, not from the product page. Fine for a test product; worth watching on real products.
+7. **Phase 2:** the B layouts, brand kit fonts, and the photo accent colour.
+   - **Brand kit fonts:** done with the brand plan (steps 4-6 in `V2_BRAND_PLAN.md`).
+   - **B layouts (code, 2026-11-08):** `caption`, `stacked`, `note`, `stamp` and `magazine` in `ad-layouts.ts`, each with its own `LAYOUT_PHOTO_BRIEF`, logo spot and 9:16 safe zones.
+     - Caption bar: full-bleed photo, a solid accent bar at the bottom with the headline, subline and a contrasting pill; the logo top left.
+     - Stacked (4:5 and 9:16 only, `LAYOUT_ASPECTS`): before above, after below, white divider, our own labels, the logo centred on the divider. No subline, like Split. Square and wide Before / After ads stay Split.
+     - Note: the quote handwritten in Caveat (one more font file, about 60 KB, `caveat@5.1.0` from jsdelivr) on a slightly turned paper card with tape and a hard shadow (no blur), over the calm side of the photo; the logo on the card. A brand heading font replaces Caveat, as on the other layouts. This answers the open question on a handwriting face.
+     - Stamp: the product photo full frame, the headline in condensed capitals inside a round accent badge (turned 8 degrees) at the top right; the subline and CTA at the bottom. Text on a curve isn't possible in satori, so it's a badge.
+     - Magazine: a masthead-style serif headline at the top with a thin rule and the subline, the CTA as underlined text at the bottom; the logo above the masthead.
+   - **Which layout an ad gets:** `THEME_LAYOUTS` lists A then B per theme; `layoutsFor` gives each ad in a generation its layout, taking turns from a random start, so a batch of 2+ shows both and single ads vary. The copy call now gets one composition line per ad when the layouts differ (`layoutBriefs` in `adCopyMessages`), and each photo prompt gets its own ad's brief. Still automatic (no picker in the studio); switching on the result screen fits with phase 3.
+   - **Photo accent (code, 2026-11-08):** the server keeps the brand colours in `copy.colors` and the copywriter's product colour apart in `copy.accent`. With no brand colours the browser reads the accent from the finished photo (`photoAccent`: colourful pixels grouped by hue, centre pixels count more; the copywriter's colour is the hint, so the photo's own shade of the product colour wins when the photo has it). A grey photo falls back to the copywriter's colour. Either way `usableAccent` darkens it until black or white text reads on it at 4.5:1. Older ads (accent inside `colors`) render as before.
+   - **Checked:** 16 new tests (`ad-layouts-b.test.ts`), and every B layout is in the size, copy, logo and brand-font tests (230 tests pass). Rendered all five B layouts in a local browser at 1:1, 4:5 and 9:16 over sample photos: all compose (0.2-0.5 MB JPEG), the accent came out blue on the can photo and warm brown on a lifestyle photo without blue. Fix from that check: Stamp's brief now asks for plain space in the bottom 20%, because the subline and CTA sat on the product's base.
+   - **Live batch, 2026-11-08 (d59df3d):** Acme Charge × 5 themes × 1:1 and 9:16, 2 ads each (20 ads, 40 credits), on a temporary brand "Plain Test" with no colours so the photo accent was used. All 20 finished and composed; A and B took turns as planned (square Before / After stayed Split). Caption, Stacked, Note, Poster-style Stamp badge and Magazine all rendered; accents came out blue from the can in most ads.
+     - **Fixed after the batch (254407b, imported and re-tested):** Magazine's CTA moved into the masthead block (it sat on the product); Stamp's subline moved into the badge and its CTA to the bottom-left corner (both sat on the can's label); tall Caption lifts the photo by most of the top safe zone (the bar covered the label); Note's card is narrower on square/wide frames; photoAccent counts muted oranges (skin, wood) at a tenth and takes the hint at 0.8% of the pixels (a 9:16 Note came out brown around a blue can). Tests added; 235 pass.
+     - **Re-run, 2026-11-08 (254407b, 20 credits):** on id-preview--0a083220-….lovable.app; preview--replixai.lovable.app was still serving the older build after the import, so check the `compose-ad` chunk before testing there. Confirmed: Stamp 9:16 subline in the badge and CTA in the corner; Magazine 9:16 CTA in the top block; Caption 9:16 can fully above the bar; Note 9:16 accent blue, not brown.
+     - **Still open:** on a Stamp 1:1 with a blue studio set the accent-coloured CTA pill vanished into the background. Fixed in code: Stamp's CTA is now a white pill with a thin dark outline (test added). Not yet seen live. The image model also still makes the Stamp product larger than the brief asks.
+     - The temporary "Plain Test" brand was deleted after the runs.
+     - Still seen: the model makes the Stamp product larger than the brief asks.
+   - **Bold offer looked like a template (Ben, call of 2026-11-11), code 2026-11-15:** the Poster showed a still product on a plain grey studio set, framed as a rounded card on the accent colour, so it read as "product pasted on a background". Changes:
+     - Poster and Stamp photo briefs now ask for a dynamic hero shot: energy that fits the product (its liquid splashing, ingredients flying, powder, a burst of light), dramatic colour light, one rich backdrop colour, never a still product on a plain set. The Poster brief keeps the top 40% as plain backdrop.
+     - Poster layout: the card is gone. The photo fills the frame; the accent is solid behind the type and fades into the photo over the next 14% of the frame (`posterFade`). The CTA is a white outlined pill at the bottom safe line.
+     - Checked in a local render (1:1 and 9:16, the type sits on solid colour, the fade is smooth over a plain image). Tests updated; 235 pass. Live test pending.
+   - **v1 themes + adaptive type (2026-11-15).** Sufyan compared v1 and v2 on the same product: v1's imagery and concepts were better, but its type reused 2-3 fonts and one yellow button on every product. So:
+     - v1's ten themes are back (showcase, bold-claim, feature-benefit, headline, offer-sale, problem-solution, before-after, stats, testimonial, us-vs-them), with v1's names, picker art (`src/assets/v2/catalog/ad-theme/`) and theme logic in `AD_THEME_RECIPES`. Stats and Offer forbid invented numbers and deals.
+     - The copy is v1-style: a 3-6 word headline, an optional subline of up to 7 words, a 2-3 word CTA, and one art-direction sentence for the scene. The copywriter also picks a `type` per product: bold (everyday, tech, food, drinks), condensed (sport, energy, streetwear) or elegant (beauty, fragrance, jewellery, fashion, interiors).
+     - All ten use the new **Banner** layout: the headline, subline and CTA centred low on a fade of a deep shade of the colour. The face follows the type style. The colour is a real brand colour (`chromaticColors` drops black, white and greys), else the product's own colour from the photo. Elegant gets an outlined button. The headline is capped at 25% of the frame height. The words are still set by code, so spelling is always exact.
+     - The retired v2 themes (problem-fix, bold-offer, lifestyle) are switched off by migration `20261115130000_v2_ad_themes_v1.sql`, and their layouts stay for old jobs. Known gap: a hyphenated word ("ICE-COLD") can break at the hyphen.
+     - First live test (3 Product Showcase ads, Acme Charge) was clean, but the see-through fade put the headline over the can's label. Now the text sits on solid colour, with a short fade above it (like v1's bottom panel). The photo brief asks for the product at about 40% of the frame height, inside the top 60%. If the CTA colour is too close to the band, it uses a lighter step of the product colour.
+     - **Second live test (mixed themes):** the solid band hid the can's label, because the image model still put the product low, and the three ads looked alike. So the Banner is now **photo above a panel** (Sufyan's pick). The photo fills only the area above the panel and is asked for in that shape (`bannerFrame`: 3:2 on 1:1, 5:4 on 4:5, 1:1 on 9:16; on 16:9 a square photo on the left with the panel on the right). The panel continues the photo's own edge colour (`photoBackdrop` with an edge), else a deep shade of the product colour. The text colour follows the panel. Each ad in a batch gets a different scene look (`SCENE_MOODS`). The copy may not invent shipping, delivery or guarantee claims.
+     - **Third live test (photo above a panel):** every label showed in full, and the scenes and panels varied. But headlines came out at about half of v1's size. Now the 1:1 photo is 16:10, which leaves the panel room for two lines. The subline and button are smaller, and the panel runs closer to the bottom edge (except in the story safe zone). Headlines can reach 13% of the width. Testimonial headlines get curly quotation marks (`quoteHeadline`).
+     - **Several themes in one batch:** with more than one ad, the picker allows up to one theme per ad (`inputs.themeIds`). The ads take the themes in turn (`adThemeOrder`), with one copy call per theme.
+   - **Back to one look per theme (2026-11-16):** with the Banner on all ten, a test batch of four themes came out identical, and Before / After didn't look like one. `THEME_LAYOUTS` now gives each theme its own A and B layout (see V2_NEXT_SESSION 5h). Each ad also gets post copy (primary text, headline, description).
+8. **Phase 3, Edit text:** on the result screen, change the headline, subline, CTA or layout and re-render from `{n}-photo.png` for free. This is the editable overlay the backend plan listed as later.
+   - **Built 2026-11-17, not yet tried live.** "Edit text · free" on the result page of any composed ad opens a dialog: headline, subline, button and, when the theme has two layouts that suit the frame, a layout switch. A live preview re-sets the words over the clean photo in the browser; Save stores the new JPEG as `{n}-e{time}.jpg` (the previous edit's file is removed, the first `{n}.jpg` is kept) and updates `copy` (headline, subline, cta, layout). No AI, no credits, no database change.
+   - Rules (`src/lib/v2/ad-edit.ts`, shared by browser and server, 13 tests): an ad switches only between its theme's own A and B layouts (B2B themes use their consumer theme's pair; a testimonial without a real review never gets Quote or Note). A Banner stays a Banner and nothing else becomes one, because the Banner's photo is made in a different shape. A quote of a real review keeps words from that review, so editing can't put new words in a customer's mouth. The server (`editAd`) recomputes the allowed layouts and the words and refuses anything else.
+   - The job now signs each composed ad's clean photo and returns it as `output.edit` with the design, theme and allowed layouts.
+   - **Live test 2026-11-18 passed** (B2B Proof ad, Magazine → Poster, button "Request a quote", saved free as `2-e….jpg`). Fix from it: the Poster's solid header hid the lamp head of a photo composed for Magazine. The row now keeps `copy.photoLayout` (the layout the photo was made for) on the first edit, and the Poster over another layout's photo uses a dark see-through scrim instead of solid colour (`posterScrim`, 2 tests).
+
+## 6. What doesn't change
+
+- Credits and cost: still one text call and one image per ad.
+- The data seam (`src/v2/data/api.ts`), the result screen, Download, Assets and Save.
+- Photo Studio. It never had text and keeps its current prompts.
+- The tables. The new data fits in the existing `copy` jsonb and a file-name convention.
+
+## 7. Open questions
+
+- ~~Is a third font family (a script or handwriting face) worth it for the "Note" testimonial layout?~~ Used Caveat (one 60 KB file); easy to drop if the Note looks off live.
+- ~~Should Free-plan ads carry a small "Made with Replix" mark?~~ **Decided 2026-11-08: no mark on any plan.**
+- Do we offer layout choice in the studio, or keep it automatic per theme and let people switch on the result screen (phase 3)?

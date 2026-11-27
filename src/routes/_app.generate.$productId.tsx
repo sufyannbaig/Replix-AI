@@ -1,18 +1,8 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { setProductIntake } from "@/lib/product-intake";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/* Old v1 route (v1 generate → Ad Studio), kept so links and bookmarks still land somewhere. */
 export const Route = createFileRoute("/_app/generate/$productId")({
-  component: GenerateProductRedirect,
+  beforeLoad: () => {
+    throw redirect({ to: "/ad-studio", replace: true });
+  },
 });
-
-// Legacy route — hand the product to /create via the intake contract.
-function GenerateProductRedirect() {
-  const { productId } = Route.useParams();
-
-  useEffect(() => {
-    if (productId) setProductIntake({ kind: "shopify", handle: productId });
-  }, [productId]);
-
-  return <Navigate to="/create" replace />;
-}

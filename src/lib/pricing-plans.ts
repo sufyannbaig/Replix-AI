@@ -24,29 +24,29 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
   {
     key: "free",
     name: "Free",
-    desc: "Try Replix AI — 10 ads free",
+    desc: "Try Replix AI with free credits",
     price: 0,
     ads: 10,
     features: [
-      "10 AI ad generations",
-      "AI ad creatives",
+      "10 free credits",
+      "Photos and ads (video on paid plans)",
       "AI captions & hooks",
       "Basic creative styles",
       "Instagram/Facebook preview",
     ],
-    cta: "Create 10 Free Ads",
+    cta: "Start free",
     highlight: false,
-    label: "10 Free Ads",
+    label: "Free",
   },
   {
     key: "starter",
     name: "Starter",
-    desc: "For small Shopify brands",
+    desc: "For new brands getting started",
     price: 9.99,
     wasPrice: 19.99,
     ads: 30,
     features: [
-      "30 AI generations/month",
+      "30 credits a month",
       "All creative styles",
       "Edit captions & hooks",
       "Basic Brand DNA",
@@ -58,12 +58,12 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
   {
     key: "pro",
     name: "Pro",
-    desc: "For growing Shopify brands",
+    desc: "For growing brands",
     price: 29,
     wasPrice: 59,
     ads: 100,
     features: [
-      "100 AI generations/month",
+      "100 credits a month",
       "Advanced Brand DNA",
       "Multiple creative concepts",
       "Premium creative styles",
@@ -81,7 +81,7 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     wasPrice: 99,
     ads: 300,
     features: [
-      "300 AI generations/month",
+      "300 credits a month",
       "Advanced Brand DNA",
       "Multiple products",
       "Unlimited access to available creative styles",
@@ -101,7 +101,7 @@ export function formatPlanPrice(price: number): string {
 export function pricingSummary(): string {
   return PRICING_PLANS.map(
     (p) =>
-      `${p.name} — ${formatPlanPrice(p.price)}${p.key === "free" ? " (one-off 10 free ads, no subscription)" : "/month"}${
+      `${p.name} — ${formatPlanPrice(p.price)}${p.key === "free" ? " (one-off 10 free credits, no subscription)" : "/month"}${
         p.label ? ` [${p.label}]` : ""
       }: ${p.features.join("; ")}`,
   ).join("\n");

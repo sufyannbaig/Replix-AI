@@ -1,0 +1,484 @@
+import type { TakeInput } from "@/lib/v2/one-take";
+/**
+ * Domain types for the Replix 2.0 app. These describe the shapes the UI needs; the
+ * backend will be adapted to return them (see ./api.ts for the single seam to replace).
+ */
+
+export type PlanId = "free" | "starter" | "pro" | "scale";
+
+export type BrandKit = {
+  id: string;
+  name: string;
+  website: string | null;
+  /** Primary logo first; extra variants (light, mono) after it. */
+  logos: string[];
+  /** Hex colours, primary first. */
+  colors: string[];
+  /** Font family names. A family with a file in `fontFiles` is an upload; else a Google font. */
+  fonts: { heading: string; body: string } | null;
+  /** Signed links to uploaded font files, by role. */
+  fontFiles?: { heading?: string; body?: string };
+  toneTags: string[];
+  tone: string | null;
+  audience: string | null;
+  images: string[];
+  isComplete: boolean;
+  /** The account's default brand: used for products with no brand of their own. */
+  isDefault: boolean;
+  /** What's stored (storage paths or https links), for the editor to save back unchanged. */
+  stored?: { logos: string[]; fontFiles?: { heading?: string; body?: string } };
+};
+
+/** Convenience for places that only need the first logo. */
+export function brandLogo(kit: BrandKit) {
+  return kit.logos[0] ?? null;
+}
+
+/** The brand a product uses: its own kit, else the default kit (listed first), else none. */
+export function brandForProduct(
+  kits: BrandKit[],
+  product: { brandKitId?: string | null } | null,
+): BrandKit | null {
+  return (
+    kits.find((k) => k.id === product?.brandKitId) ??
+    kits.find((k) => k.isDefault) ??
+    kits[0] ??
+    null
+  );
+}
+
+export type CreationKind = "ugc" | "product-short" | "photoshoot" | "ad" | "concept";
+
+export type CommunityCreation = {
+  id: string;
+  kind: CreationKind;
+  imageUrl: string;
+  /** UGC and Shorts cards play this clip on hover. */
+  videoUrl?: string;
+  /** Natural aspect ratio (width / height) so the masonry grid can reserve space. */
+  aspect: number;
+  title: string;
+};
+
+export type PhotoTemplateCategory =
+  "with-model" | "without-model" | "studio" | "lifestyle" | "flat-lay";
+
+export type PhotoTemplate = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  categories: PhotoTemplateCategory[];
+  isPro: boolean;
+};
+
+export type AspectRatio = "1:1" | "4:5" | "9:16" | "16:9";
+
+export type ProductSource = "shopify" | "upload";
+
+export type Product = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  source: ProductSource;
+  description?: string;
+  /** Formatted for display, e.g. "$34.99". */
+  price?: string;
+  /** ISO timestamp; used to order "Recent uploads". */
+  createdAt: string;
+  /** The product's brand; missing or null means the account's default brand. */
+  brandKitId?: string | null;
+  /** Shopify products: the store they come from (its brand applies to all of them). */
+  shopDomain?: string;
+};
+
+/**
+ * Give a Shopify store's products the store's brand. `stores` maps a shop domain to its brand
+ * (null = default). Products from other stores, and uploads, are left as they are.
+ */
+export function applyStoreBrands(
+  list: Product[],
+  stores: Record<string, string | null>,
+): Product[] {
+  return list.map((p) =>
+    p.source === "shopify" && p.shopDomain !== undefined && p.shopDomain in stores
+      ? { ...p, brandKitId: stores[p.shopDomain] }
+      : p,
+  );
+}
+
+export type PieceKind = "scene" | "prop" | "character" | "style";
+
+/** A pre-made (or user-uploaded) building block for Photo Studio's piece-by-piece mode. */
+export type PieceOption = {
+  id: string;
+  kind: PieceKind;
+  name: string;
+  imageUrl: string;
+  isPro: boolean;
+  /** Cut-out props are shown on a solid colour in the summary panel. */
+  background?: string;
+  /** Set on the user's own uploads; everything else is Replix made. */
+  owner?: "yours";
+};
+
+/** Result of the AI product analysis shown in Ad Studio. */
+export type ProductInsights = {
+  painPoints: string[];
+  adAngles: string[];
+};
+
+/** v1's ten themes; problem-fix, bold-offer and lifestyle are retired v2 themes old jobs use. */
+export type AdThemeId =
+  | "showcase"
+  | "bold-claim"
+  | "feature-benefit"
+  | "headline"
+  | "offer-sale"
+  | "problem-solution"
+  | "before-after"
+  | "stats"
+  | "testimonial"
+  | "us-vs-them"
+  | "b2b-problem"
+  | "b2b-proof"
+  | "b2b-quote"
+  | "b2b-old-way"
+  | "b2b-screen"
+  | "problem-fix"
+  | "bold-offer"
+  | "lifestyle";
+
+/** Who the ad is for: shoppers (B2C, the default) or business buyers (B2B). */
+export type AdAudience = "b2c" | "b2b";
+
+/** The buttons a B2B ad can carry. The user picks one; the copy model never invents it. */
+export const B2B_CTAS = [
+  "Book a demo",
+  "Get a quote",
+  "Start free trial",
+  "Download the guide",
+  "Contact sales",
+  "Learn more",
+] as const;
+
+export type AdTheme = {
+  id: AdThemeId;
+  name: string;
+  description: string;
+  imageUrl: string;
+};
+
+export type GenerationKind = "photo" | "ad" | "video";
+
+/** A finished generation the user made (thumbnail for videos). */
+export type Generation = {
+  id: string;
+  kind: GenerationKind;
+  title: string;
+  thumbnailUrl: string;
+  createdAt: string;
+  /** Set for generations made in this session; opens their result page. */
+  jobId?: string;
+  /** The output behind the thumbnail, and its layout while the ad isn't composed yet. */
+  outputId?: string;
+  design?: AdDesign;
+};
+
+export type UgcStyle = "tutorial" | "review" | "unboxing" | "reveal" | "try-on";
+
+/** UGC templates bundle the creator, scene and transitions; the user adds product + script. */
+export type UgcTemplate = {
+  id: string;
+  name: string;
+  style: UgcStyle;
+  posterUrl: string;
+  videoUrl: string;
+  isPro: boolean;
+};
+
+export type ShortStyle = "studio" | "lifestyle" | "floating" | "spin" | "dramatic";
+
+/** Product Shorts templates fix scene, lighting and motion; the user only adds the product. */
+export type ShortTemplate = {
+  id: string;
+  name: string;
+  styles: ShortStyle[];
+  posterUrl: string;
+  videoUrl: string;
+  isPro: boolean;
+};
+
+export type AssetKind = "video" | "photo" | "ad" | "product" | "character" | "scene" | "style";
+
+/** One item in the Assets library: a generation or something the user uploaded. */
+export type AssetItem = {
+  id: string;
+  kind: AssetKind;
+  origin: "generation" | "upload";
+  title: string;
+  /** Image, or the first frame of a video. */
+  thumbnailUrl: string;
+  /** Finished videos: the mp4. */
+  videoUrl?: string;
+  createdAt: string;
+  /** Generated ads only: the output, and its layout while it isn't composed yet. */
+  outputId?: string;
+  design?: AdDesign;
+  /** Generations: the job (its result page), studio, frame and, for ads, the post copy. */
+  jobId?: string;
+  studio?: StudioKey;
+  aspect?: AspectRatio;
+  post?: GenerationOutput["post"];
+};
+
+export type HelpCategory = "getting-started" | "credits-billing" | "studios";
+
+/** One Help & Support answer. Categories match the three topic cards on /help. */
+export type HelpFaq = {
+  id: string;
+  category: HelpCategory;
+  question: string;
+  answer: string;
+};
+
+/** Which studio a generation came from (Video Studio has three). */
+export type StudioKey = "photo" | "ad" | "ugc" | "shorts" | "concept";
+
+/** A Library piece the user picked (Replix made or their own upload). */
+export type PieceRef = { id: string; kind: PieceKind | "pose"; name: string; imageUrl: string };
+
+/**
+ * A file the user added in a studio. `url` is a blob: URL until the generation starts; the
+ * server function uploads it to the `uploads` bucket and replaces `url` with `path`.
+ */
+/** `pieceId`: a Library piece picked in an upload slot; the server loads it as a piece. */
+export type UploadRef = {
+  name: string;
+  url?: string;
+  path?: string;
+  isVideo?: boolean;
+  pieceId?: string;
+};
+
+/** Piece By Piece / Build It Yourself camera step: how the product sits in the shot. */
+export type ShotSize = "small" | "medium" | "large";
+export type ShotRow = "top" | "middle" | "bottom";
+export type ShotColumn = "left" | "center" | "right";
+export type ShotAngle = "eye" | "above" | "top-down" | "low";
+export type ShotLight = "scene" | "daylight" | "golden" | "studio" | "moody";
+export type ShotSettings = {
+  size: ShotSize;
+  position: `${ShotRow}-${ShotColumn}`;
+  angle: ShotAngle;
+  light: ShotLight;
+};
+
+/**
+ * What the server needs to build each studio's prompt, on top of product, aspect and count.
+ * Template and theme ids match `templates.id` in the database.
+ */
+export type GenerationInputs =
+  | { studio: "photo"; mode: "templates"; templateId: string }
+  | {
+      studio: "photo";
+      mode: "piece";
+      scene: PieceRef;
+      props: PieceRef[];
+      character: PieceRef | null;
+      pose: PieceRef | null;
+      shot?: ShotSettings;
+      /** The words on the product as the user confirmed them; read from the photo when absent. */
+      label?: string[];
+    }
+  | {
+      studio: "photo";
+      mode: "diy";
+      scene: UploadRef;
+      props: UploadRef[];
+      character: UploadRef | null;
+      pose: UploadRef | null;
+      shot?: ShotSettings;
+      label?: string[];
+    }
+  | {
+      /** Edit a finished photo: the change in words, optionally at a tapped spot (0 to 1). */
+      studio: "photo";
+      mode: "edit";
+      outputId: string;
+      instruction: string;
+      point?: { x: number; y: number };
+    }
+  | {
+      studio: "ad";
+      /** The first (or only) theme. */
+      themeId: AdThemeId | null;
+      /** When a batch mixes themes: every picked theme, in the order the ads take them. */
+      themeIds?: AdThemeId[];
+      /** A real customer review the user pasted, for the Testimonial and Customer quote themes. */
+      review?: string;
+      /** Shoppers (default) or business buyers. */
+      audience?: AdAudience;
+      /** B2B: the button the user picked (one of B2B_CTAS). */
+      cta?: string;
+      /** Proof number (B2B) and Stat (shoppers) themes: a real figure the user typed in. */
+      proof?: string;
+      /** Offer / Sale theme: the user's real offer ("20% off this weekend"). */
+      offer?: string;
+    }
+  | { studio: "ugc"; mode: "templates"; templateId: string; script: string }
+  | {
+      studio: "ugc";
+      mode: "custom";
+      script: string;
+      character: UploadRef | null;
+      scene: UploadRef | null;
+      transition: string;
+    }
+  | { studio: "shorts"; mode: "templates"; templateId: string }
+  | {
+      studio: "shorts";
+      mode: "custom";
+      scene: UploadRef | null;
+      motionReference: UploadRef | null;
+      animation: string;
+    }
+  | {
+      studio: "concept";
+      concept: string;
+      climax: string;
+      emotion: string;
+      script: string;
+      character: UploadRef | null;
+      scene: UploadRef | null;
+      reference: UploadRef | null;
+      /** Preview-only model test: the whole ad in one generation (src/lib/v2/one-take.ts). */
+      take?: TakeInput;
+    };
+
+/** Everything a studio sends when the user clicks Generate. */
+export type GenerationRequest = {
+  studio: StudioKey;
+  kind: GenerationKind;
+  /** Studio-specific choices; optional only so jobs saved before this field still load. */
+  inputs?: GenerationInputs;
+  product: { id: string; name: string; imageUrl: string };
+  /** Template, theme or scene the user picked, shown on the result screen. */
+  style?: { label: string; imageUrl?: string };
+  aspect: AspectRatio;
+  /** Number of images or ads; videos are always 1. */
+  count: number;
+  seconds?: number;
+  note?: string;
+  cost: number;
+  /** The brand this generation uses; missing means the product's brand, then the default. */
+  brandKitId?: string;
+  /** Draw the brand's logo on designed ads (on by default; off when the brand has none). */
+  showLogo?: boolean;
+};
+
+export type GenerationStatus = "queued" | "running" | "done" | "failed";
+
+export type GenerationOutput = {
+  id: string;
+  /** Image, or the poster frame for a video. */
+  imageUrl: string;
+  videoUrl?: string;
+  savedToAssets: boolean;
+  /**
+   * Designed ads whose type isn't set yet: `imageUrl` is the text-free photo and the
+   * browser composes the finished ad from this (src/v2/data/compose-ad.ts).
+   */
+  design?: AdDesign;
+  /**
+   * Composed designed ads: what Edit text needs to set new words over the clean photo
+   * (`photoUrl`), and the layouts this ad may switch to (src/lib/v2/ad-edit.ts).
+   */
+  edit?: {
+    design: AdDesign;
+    photoUrl: string;
+    themeId: string | null;
+    review: string | null;
+    layouts: import("@/lib/v2/ad-layouts").AdLayoutId[];
+  };
+  /** Ads: the words to post with it (Meta's primary text, headline, description, button). */
+  post?: { primary: string; headline: string; description: string; cta: string };
+  /** What the creator or narrator says in a video: shown as the script and captions. */
+  spoken?: string;
+};
+
+export type AdDesign = {
+  layout: import("@/lib/v2/ad-layouts").AdLayoutId;
+  /** The layout the photo was composed for, when Edit text switched to another. */
+  photoLayout?: import("@/lib/v2/ad-layouts").AdLayoutId;
+  aspect: AspectRatio;
+  copy: { headline: string; subline: string; cta: string };
+  /** The Banner's type voice for this product (see AdLayoutInput.typeStyle). */
+  typeStyle?: "bold" | "condensed" | "elegant";
+  /** Brand colours. Older ads also carry the accent here. */
+  colors?: string[];
+  /**
+   * The copywriter's colour from the product. With no brand colours the browser reads the
+   * accent from the finished photo, using this as the hint (photoAccent in ad-layouts).
+   */
+  accent?: string;
+  labels?: string[];
+  /**
+   * The brand's fonts (family names). `files` are uploaded fonts: storage paths from the
+   * server, signed links once the browser resolves them. Missing roles keep layout fonts.
+   */
+  fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+  /**
+   * The brand logo to draw (only when "Show logo" was on). Storage paths or https links from
+   * the server; the browser swaps in signed links. `light` is the version for dark spots.
+   */
+  logo?: { main: string; light?: string };
+};
+
+/** A generation run, polled by the result screen until it is done or failed. */
+export type GenerationJob = {
+  id: string;
+  request: GenerationRequest;
+  status: GenerationStatus;
+  /** 0 to 1 while running. */
+  progress: number;
+  createdAt: string;
+  outputs: GenerationOutput[];
+  /** Server jobs that failed: why, in words safe to show. */
+  error?: string | null;
+  /** A one-take dry run: the plan and opening still, before any paid video. */
+  takeCheck?: {
+    still: string;
+    shots: { seconds: number; action: string }[];
+    line: string;
+    wardrobe: string;
+    faults: string[];
+  };
+  /** Concept ads: the stills waiting for the user's approval before any video is made. */
+  review?: {
+    frames: string[];
+    /** `motion` is how the still will move; empty until it is planned. */
+    shots: { beat: string; frame: string; motion: string }[];
+    redosLeft: number;
+    /** Per still: what must be fixed before video; empty when it is good. */
+    issues?: string[][];
+    /** Exactly what goes to fal for sound on approval; the user can edit it first. */
+    sound?: {
+      voiceover: string;
+      voice: string;
+      music: string;
+      seconds: number;
+      readSeconds: number;
+      /** The end card's brand line. */
+      tagline?: string;
+    };
+    /** The brand the end card is set in (font files and logo as storage paths). */
+    brand?: {
+      name?: string;
+      colors?: string[];
+      fonts?: { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+      logo?: { main: string; light?: string };
+    };
+    /** Which still the end card sits on (the product hero). */
+    heroFrame?: number;
+  };
+};

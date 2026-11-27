@@ -1,0 +1,152 @@
+/**
+ * The v2 price table, in credits. The server computes every job's cost from here (never
+ * from the number the browser sends); the studios use the same functions for their
+ * Generate button labels. Change prices here only. See docs/V2_GENERATION_COSTS.md.
+ */
+import type { GenerationKind } from "./types";
+
+export const PHOTO_CREDITS_PER_IMAGE = 2;
+export const AD_CREDITS_PER_IMAGE = 2;
+/**
+ * Concept ads by length. Raised 2026-11-26 from 10 / 20, first to 15 / 25 and then to 18 / 30
+ * once the 4-shot format with its end card measured $2.80-3.00 per 15 s ad live (stills made
+ * twice and reviewed, 4 clips, music billed per started minute). 18 credits is $3.54 on Scale
+ * ($0.197 a credit). See docs/V2_GENERATION_COSTS.md, last section.
+ */
+export const CONCEPT_CREDITS_BY_SECONDS: Record<number, number> = { 15: 18, 30: 30 };
+/** Lengths not in the table: charged per started 15 seconds. */
+export const VIDEO_CREDITS_PER_15S = 15;
+/**
+ * Product Shorts are priced by length: about 1 credit a second plus 3 for the first frame
+ * (decided 2026-11-16 after the model test). On Kling 3 Pro this keeps at least half of what
+ * the user pays on every plan, Scale included (docs/V2_GENERATION_COSTS.md section 4).
+ * Lengths not listed fall back to the same rule.
+ */
+export const SHORTS_CREDITS_BY_SECONDS: Record<number, number> = { 5: 8, 8: 11, 10: 13 };
+export const SHORTS_FRAME_CREDITS = 3;
+/**
+ * AI UGC is talking video with a voice, the most expensive model call (about $0.16 a
+ * second). It is priced at about 2 credits a second so it earns money on every plan,
+ * Scale included. Lengths not listed fall back to 2 credits a second.
+ */
+export const UGC_CREDITS_BY_SECONDS: Record<number, number> = { 8: 15, 15: 30 };
+export const UGC_CREDITS_PER_SECOND = 2;
+
+export const MAX_IMAGES_PER_JOB = 4;
+
+/**
+ * Brand kits each plan may hold. The database enforces the same numbers
+ * (v2_brand_kit_limit in supabase/migrations/20261107120000_v2_brand_kits.sql).
+ */
+export const BRAND_KIT_LIMITS: Record<string, number> = { free: 1, starter: 1, pro: 3, scale: 10 };
+
+export function brandKitLimit(plan: string | null | undefined) {
+  return BRAND_KIT_LIMITS[plan ?? "free"] ?? 1;
+}
+
+/** Plans that may upload their own font files. Free uses Google Fonts only (decided 2026-11-08). */
+export const FONT_UPLOAD_PLANS = ["starter", "pro", "scale"];
+
+export function canUploadFonts(plan: string | null | undefined) {
+  return FONT_UPLOAD_PLANS.includes(plan ?? "free");
+}
+
+type BrandFonts = { heading?: string; body?: string; files?: { heading?: string; body?: string } };
+
+/**
+ * The brand fonts an ad may use on this plan. Without font uploads (Free), a role set from an
+ * uploaded file is dropped, so the layout's own font is used; Google Fonts stay.
+ */
+export function brandFontsForPlan(
+  fonts: BrandFonts | null | undefined,
+  plan: string | null | undefined,
+): BrandFonts | undefined {
+  if (!fonts) return undefined;
+  if (canUploadFonts(plan)) return fonts;
+  const { files, ...names } = fonts;
+  return {
+    ...(names.heading && !files?.heading ? { heading: names.heading } : {}),
+    ...(names.body && !files?.body ? { body: names.body } : {}),
+  };
+}
+
+/**
+ * Video lengths each studio offers, in seconds. Kept short on purpose: the models make
+ * 5–10 s clips, and every extra second costs us money (docs/V2_GENERATION_COSTS.md).
+ * The phase 2 server rejects any other length.
+ */
+export const VIDEO_LENGTHS = {
+  shorts: [5, 8, 10],
+  ugc: [8, 15],
+  concept: [15, 30],
+} as const;
+
+export function photoGenerationCost(imageCount: number) {
+  return imageCount * PHOTO_CREDITS_PER_IMAGE;
+}
+
+export function adGenerationCost(adCount: number) {
+  return adCount * AD_CREDITS_PER_IMAGE;
+}
+
+export function videoGenerationCost(seconds: number) {
+  return CONCEPT_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds / 15) * VIDEO_CREDITS_PER_15S;
+}
+
+export function shortsGenerationCost(seconds: number) {
+  return SHORTS_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds) + SHORTS_FRAME_CREDITS;
+}
+
+export function ugcGenerationCost(seconds: number) {
+  return UGC_CREDITS_BY_SECONDS[seconds] ?? Math.ceil(seconds * UGC_CREDITS_PER_SECOND);
+}
+
+export function generationCost(
+  kind: GenerationKind,
+  count: number,
+  seconds?: number,
+  studio?: string,
+) {
+  if (kind === "video") {
+    if (studio === "ugc") return ugcGenerationCost(seconds ?? 15);
+    if (studio === "shorts") return shortsGenerationCost(seconds ?? 5);
+    return videoGenerationCost(seconds ?? 15);
+  }
+  return kind === "ad" ? adGenerationCost(count) : photoGenerationCost(count);
+}
+
+/**
+ * Video studios (Shorts, UGC, Concept) are for paid plans. Free accounts get their 10 credits
+ * for photos and ads only (decided 2026-11-22): a free video costs us about $0.71 or more.
+ */
+export const VIDEO_PLAN_MESSAGE =
+  "Video is on paid plans. Upgrade to make Shorts, UGC and Concept ads.";
+
+export function canMakeVideo(plan: string | null | undefined) {
+  return (plan ?? "free") !== "free";
+}
+
+/**
+ * One-off credit packs (Stripe Checkout, payment mode). Each credit costs more than on Pro
+ * ($0.29), so a plan stays the better deal; prices proposed 2026-11-22, for Ben to confirm.
+ * Pack credits carry over a renewal (user_credits.pack_credits).
+ */
+export const CREDIT_PACKS = [
+  { credits: 100, usd: 39 },
+  { credits: 500, usd: 169 },
+  { credits: 1000, usd: 299 },
+] as const;
+export type CreditPackSize = (typeof CREDIT_PACKS)[number]["credits"];
+
+export function creditPack(credits: number) {
+  return CREDIT_PACKS.find((p) => p.credits === credits) ?? null;
+}
+
+/**
+ * Credits after a plan renewal or downgrade: the new plan's allowance plus what's left of
+ * bought packs. Plan credits are spent first, so the unused pack part is min(pack, credits).
+ */
+export function creditsAfterReset(planCredits: number, current: number, packCredits: number) {
+  const keep = Math.max(0, Math.min(packCredits, current));
+  return { credits: planCredits + keep, packCredits: keep };
+}
