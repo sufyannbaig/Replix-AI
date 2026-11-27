@@ -6,7 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { isSafePublicUrl, readBrand, readProduct } from "./page-meta";
+import { isSafePublicUrl, readBrand, readProduct, type PageBrand } from "./page-meta";
 import type { BrandKitRow, V2Database } from "@/v2/data/db-types";
 
 const CHAT_MODEL = "google/gemini-3.8-flash";
@@ -53,6 +53,20 @@ async function fetchPublicHtml(raw: string): Promise<{ html: string; url: URL }>
   throw new Error("That link can't be opened. Use a public https web address.");
 }
 
+/** An empty read, for a site that blocked us. */
+function blockedBrand(): PageBrand {
+  return {
+    siteName: null,
+    description: null,
+    logoUrl: null,
+    themeColor: null,
+    cssColors: [],
+    fonts: [],
+    images: [],
+    text: "",
+  };
+}
+
 const UrlInput = z.object({ url: z.string().trim().min(4).max(2000) });
 
 /** Name, description, main image and price from a product page (Shopify or any store). */
@@ -83,6 +97,7 @@ const BrandInput = z.object({
 });
 
 type BrandAi = {
+  unknown?: boolean;
   name?: string;
   colors?: string[];
   headingFont?: string;
@@ -102,8 +117,26 @@ export const extractBrandKit = createServerFn({ method: "POST" })
     const { spendDailyAllowance } = await import("./generation.server");
     await spendDailyAllowance(context.userId, "v2_brand_extract", 20);
     const site = /^https?:\/\//i.test(data.website) ? data.website : `https://${data.website}`;
-    const { html, url } = await fetchPublicHtml(site);
-    const brand = readBrand(html, url);
+    /*
+     * Big brands (adidas.com, for one) block automatic visits: a 403, or the request hangs
+     * until our timeout. Then the AI builds the kit from what it knows about the brand, and
+     * says so when it doesn't know it.
+     */
+    let url: URL;
+    let brand: PageBrand;
+    let blocked = false;
+    try {
+      const page = await fetchPublicHtml(site);
+      url = page.url;
+      brand = readBrand(page.html, url);
+    } catch (err) {
+      const safe = isSafePublicUrl(site);
+      if (!safe) throw err;
+      url = safe;
+      brand = blockedBrand();
+      blocked = true;
+    }
+    const host = url.hostname.replace(/^www\./, "");
 
     const { gatewayChat, parseJsonBlock } = await import("@/lib/ai-gateway.server");
     const raw = await gatewayChat({
@@ -117,7 +150,11 @@ export const extractBrandKit = createServerFn({ method: "POST" })
         },
         {
           role: "user",
-          content: `Website: ${url.hostname}
+          content: blocked
+            ? `The website ${host} blocks automatic visits, so we couldn't read it. Build the brand kit from what you reliably know about the brand at this domain: its real colours, typefaces (or the closest Google Fonts), tone and audience. If you don't recognise this brand with confidence, reply {"unknown": true} and nothing else.
+
+Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary first), "headingFont": font name, "bodyFont": font name, "toneTags": 3 to 5 one-word tone tags, "tone": 2 sentences on how the brand sounds, "audience": 1 to 2 sentences on who it sells to}.`
+            : `Website: ${url.hostname}
 Site name: ${brand.siteName ?? "unknown"}
 Meta description: ${brand.description ?? "none"}
 Theme colour: ${brand.themeColor ?? "none"}
@@ -131,6 +168,11 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
       ],
     });
     const ai = parseJsonBlock<BrandAi>(raw);
+    if (blocked && (ai.unknown || !ai.name)) {
+      throw new Error(
+        `${host} blocks automatic visits, so we couldn't read it. Try another page of your site, or choose "I don't have a website" and add your brand by hand.`,
+      );
+    }
 
     const colors = (ai.colors ?? [])
       .filter((c) => typeof c === "string" && HEX.test(c.trim()))
@@ -138,7 +180,7 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
       .slice(0, 6);
     const row = {
       name: (ai.name || brand.siteName || url.hostname).slice(0, 120),
-      website: url.hostname.replace(/^www\./, ""),
+      website: host,
       logos: brand.logoUrl ? [brand.logoUrl] : [],
       colors,
       fonts:
