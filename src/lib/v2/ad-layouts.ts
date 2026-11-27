@@ -856,10 +856,14 @@ export function posterFit(
 /** Bold offer: huge condensed type on the accent colour, which fades into a full-bleed photo. */
 function poster(ctx: Ctx): AdNode {
   /* The logo sits top centre; everything else moves down by its height. */
-  const logoRoom = ctx.logo ? logoHeight(ctx) + 20 : 0;
+  const words = ctx.copy.headline.toUpperCase();
+  /* Accented capitals (CRÈME, ÉCLAT) rise above the cap height, into the logo's gap. */
+  const accented = /[\u00C0-\u00DE\u0100-\u017F]/.test(words);
+  const logoRoom = ctx.logo
+    ? logoHeight(ctx) + 20 + (accented ? Math.round(Math.min(ctx.width, ctx.height) * 0.025) : 0)
+    : 0;
   const textTop = ctx.top + logoRoom;
   const textW = ctx.width - ctx.pad * 2;
-  const words = ctx.copy.headline.toUpperCase();
   /* Edit text: a photo made for another layout may have the product up here (live, Poster
      over a Magazine photo hid the lamp head), so the field turns into a see-through scrim. */
   const seeThrough = !!ctx.photoFor && ctx.photoFor !== "poster";
@@ -1082,7 +1086,7 @@ function quote(ctx: Ctx): AdNode {
   const panelW = tall ? ctx.width : Math.round(ctx.width * 0.52);
   const panelH = tall ? Math.round(ctx.top + ctx.height * 0.36) : ctx.height;
   const textW = panelW - ctx.pad * 2;
-  const size = fitHeadline(ctx.copy.headline, textW, {
+  const fitted = fitHeadline(ctx.copy.headline, textW, {
     maxLines: 4,
     max: tall ? 96 : 76,
     min: 44,
@@ -1090,6 +1094,11 @@ function quote(ctx: Ctx): AdNode {
     measure: ctx.fit,
     tracking: -0.01,
   });
+  const textTop = tall ? ctx.top : Math.max(ctx.height * 0.14, ctx.pad + logoHeight(ctx) + 28);
+  /* Tall: the words end with the cream panel. Square/wide: above the button at its foot. */
+  const pillH = 32 + Math.round(32 * 0.62) * 2;
+  const textBottom = tall ? panelH - 20 : ctx.height - ctx.bottom - pillH - 28;
+  const { size, showSubline } = quoteFit(ctx, textW, textBottom - textTop, fitted);
   const photoBox = tall
     ? { left: 0, top: panelH, width: ctx.width, height: ctx.height - panelH }
     : { left: panelW, top: 0, width: ctx.width - panelW, height: ctx.height };
@@ -1132,7 +1141,7 @@ function quote(ctx: Ctx): AdNode {
         {
           position: "absolute",
           left: ctx.pad,
-          top: tall ? ctx.top : Math.max(ctx.height * 0.14, ctx.pad + logoHeight(ctx) + 28),
+          top: textTop,
           width: textW,
           display: "flex",
           flexDirection: "column",
@@ -1163,7 +1172,7 @@ function quote(ctx: Ctx): AdNode {
             },
             ctx.copy.headline,
           ),
-          ...(ctx.copy.subline
+          ...(ctx.copy.subline && showSubline
             ? [
                 el(
                   "div",
@@ -1193,6 +1202,37 @@ function quote(ctx: Ctx): AdNode {
   );
 }
 
+/**
+ * The Quote headline size that keeps the quote mark, headline and subline inside the cream
+ * panel: the fitted size if it fits, else smaller (to 30 px), else without the subline (it
+ * still goes out in the post copy). A word too wide for the panel also shrinks the type.
+ */
+export function quoteFit(
+  ctx: Pick<Ctx, "copy" | "fit">,
+  textW: number,
+  room: number,
+  fitted: number,
+) {
+  const words = ctx.copy.headline.trim().split(/\s+/).filter(Boolean);
+  const subLines = ctx.copy.subline ? estLines(ctx.copy.subline, textW, 30, 0.5) : 0;
+  const tall = (size: number, withSub: boolean) => {
+    const lines = estLines(ctx.copy.headline, textW, size, 0.4, ctx.fit);
+    const mark = size * 0.85 + 18;
+    const sub = withSub && subLines ? 18 + subLines * 30 * 1.35 : 0;
+    return mark + lines * size * 1.04 + sub;
+  };
+  const wordFits = (size: number) =>
+    !ctx.fit || words.every((w) => ctx.fit!(w, size) - size * 0.01 * w.length <= textW * 0.96);
+  for (const withSub of [true, false]) {
+    for (let size = fitted; size >= 30; size -= 2) {
+      if (wordFits(size) && tall(size, withSub) <= room) {
+        return { size, showSubline: withSub && subLines > 0 };
+      }
+    }
+  }
+  return { size: 30, showSubline: false };
+}
+
 /** Before / After: one photo composed as two halves, our own labels and divider. */
 function split(ctx: Ctx): AdNode {
   const [before, after] = ctx.labels?.length === 2 ? ctx.labels : ["Before", "After"];
@@ -1205,13 +1245,17 @@ function split(ctx: Ctx): AdNode {
     measure: ctx.fit,
     tracking: -0.01,
   });
+  /* The labels sit under the headline however many lines it really takes (a long one can
+     wrap to three at the smallest size and used to run into AFTER). */
+  const lines = estLines(ctx.copy.headline, textW, size, 0.56, ctx.fit);
+  const labelTop = ctx.top + lines * size * (ctx.fit ? 1.04 : 1) + size * 0.35;
   const label = (text: string, side: "left" | "right") =>
     el(
       "div",
       {
         position: "absolute",
         left: side === "left" ? ctx.pad : ctx.width / 2 + ctx.pad,
-        top: ctx.top + size * 2.35,
+        top: labelTop,
         display: "flex",
         padding: "10px 22px",
         borderRadius: 999,
@@ -1276,17 +1320,16 @@ function split(ctx: Ctx): AdNode {
         { position: "absolute", right: ctx.pad, bottom: ctx.bottom, display: "flex" },
         pill(ctx.copy.cta, ctx.accent, 32, ctx.body),
       ),
+      /* Bottom left, across from the button: centred, a long button ran into it. */
       ...(ctx.logo
         ? [
             el(
               "div",
               {
                 position: "absolute",
-                left: 0,
+                left: ctx.pad,
                 bottom: ctx.bottom,
-                width: ctx.width,
                 display: "flex",
-                justifyContent: "center",
               },
               logoMark(ctx, "photo", { left: 0, top: 0 }).map((n) => ({
                 ...n,
@@ -1633,7 +1676,7 @@ function stamp(ctx: Ctx): AdNode {
   const words = ctx.copy.headline.toUpperCase();
   /* The subline shares the badge, so the headline gets a little less room when there is one. */
   const room = ctx.copy.subline ? 0.84 : 1;
-  const size = fitHeadline(words, d * 0.7, {
+  const fitted = fitHeadline(words, d * 0.7, {
     maxLines: 3,
     max: Math.round(d * (ctx.fit ? 0.19 : 0.24) * room),
     min: 30,
@@ -1643,6 +1686,23 @@ function stamp(ctx: Ctx): AdNode {
   const ink = inkOn(ctx.accent);
   const ring = ink === "#FFFFFF" ? "rgba(255,255,255,0.55)" : "rgba(17,17,17,0.45)";
   const inner = Math.round(d * 0.88);
+  /* A round badge narrows at top and bottom, so the words must stay in its middle band:
+     a long subline is left to the post copy, and the headline shrinks until the block fits. */
+  const subSize = Math.max(20, Math.round(d * 0.05));
+  const subLines = ctx.copy.subline ? estLines(ctx.copy.subline, d * 0.6, subSize, 0.5) : 0;
+  const showSub = subLines > 0 && subLines <= 2;
+  const lineH = ctx.fit ? 1 : 0.92;
+  const blockH = (sz: number) =>
+    estLines(words, d * 0.7, sz, 0.52, ctx.fit) * sz * lineH +
+    (showSub ? d * 0.035 + subLines * subSize * 1.25 : 0);
+  /* Not below about 3.6% of the short side (smaller reads as a mistake); a single word too
+     wide for the badge still shrinks until it fits. */
+  const floor = Math.round(Math.min(ctx.width, ctx.height) * 0.036);
+  const wordTooWide = (sz: number) =>
+    !!ctx.fit && words.split(/\s+/).some((w) => ctx.fit!(w, sz) > d * 0.7 * 0.96);
+  let size = fitted;
+  while (size > floor && blockH(size) > inner * 0.72) size -= 2;
+  while (size > 22 && wordTooWide(size)) size -= 2;
   return el(
     "div",
     { display: "flex", position: "relative", width: ctx.width, height: ctx.height },
@@ -1692,14 +1752,14 @@ function stamp(ctx: Ctx): AdNode {
                   fontFamily: ctx.heading(FONT.condensed),
                   fontWeight: ctx.fit ? 800 : 400,
                   fontSize: size,
-                  lineHeight: ctx.fit ? 1 : 0.92,
+                  lineHeight: lineH,
                   color: ink,
                   textAlign: "center",
                   letterSpacing: ctx.fit ? 0 : 1,
                 },
                 words,
               ),
-              ...(ctx.copy.subline
+              ...(ctx.copy.subline && showSub
                 ? [
                     el(
                       "div",
@@ -1709,7 +1769,7 @@ function stamp(ctx: Ctx): AdNode {
                         maxWidth: Math.round(d * 0.6),
                         fontFamily: ctx.body,
                         fontWeight: 500,
-                        fontSize: Math.max(20, Math.round(d * 0.05)),
+                        fontSize: subSize,
                         lineHeight: 1.25,
                         color: ink,
                         opacity: 0.88,

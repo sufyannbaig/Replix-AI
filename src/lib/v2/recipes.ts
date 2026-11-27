@@ -81,6 +81,7 @@ const PHOTO_RULES = [
   "Photorealistic commercial product photography, natural physics, believable shadows and reflections.",
   "The product is the hero through focus, light and placement, never by being oversized: sharp, fully visible, not cropped, and at its true real-world size next to hands, people and objects.",
   "The product belongs in the photo: lit by the same light as the set (direction, colour, softness), with real contact shadows, reflections, matching colour grade, grain and depth of field. It must never look cut out and pasted in.",
+  "The set's light may tint it, but the product's own colour and material never change: silver stays silver (never gold or rose gold), white stays white.",
   "No added text, captions, watermarks, logos, borders or frames.",
   "Hands and faces anatomically correct if present.",
 ];
@@ -326,20 +327,34 @@ export const B2B_LAYOUT_THEME: Record<string, string> = {
 };
 export const isB2bTheme = (id: string | null | undefined) => !!id && id in B2B_LAYOUT_THEME;
 
-/** The Proof number story: the user's own figure when they typed one, else a hard fact. */
-export function proofStory(proof?: string | null) {
+/** Themes that lead with a number the user can type in (and never an invented one). */
+export const PROOF_THEMES = ["b2b-proof", "stats"];
+/** Themes that lead with the user's own offer (and never an invented deal). */
+export const OFFER_THEMES = ["offer-sale", "bold-offer"];
+
+/** The Proof number / Stat story: the user's own figure when they typed one, else a hard fact. */
+export function proofStory(proof?: string | null, themeId = "b2b-proof") {
   const real = proof?.replace(/\s+/g, " ").trim();
   return real
-    ? `One number that makes the case. The customer gave this real figure: "${real.replace(/"/g, "'")}". Build the headline around it exactly as given; don't change the number, add other numbers or exaggerate it.`
-    : AD_THEME_RECIPES["b2b-proof"].story;
+    ? `One number that makes the case. The customer gave this real figure: "${real.replace(/"/g, "'")}". The headline starts with that number, exactly as given, so it is the first thing read; don't change the number, add other numbers or exaggerate it.`
+    : AD_THEME_RECIPES[themeId].story;
 }
 
-/** The story the copy call gets for a theme, with the user's review or figure when given. */
-export function themeStory(brief: Pick<AdCopyBrief, "themeId" | "review" | "proof">) {
+/** The Offer / Sale story: the user's own offer when they typed one, else a true reason to buy now. */
+export function offerStory(offer?: string | null, themeId = "offer-sale") {
+  const real = offer?.replace(/\s+/g, " ").trim();
+  return real
+    ? `Deal-led urgency around the customer's real offer: "${real.replace(/"/g, "'")}". The headline states that offer exactly as given (the amount, price or code unchanged) in at most 6 words; don't add other deals, deadlines or terms.`
+    : AD_THEME_RECIPES[themeId].story;
+}
+
+/** The story the copy call gets for a theme, with the user's review, figure or offer when given. */
+export function themeStory(brief: Pick<AdCopyBrief, "themeId" | "review" | "proof" | "offer">) {
   const id = brief.themeId;
   if (!id || !AD_THEME_RECIPES[id]) return "";
   if (QUOTE_THEMES.includes(id)) return testimonialStory(brief.review, id);
-  if (id === "b2b-proof") return proofStory(brief.proof);
+  if (PROOF_THEMES.includes(id)) return proofStory(brief.proof, id);
+  if (OFFER_THEMES.includes(id)) return offerStory(brief.offer, id);
   return AD_THEME_RECIPES[id].story;
 }
 
@@ -416,8 +431,10 @@ export type AdCopyBrief = {
   audience?: string | null;
   /** B2B: the button the user picked; the copy must use exactly this. */
   cta?: string | null;
-  /** B2B Proof number: a real figure the user typed in. */
+  /** Proof number (B2B) and Stat themes: a real figure the user typed in. */
   proof?: string | null;
+  /** Offer / Sale: the user's real offer, used exactly as given. */
+  offer?: string | null;
   insights?: { painPoints: string[]; adAngles: string[] } | null;
   /** What the photo must leave room for (LAYOUT_PHOTO_BRIEF), so each scene suits the layout. */
   layoutBrief?: string;
@@ -536,7 +553,11 @@ export function adPhotoPrompt(
     "",
     "RULES",
     "- The product is reproduced exactly from its image: shape, colours, label and logo unchanged.",
+    "- Its colour and material stay true even under warm or coloured light and a matching set: silver stays silver (never gold or rose gold), white stays white, matte stays matte.",
+    "- Nothing is added to the product: no print, pattern, brand name, logo or stitching that isn't on it in its image.",
+    "- Take only the product from its image: any callouts, arrows, badges, captions or graphics around it there are left out.",
     "- The product is a hero, at least a third of the frame height, so every word on its label stays sharp and correct. Never shrink it into the background.",
+    "- It gets that size from the camera coming closer, never by growing it: next to hands, faces and furniture it keeps its real-world size (a ring fits a finger and is never as large as an ear).",
     "- NO text anywhere except what is printed on the product itself: no headline, captions, labels, buttons, logos, watermarks, badges, prices, speech bubbles or fake UI.",
     "- Signs, screens, books and packaging in the scene stay blank or unreadable.",
     "- Leave the calm area described in the composition truly empty: no objects, faces or bright highlights there.",

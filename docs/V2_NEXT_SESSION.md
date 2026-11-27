@@ -356,3 +356,21 @@ Details in `docs/V2_VIDEO_PLAN.md` 5f. Everything is on `v2` up to `5724c2e` and
 - Edit text: headline counter (n/60); the post headline follows an edited ad headline when
   they matched. "16:9 Wide" is now "16:9 Landscape". Generate button has an explicit name.
 - 404 page: logo, "Go to your dashboard" and a page title.
+
+## 19. Ad quality: themes, overlaps, product fidelity (27 Nov 2026)
+
+- **Stat** ads take the same optional "Your number" field as B2B Proof (`PROOF_THEMES`); the
+  headline starts with it, exactly as typed. **Offer / Sale** has a new optional "Your offer"
+  field (`inputs.offer`, `OFFER_THEMES`, `offerStory`), used word for word. Without them the
+  themes still never invent a figure or a deal. Testimonial still quotes only a pasted review.
+- **Layout overlaps**, checked with the offline harness (3,780 renders, scratchpad
+  layout-qa/run.mjs): Split's AFTER labels follow the headline's real line count and its logo
+  moved bottom-left (a long button ran into it); Quote picks a size that fits the cream panel
+  (`quoteFit`), dropping the subline last; Stamp shrinks its text to the badge's middle band
+  and drops a subline over 2 lines; Poster leaves room under the logo for accented capitals.
+  Severe (s5) cases went from 77 to 1 (Note 9:16, a 146 px² touch). Stamp's "headline small"
+  flags were there before and remain: the badge is small for long headlines.
+- **Product fidelity** rules added to the ad photo prompt (colour and metal kept under warm
+  light, nothing printed on the product that isn't on it, no callouts copied from the source,
+  real-world size kept next to hands and faces) and a colour rule to Photo Studio. Not tested
+  live: these change what the image model is asked, and need a few real runs to judge.

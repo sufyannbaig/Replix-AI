@@ -133,6 +133,8 @@ const Inputs = z.union([
     audience: z.enum(["b2c", "b2b"]).optional(),
     cta: str(30).optional(),
     proof: z.string().trim().max(200).optional(),
+    /** Offer / Sale: the user's real offer, used as given. */
+    offer: z.string().trim().max(120).optional(),
   }),
   z.object({
     studio: z.literal("ugc"),

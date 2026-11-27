@@ -6,6 +6,7 @@ import { ok, strictEqual, deepStrictEqual } from "node:assert";
 import {
   AD_THEME_IDS,
   AD_LAYOUT_IDS,
+  quoteFit,
   LAYOUT_ASPECTS,
   LAYOUT_PHOTO_BRIEF,
   THEME_LAYOUT,
@@ -298,4 +299,20 @@ describe("copy prompt with mixed layouts", () => {
     ok(t.includes(`Each ad is a photo composed like this: ${LAYOUT_PHOTO_BRIEF.quote}`));
     ok(!t.includes("Ad 1:"));
   });
+});
+
+test("quoteFit keeps a long quote inside its panel, dropping the subline last", () => {
+  const long = {
+    headline:
+      "The lightweight daily serum that keeps your skin calm, bright and hydrated all day long",
+    subline: "Hyaluronic serum for all-day hydration.",
+    cta: "Shop now",
+  };
+  const roomy = quoteFit({ copy: long }, 420, 2000, 60);
+  strictEqual(roomy.size, 60);
+  strictEqual(roomy.showSubline, true);
+  const tight = quoteFit({ copy: long }, 420, 380, 60);
+  ok(tight.size < 60);
+  const tiny = quoteFit({ copy: long }, 420, 120, 60);
+  strictEqual(tiny.showSubline, false);
 });

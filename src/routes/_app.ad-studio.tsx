@@ -77,7 +77,10 @@ function AdStudioPage() {
   /* Testimonial ads quote a real review only; without one they speak in the brand's voice. */
   const [review, setReview] = useState("");
   const wantsReview = picked.some((t) => QUOTE_THEMES.includes(t.id));
-  const wantsProof = picked.some((t) => t.id === "b2b-proof");
+  const wantsProof = picked.some((t) => t.id === "b2b-proof" || t.id === "stats");
+  /* Offer / Sale: the user's real deal; without one the ad gives a true reason to buy now. */
+  const [offer, setOffer] = useState("");
+  const wantsOffer = picked.some((t) => t.id === "offer-sale");
   const wantsScreen = picked.some((t) => t.id === "b2b-screen");
   const setAudience = (next: AdAudience) => {
     setAudienceRaw(next);
@@ -205,7 +208,7 @@ function AdStudioPage() {
           {wantsProof ? (
             <label className="flex flex-col gap-2 rounded-[12px] bg-v2-surface p-5">
               <span className="type-label text-black night:text-v2-ink">
-                Your proof number (optional)
+                {b2b ? "Your proof number" : "Your number"} (optional)
               </span>
               <span className="font-inter-tight text-xs text-v2-muted">
                 A real figure you can back up. We use it exactly as you type it and never make
@@ -215,7 +218,27 @@ function AdStudioPage() {
                 value={proof}
                 onChange={(e) => setProof(e.target.value)}
                 maxLength={200}
-                placeholder="Cuts packing time by 40% (2025 customer survey)"
+                placeholder={
+                  b2b
+                    ? "Cuts packing time by 40% (2025 customer survey)"
+                    : "12 hours of battery on one charge"
+                }
+                className="rounded-[8px] bg-v2-canvas px-3 py-2 font-inter-tight text-sm text-v2-ink outline-none placeholder:text-v2-muted"
+              />
+            </label>
+          ) : null}
+          {wantsOffer ? (
+            <label className="flex flex-col gap-2 rounded-[12px] bg-v2-surface p-5">
+              <span className="type-label text-black night:text-v2-ink">Your offer (optional)</span>
+              <span className="font-inter-tight text-xs text-v2-muted">
+                A real deal you're running. The ad uses it exactly as you type it; without one, it
+                gives a true reason to buy now and never makes a deal up.
+              </span>
+              <input
+                value={offer}
+                onChange={(e) => setOffer(e.target.value)}
+                maxLength={120}
+                placeholder="20% off this weekend with code SPRING"
                 className="rounded-[8px] bg-v2-canvas px-3 py-2 font-inter-tight text-sm text-v2-ink outline-none placeholder:text-v2-muted"
               />
             </label>
@@ -271,6 +294,7 @@ function AdStudioPage() {
                   ...(wantsReview && review.trim() ? { review: review.trim() } : {}),
                   ...(b2b ? { audience, cta } : {}),
                   ...(wantsProof && proof.trim() ? { proof: proof.trim() } : {}),
+                  ...(wantsOffer && offer.trim() ? { offer: offer.trim() } : {}),
                 },
                 product: product!,
                 style: theme ? { label: themeLabel, imageUrl: theme.imageUrl } : undefined,

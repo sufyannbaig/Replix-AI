@@ -320,8 +320,10 @@ export type GenerationInputs =
       audience?: AdAudience;
       /** B2B: the button the user picked (one of B2B_CTAS). */
       cta?: string;
-      /** B2B Proof number theme: a real figure the user typed in. */
+      /** Proof number (B2B) and Stat (shoppers) themes: a real figure the user typed in. */
       proof?: string;
+      /** Offer / Sale theme: the user's real offer ("20% off this weekend"). */
+      offer?: string;
     }
   | { studio: "ugc"; mode: "templates"; templateId: string; script: string }
   | {

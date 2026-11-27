@@ -22,6 +22,7 @@ import {
   B2B_LAYOUT_THEME,
   QUOTE_THEMES,
   isB2bTheme,
+  offerStory,
   proofStory,
   quoteHeadline,
   reviewHeadline,
@@ -367,6 +368,20 @@ describe("B2B ads", () => {
     ok(story.includes("Cuts packing time by 40%"));
     ok(story.includes("exactly as given"));
     ok(brief("b2b-proof", { proof: "Cuts packing time by 40%" }).includes("by 40%"));
+  });
+
+  test("Stat ads lead with the user's number; without one, a fact, never an invented figure", () => {
+    ok(themeStory({ themeId: "stats" }).includes("Never invent statistics"));
+    const story = themeStory({ themeId: "stats", proof: "12 hours of battery" });
+    ok(story.includes("12 hours of battery"));
+    ok(story.includes("starts with that number"));
+  });
+
+  test("Offer / Sale uses the user's real offer, else a true reason to buy now", () => {
+    ok(offerStory().includes("never invent a deal"));
+    const story = themeStory({ themeId: "offer-sale", offer: "20% off with code SPRING" });
+    ok(story.includes("20% off with code SPRING"));
+    ok(story.includes("exactly as given"));
   });
 
   test("Customer quote only quotes a pasted review", () => {

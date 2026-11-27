@@ -694,6 +694,7 @@ async function adPlans(ctx: Ctx, job: GenerationRequest, inputs: GenerationInput
           audience: inputs.audience,
           cta,
           proof: inputs.proof,
+          offer: inputs.offer,
           layoutBriefs: own.map((l) => LAYOUT_PHOTO_BRIEF[l]),
           moods: ads.map((ad) => SCENE_MOODS[(seed + ad) % SCENE_MOODS.length]),
         }),
