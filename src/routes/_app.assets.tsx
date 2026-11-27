@@ -67,9 +67,30 @@ function AssetsPage() {
   return (
     <AppShell title="Assets" subtitle="Everything you've generated and uploaded">
       <div className="mt-[33px] flex flex-col gap-9 lg:flex-row lg:items-start">
+        {/* Phones and tablets: one scrolling row of chips (the side list filled the screen). */}
+        <div
+          role="group"
+          aria-label="Asset types"
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:hidden"
+        >
+          {[{ value: "all", label: "All" }, ...GROUPS.flatMap((g) => g.items)].map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-pressed={filter === item.value}
+              onClick={() => setFilter(item.value as typeof filter)}
+              className={cn(
+                "h-9 shrink-0 rounded-full px-4 font-archivo text-sm",
+                filter === item.value ? "bg-[#315298] text-white" : "bg-v2-surface text-v2-ink-70",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
         <nav
           aria-label="Asset types"
-          className="flex w-full shrink-0 flex-col rounded-[14px] bg-v2-surface px-[13px] pb-[18px] pt-[23px] lg:sticky lg:top-6 lg:w-[258px]"
+          className="hidden w-full shrink-0 flex-col rounded-[14px] bg-v2-surface px-[13px] pb-[18px] pt-[23px] lg:sticky lg:top-6 lg:flex lg:w-[258px]"
         >
           <FilterRow label="All" active={filter === "all"} onClick={() => setFilter("all")} />
           {GROUPS.map((group, i) => (
