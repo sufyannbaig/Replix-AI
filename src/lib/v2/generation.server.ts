@@ -1171,6 +1171,8 @@ async function runConceptJob(jobRow: GenerationJobRow, site: Site) {
     }
     if (!falKey()) throw new GenerationError(NO_VIDEO);
     const ctx = await jobCtx(jobRow, site);
+    /* Taken over after its worker died: start the stills again from a clean job. */
+    await admin.from("generation_outputs").delete().eq("job_id", jobRow.id);
     const { product, refs } = await conceptRefs(ctx, request);
     const read = await readProduct(product.dataUrl);
     const count = conceptShotCount(jobRow.seconds ?? 15);
@@ -2241,9 +2243,65 @@ export async function syncVideoJob(row: GenerationJobRow, force = false) {
 }
 
 /**
+ * A job runs inside the request that started it, so a reload or closed tab can end it midway.
+ * While a worker is alive it touches its job every HEARTBEAT_MS; a job quiet for QUIET_MS has
+ * lost its worker, and the next poll of its page takes it over (takeOverJob) and finishes it.
+ */
+const HEARTBEAT_MS = 30_000;
+const QUIET_MS = 100_000;
+
+function heartbeat(jobId: string) {
+  const timer = setInterval(() => {
+    void admin
+      .from("generation_jobs")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", jobId)
+      .eq("status", "running")
+      .then(
+        () => undefined,
+        () => undefined,
+      );
+  }, HEARTBEAT_MS);
+  return () => clearInterval(timer);
+}
+
+/** Jobs another worker can pick up: photos, ads and a Concept ad's stills (before review). */
+export function resumable(row: GenerationJobRow) {
+  if (row.status !== "running" || row.provider) return false;
+  if (row.studio === "photo" || row.studio === "ad") return true;
+  const inputs = (row.request as GenerationRequest | null)?.inputs;
+  return row.studio === "concept" && inputs?.studio === "concept" && !inputs.take;
+}
+
+/** Claim a running job whose worker went quiet. True for exactly one caller. */
+export async function takeOverJob(row: GenerationJobRow) {
+  if (!resumable(row)) return false;
+  const quiet = new Date(Date.now() - QUIET_MS).toISOString();
+  const { data } = await admin
+    .from("generation_jobs")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", row.id)
+    .eq("status", "running")
+    .is("provider", null)
+    .lt("updated_at", quiet)
+    .select("id");
+  return !!data?.length;
+}
+
+/**
  * Run one claimed job to completion. Never throws: failures settle the job (with refund).
+ * A taken-over job keeps the photos it already has and makes only the missing ones.
  */
 export async function runJob(jobRow: GenerationJobRow, site: Site) {
+  const stop = heartbeat(jobRow.id);
+  try {
+    await runClaimedJob(jobRow, site);
+  } finally {
+    stop();
+  }
+}
+
+async function runClaimedJob(jobRow: GenerationJobRow, site: Site) {
   if (jobRow.studio === "shorts" || jobRow.studio === "ugc") return runShortJob(jobRow, site);
   if (jobRow.studio === "concept") {
     const inputs = (jobRow.request as GenerationRequest).inputs;
@@ -2273,10 +2331,20 @@ export async function runJob(jobRow: GenerationJobRow, site: Site) {
     if (!plans.length) throw new GenerationError("This studio isn't live yet.");
     /* Ads: the copy call. Photos: the label read. */
     cost += EST_USD.text;
-    await admin.from("generation_jobs").update({ progress: 0.15 }).eq("id", jobRow.id);
+    /* Taken over: the first worker's saved photos count, and are not made again. */
+    const { data: saved } = await admin
+      .from("generation_outputs")
+      .select("position")
+      .eq("job_id", jobRow.id);
+    const have = new Set((saved ?? []).map((o) => o.position));
+    ok = have.size;
+    let done = have.size;
+    await admin
+      .from("generation_jobs")
+      .update({ progress: Math.min(0.95, 0.15 + (0.8 * done) / plans.length) })
+      .eq("id", jobRow.id);
 
     /* Two at a time keeps us under the gateway's per-workspace rate limit. */
-    let done = 0;
     const runOne = async (plan: Plan, position: number) => {
       try {
         let image = plan.asIs
@@ -2327,8 +2395,11 @@ export async function runJob(jobRow: GenerationJobRow, site: Site) {
           .eq("id", jobRow.id);
       }
     };
-    for (let i = 0; i < plans.length; i += 2) {
-      await Promise.all(plans.slice(i, i + 2).map((p, j) => runOne(p, i + j)));
+    const todo = plans.flatMap((plan, position) =>
+      have.has(position) ? [] : [{ plan, position }],
+    );
+    for (let i = 0; i < todo.length; i += 2) {
+      await Promise.all(todo.slice(i, i + 2).map((t) => runOne(t.plan, t.position)));
     }
   } catch (error) {
     lastError =

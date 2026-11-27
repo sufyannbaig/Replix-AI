@@ -75,6 +75,7 @@ function BrandKitPage() {
   const [editing, setEditing] = useState<{ kit?: BrandKit } | null>(null);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<BrandKit | null>(null);
+  const [confirmSync, setConfirmSync] = useState<BrandKit | null>(null);
 
   const saved = kits.filter((k) => k.id !== "new");
   const blocked = search.new === "1" && limit.ready && saved.length > 0 && !limit.canAdd;
@@ -109,7 +110,7 @@ function BrandKitPage() {
         },
         onError: (error) => {
           if (error instanceof BrandLimitError) setLimitMessage(error.message);
-          else toast.error("We couldn't read that website. Try again or set it up manually.");
+          else toast.error(extractError(error));
         },
       },
     );
@@ -142,7 +143,7 @@ function BrandKitPage() {
                 variant="outline"
                 className="opacity-60 hover:opacity-100"
                 disabled={extract.isPending}
-                onClick={() => kit.website && run(kit.website, kit)}
+                onClick={() => setConfirmSync(kit)}
               >
                 {extract.isPending ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -209,6 +210,35 @@ function BrandKitPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!confirmSync} onOpenChange={(open) => !open && setConfirmSync(null)}>
+        <DialogContent className="w-[calc(100vw-32px)] max-w-[440px] rounded-[18px] border-none bg-v2-surface p-6 text-v2-ink">
+          <DialogTitle className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px]">
+            Re-sync {confirmSync?.name} from {confirmSync?.website}?
+          </DialogTitle>
+          <DialogDescription className="font-inter-tight text-sm leading-relaxed text-v2-ink-70">
+            We read the website again and replace the colours, tone and audience with what we find.
+            The brand name, a logo you uploaded and fonts you uploaded stay as they are. Ads you
+            already made don&apos;t change.
+          </DialogDescription>
+          <div className="mt-2 flex justify-end gap-2">
+            <PillButton variant="outline" onClick={() => setConfirmSync(null)}>
+              Cancel
+            </PillButton>
+            <PillButton
+              variant="primary"
+              onClick={() => {
+                const target = confirmSync;
+                setConfirmSync(null);
+                if (target?.website) run(target.website, target);
+              }}
+            >
+              <RefreshCw className="size-4" />
+              Re-sync
+            </PillButton>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <DialogContent className="w-[calc(100vw-32px)] max-w-[440px] rounded-[18px] border-none bg-v2-surface p-6 text-v2-ink">
           <DialogTitle className="font-archivo text-xl font-medium leading-archivo tracking-[-0.4px]">
@@ -250,6 +280,16 @@ function BrandKitPage() {
       </Dialog>
     </AppShell>
   );
+}
+
+/** The server's own words when they're meant for people; a plain fallback otherwise. */
+function extractError(error: unknown) {
+  const message = error instanceof Error ? error.message.trim() : "";
+  const readable =
+    message.length > 0 &&
+    message.length < 240 &&
+    !/^[[{]|\b(fetch|undefined|null|TypeError|aborted|timeout)\b/i.test(message);
+  return readable ? message : "We couldn't read that website. Try again or set it up manually.";
 }
 
 /* ---------- Brand switcher ---------- */

@@ -310,3 +310,28 @@ Details in `docs/V2_VIDEO_PLAN.md` 5f. Everything is on `v2` up to `5724c2e` and
 - Live: an adidas ring ad (Bold Claim theme, Poster layout, 1:1) hid the diamond under the headline and button. The image model put the ring's top at 33% of the frame although the brief asks for a plain top 45%, and the Poster's colour field (logo, two-line headline, subline, button) reaches ~66% on a square frame anyway.
 - Fix (commit f676d57): `photoContentTop` (src/lib/v2/ad-layouts.ts) finds where the photo's plain top backdrop ends (first row where 5% of pixels differ; sparse splash drops are ignored), and the composer passes it as `contentTop`. `posterFit` then keeps the field above it, trying in order: headline down to 3/4 size, the same without the subline, a smaller headline; each may move the photo down up to 15% (the top is filled with the same backdrop colour). The fade ends where the product starts. Tests: ad-poster-fit.test.ts.
 - Verified on the preview with Edit text on that ad: the whole ring, diamond included, sits clear below the type. Existing ads keep their saved image until regenerated or re-saved in Edit text.
+
+## 17. QA fixes, 27 Nov 2026 (from the six-tester web QA report)
+
+- **Stalled jobs resume.** Photo, ad and Concept-still jobs run inside the request that
+  started them, so a reload or closed tab used to leave them at 5–15% until they timed out.
+  Now a live worker touches its job every 30 s (`heartbeat` in generation.server.ts). The
+  result page asks `runGeneration` again every minute while a job runs; the server takes the
+  job over only if it has been quiet for 100 s (`takeOverJob`, a compare-and-set on
+  `updated_at`). Photos and ads keep the outputs already saved and make only the missing
+  positions; Concept restarts its stills. The photo/ad timeout went from 6 to 15 minutes so a
+  reopened page has time to finish. Videos (Shorts, UGC, Concept after review, one-take) are
+  unchanged.
+- **30-second Concept ads start.** The request schema capped `seconds` at 15; it is now 30,
+  and each studio's own lengths are still checked against `VIDEO_LENGTHS`.
+- **Logos are copied into our storage.** `extractBrandKit` downloads the logo it finds
+  (page or Wikidata) into `uploads/<uid>/brand/logos/`, so browsers can draw it on ads (most
+  sites block cross-site image loads). Old kits with linked logos are copied once when the
+  kits load (`keepBrandLogos`). If a copy fails the link is kept as before.
+- **One-take test panel: named testers only.** Besides the preview/localhost check, the server
+  now requires the signed-in email to be in the `ONE_TAKE_TESTERS` secret (comma-separated).
+  Without that secret nobody sees the panel on the preview. Localhost always does.
+- **Brand Kit shows the real error** (e.g. "adidas.com blocks automatic visits…") instead of a
+  generic toast, unless the message is technical.
+- **Re-sync asks first and keeps your edits.** A dialog explains what changes. The kit's name,
+  uploaded logos and uploaded font files are kept; colours, tone and audience are re-read.

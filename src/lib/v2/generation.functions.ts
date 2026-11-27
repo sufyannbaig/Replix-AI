@@ -58,7 +58,8 @@ function requestSite() {
 }
 
 const STALE_QUEUED_MS = 10 * 60_000;
-const STALE_RUNNING_MS = 6 * 60_000;
+/** Photos and ads: long enough for a reopened page to take over and finish a dead job. */
+const STALE_RUNNING_MS = 15 * 60_000;
 /** Shorts: the first frame, then fal's queue (one to three minutes, sometimes more). */
 const STALE_VIDEO_MS = 15 * 60_000;
 /** Concept ads after approval: up to six clips, voice and music, then the stitch. */
@@ -182,7 +183,8 @@ const Request = z.object({
   style: z.object({ label: str(300), imageUrl: str(4000).optional() }).optional(),
   aspect: z.enum(["1:1", "4:5", "9:16", "16:9"]),
   count: z.number().int().min(1).max(MAX_IMAGES_PER_JOB),
-  seconds: z.number().int().min(3).max(15).optional(),
+  /* Each studio's own lengths are checked in startGeneration (VIDEO_LENGTHS). */
+  seconds: z.number().int().min(3).max(30).optional(),
   note: str(1000).optional(),
   cost: z.number().int().min(0),
   brandKitId: z.string().uuid().optional(),
@@ -227,7 +229,7 @@ export const startGeneration = createServerFn({ method: "POST" })
     if (kind === "video" && data.count !== 1) throw new Error("One video at a time.");
     /* The one-take model test: preview only, one length, its own price. */
     const take = data.inputs.studio === "concept" ? data.inputs.take : undefined;
-    if (take && !takeAllowed(requestSite().origin)) throw new Error("That isn't available yet.");
+    if (take && !takeTester(context.claims)) throw new Error("That isn't available yet.");
     /* Only the lengths the studio offers: each is priced and tested. */
     const lengths: readonly number[] = take
       ? [TAKE_SECONDS]
@@ -300,18 +302,46 @@ export const startGeneration = createServerFn({ method: "POST" })
 
 const JobId = z.object({ jobId: z.string().uuid() });
 
+/**
+ * The one-take model test spends real fal money, so on the preview only the people named in
+ * the ONE_TAKE_TESTERS secret (comma-separated emails) see it. Anyone on localhost does.
+ */
+function takeTester(claims: unknown) {
+  const origin = requestSite().origin;
+  if (!takeAllowed(origin)) return false;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(origin)) return true;
+  const email = String((claims as { email?: unknown } | null)?.email ?? "").toLowerCase();
+  const testers = (process.env.ONE_TAKE_TESTERS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return !!email && testers.includes(email);
+}
+
+/** Whether this user sees the one-take test panel in Concept. */
+export const canRunTake = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => takeTester(context.claims));
+
 export const runGeneration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => JobId.parse(data))
   .handler(async ({ data, context }) => {
-    const { admin, runJob } = await import("./generation.server");
+    const { admin, runJob, takeOverJob } = await import("./generation.server");
     const { data: job } = await admin
       .from("generation_jobs")
       .select("*")
       .eq("id", data.jobId)
       .eq("user_id", context.userId)
       .maybeSingle();
-    if (!job || job.status !== "queued") return { started: false };
+    if (!job) return { started: false };
+    if (job.status === "running") {
+      /* Its worker died (a reload, a closed tab): this request finishes the job instead. */
+      if (!(await takeOverJob(job))) return { started: false };
+      await runJob(job, requestSite());
+      return { started: true };
+    }
+    if (job.status !== "queued") return { started: false };
     const { data: claimed } = await admin.rpc("v2_claim_generation_job", { _job_id: job.id });
     if (!claimed) return { started: false };
     await runJob(job, requestSite());

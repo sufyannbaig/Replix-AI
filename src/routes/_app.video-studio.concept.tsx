@@ -24,6 +24,7 @@ import {
   type TakeModel,
 } from "@/lib/v2/one-take";
 import { VIDEO_LENGTHS } from "@/v2/data/pricing";
+import { canRunTake } from "@/lib/v2/generation.functions";
 import type { AspectRatio, PieceKind, Product } from "@/v2/data/types";
 import plusCircle from "@/assets/v2/icons/plus-circle.svg";
 
@@ -213,7 +214,13 @@ function ConceptPage() {
 
   /* Preview-only model test: the whole ad in one generation. */
   const [canTake, setCanTake] = useState(false);
-  useEffect(() => setCanTake(takeAllowed(window.location.origin)), []);
+  useEffect(() => {
+    /* Only named testers: the server checks the signed-in user against its list. */
+    if (!takeAllowed(window.location.origin)) return;
+    void canRunTake()
+      .then(setCanTake)
+      .catch(() => setCanTake(false));
+  }, []);
   const [takeModel, setTakeModel] = useState<TakeModel | "">("");
   const [takeFormat, setTakeFormat] = useState<TakeFormat>("ritual");
   const [takeFrom, setTakeFrom] = useState("");

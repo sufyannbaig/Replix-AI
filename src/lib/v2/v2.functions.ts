@@ -53,6 +53,56 @@ async function fetchPublicHtml(raw: string): Promise<{ html: string; url: URL }>
   throw new Error("That link can't be opened. Use a public https web address.");
 }
 
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+const LOGO_TYPES: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/svg+xml": "svg",
+};
+
+/** A logo kept as a link to another site (not a storage path we own). */
+export const isLinkedLogo = (ref: string) => /^https?:\/\//i.test(ref);
+
+/**
+ * Copy a logo from the brand's site into the user's uploads, so the browser can draw it on
+ * ads: most sites don't let other sites load their images (CORS), and links break. Returns
+ * the storage path, or null when it can't be copied (the caller keeps the link then).
+ */
+async function keepLogo(db: SupabaseClient<V2Database>, userId: string, link: string) {
+  try {
+    let url = isSafePublicUrl(link);
+    for (let hop = 0; hop < 4 && url; hop++) {
+      const res = await fetch(url, {
+        redirect: "manual",
+        headers: { "User-Agent": USER_AGENT, Accept: "image/*" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const next = res.headers.get("location");
+        url = next ? isSafePublicUrl(new URL(next, url).toString()) : null;
+        continue;
+      }
+      if (!res.ok) return null;
+      const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+      const ext = LOGO_TYPES[type];
+      const length = Number(res.headers.get("content-length") ?? 0);
+      if (!ext || length > MAX_LOGO_BYTES) return null;
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (!bytes.byteLength || bytes.byteLength > MAX_LOGO_BYTES) return null;
+      const path = `${userId}/brand/logos/${crypto.randomUUID()}.${ext}`;
+      const { error } = await db.storage
+        .from("uploads")
+        .upload(path, bytes, { contentType: type, upsert: false });
+      return error ? null : path;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** An empty read, for a site that blocked us. */
 function blockedBrand(): PageBrand {
   return {
@@ -179,17 +229,34 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
       .map((c) => c.trim().toUpperCase())
       .slice(0, 6);
     /* No logo on the page (or the page blocked us): the brand's official one from Wikidata. */
-    const name = (ai.name || brand.siteName || url.hostname).slice(0, 120);
-    const logoUrl =
-      brand.logoUrl ??
-      (await import("./brand-logo").then((m) => m.findBrandLogo(name, url.hostname)));
+    const db = context.supabase as unknown as SupabaseClient<V2Database>;
+    /* Re-sync: the user's own name, uploaded logos and font files stay; the rest is re-read. */
+    const { data: before } = data.kitId
+      ? await db
+          .from("brand_kits")
+          .select("*")
+          .eq("id", data.kitId)
+          .eq("user_id", context.userId)
+          .maybeSingle()
+      : { data: null };
+    const ownLogos = (before?.logos ?? []).filter((l) => !isLinkedLogo(l));
+    const ownFonts = before?.fonts?.files ? before.fonts : null;
+
+    const ownName = before?.name && before.name !== "My brand" ? before.name : null;
+    const name = (ownName || ai.name || brand.siteName || url.hostname).slice(0, 120);
+    const logoUrl = ownLogos.length
+      ? null
+      : (brand.logoUrl ??
+        (await import("./brand-logo").then((m) => m.findBrandLogo(name, url.hostname))));
+    const logo = logoUrl ? ((await keepLogo(db, context.userId, logoUrl)) ?? logoUrl) : null;
     const row = {
       name,
       website: host,
-      logos: logoUrl ? [logoUrl] : [],
+      logos: ownLogos.length ? ownLogos : logo ? [logo] : [],
       colors,
-      fonts:
-        ai.headingFont || ai.bodyFont
+      fonts: ownFonts
+        ? ownFonts
+        : ai.headingFont || ai.bodyFont
           ? {
               heading: (ai.headingFont || ai.bodyFont || "").slice(0, 80),
               body: (ai.bodyFont || ai.headingFont || "").slice(0, 80),
@@ -205,11 +272,37 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
       extracted_at: new Date().toISOString(),
     };
 
-    const db = context.supabase as unknown as SupabaseClient<V2Database>;
     const query = data.kitId
       ? db.from("brand_kits").update(row).eq("id", data.kitId).eq("user_id", context.userId)
       : db.from("brand_kits").insert({ ...row, user_id: context.userId });
     const { data: saved, error } = await query.select().single();
     if (error) throw new Error(error.message);
     return saved;
+  });
+
+/**
+ * Kits made before logos were copied point at the brand's own site, which browsers may not
+ * load from ours. Copy each such logo into the user's uploads; returns how many kits changed.
+ */
+export const keepBrandLogos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = context.supabase as unknown as SupabaseClient<V2Database>;
+    const { data: kits } = await db
+      .from("brand_kits")
+      .select("id, logos")
+      .eq("user_id", context.userId);
+    let changed = 0;
+    for (const kit of kits ?? []) {
+      if (!kit.logos.some(isLinkedLogo)) continue;
+      const logos = await Promise.all(
+        kit.logos.map(async (l) =>
+          isLinkedLogo(l) ? ((await keepLogo(db, context.userId, l)) ?? l) : l,
+        ),
+      );
+      if (logos.every((l, i) => l === kit.logos[i])) continue;
+      const { error } = await db.from("brand_kits").update({ logos }).eq("id", kit.id);
+      if (!error) changed += 1;
+    }
+    return { changed };
   });

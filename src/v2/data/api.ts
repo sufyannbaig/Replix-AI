@@ -6,7 +6,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getShopifyProducts } from "@/lib/shopify.functions";
-import { extractBrandKit, readProductPage } from "@/lib/v2/v2.functions";
+import { extractBrandKit, keepBrandLogos, readProductPage } from "@/lib/v2/v2.functions";
 import {
   getGenerationJob,
   getProductInsights,
@@ -134,6 +134,9 @@ async function kitsFromRows(rows: BrandKitRow[]): Promise<BrandKit[]> {
   }));
 }
 
+/** Asked once per page load: copying old linked logos is a one-off for each account. */
+let logosKept = false;
+
 async function fetchBrandKits(): Promise<BrandKit[]> {
   if (!(await backendUser("brand_kits"))) return brandKits;
   const rows = await tryTable("brand_kits", async () => {
@@ -149,6 +152,12 @@ async function fetchBrandKits(): Promise<BrandKit[]> {
   });
   if (!rows) return brandKits;
   if (!rows.length) return [BLANK_KIT];
+  /* Logos still linked to the brand's own site: copy them in once, so ads can draw them. */
+  if (!logosKept && rows.some((r) => r.logos.some((l) => /^https?:\/\//i.test(l)))) {
+    logosKept = true;
+    const { changed } = await keepBrandLogos().catch(() => ({ changed: 0 }));
+    if (changed) return fetchBrandKits();
+  }
   const kits = await kitsFromRows(rows);
   /* No kit marked (not migrated yet): the first, oldest one acts as the default. */
   return kits.some((k) => k.isDefault) ? kits : kits.map((k, i) => ({ ...k, isDefault: i === 0 }));
@@ -1224,15 +1233,24 @@ async function uploadStudioFiles(userId: string, inputs: GenerationInputs) {
 }
 
 const kickedAt = new Map<string, number>();
+/** Jobs this tab is running right now (its request to the server is still open). */
+const running = new Set<string>();
 
-/** Ask the server to run a queued job. Safe to repeat: the server claims each job once. */
+/**
+ * Ask the server to run a job: a queued one, or a running one whose worker died (the server
+ * only takes it over when it has gone quiet). Safe to repeat: one caller wins each claim.
+ */
 function kickJob(jobId: string, onSettled: () => void) {
   kickedAt.set(jobId, Date.now());
+  running.add(jobId);
   void runGeneration({ data: { jobId } })
     .catch(() => {
-      /* The poll shows the job's real state; a stalled job is recovered server-side. */
+      /* The poll shows the job's real state and asks again if the job stalls. */
     })
-    .finally(onSettled);
+    .finally(() => {
+      running.delete(jobId);
+      onSettled();
+    });
 }
 
 /**
@@ -1464,6 +1482,16 @@ export function useGenerationJob(jobId: string) {
           job?.status === "queued" &&
           Date.now() - Date.parse(job.createdAt) > 20_000 &&
           Date.now() - (kickedAt.get(jobId) ?? 0) > 30_000
+        ) {
+          kickJob(jobId, () => queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) }));
+        }
+        /* Running, but not from this tab (it was reloaded or reopened): every minute, offer to
+           finish it. The server says no while the first worker is still alive. */
+        if (
+          job?.status === "running" &&
+          !job.review &&
+          !running.has(jobId) &&
+          Date.now() - (kickedAt.get(jobId) ?? 0) > 60_000
         ) {
           kickJob(jobId, () => queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) }));
         }
