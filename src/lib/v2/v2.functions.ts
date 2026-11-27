@@ -178,10 +178,15 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
       .filter((c) => typeof c === "string" && HEX.test(c.trim()))
       .map((c) => c.trim().toUpperCase())
       .slice(0, 6);
+    /* No logo on the page (or the page blocked us): the brand's official one from Wikidata. */
+    const name = (ai.name || brand.siteName || url.hostname).slice(0, 120);
+    const logoUrl =
+      brand.logoUrl ??
+      (await import("./brand-logo").then((m) => m.findBrandLogo(name, url.hostname)));
     const row = {
-      name: (ai.name || brand.siteName || url.hostname).slice(0, 120),
+      name,
       website: host,
-      logos: brand.logoUrl ? [brand.logoUrl] : [],
+      logos: logoUrl ? [logoUrl] : [],
       colors,
       fonts:
         ai.headingFont || ai.bodyFont
