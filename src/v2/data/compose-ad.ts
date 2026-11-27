@@ -11,6 +11,7 @@ import {
   chromaticColors,
   photoAccent,
   photoBackdrop,
+  photoContentTop,
   readLogoPixels,
   usableAccent,
   type AdLogo,
@@ -279,6 +280,25 @@ async function adBackdrop(photo: Blob, edge: "top" | "bottom" | "right") {
   }
 }
 
+/** Where the Poster photo's plain top ends and the product begins (see photoContentTop). */
+async function adContentTop(photo: Blob) {
+  try {
+    const n = 64;
+    const bitmap = await createImageBitmap(photo, { resizeWidth: n, resizeHeight: n });
+    const canvas = document.createElement("canvas");
+    canvas.width = n;
+    canvas.height = n;
+    const g = canvas.getContext("2d");
+    if (!g) throw new Error("No canvas");
+    g.drawImage(bitmap, 0, 0, n, n);
+    bitmap.close();
+    return photoContentTop(g.getImageData(0, 0, n, n).data, n, n);
+  } catch (error) {
+    console.warn("[v2 ads] photo content top skipped", error);
+    return null;
+  }
+}
+
 /** Compose one ad. Rejects if anything fails; the caller keeps showing the photo then. */
 export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blob> {
   const [{ default: satori }, fonts, { blob: photoBlob, dataUrl: photo }, brand, logo] =
@@ -289,13 +309,14 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       design.fonts ? brandFonts(design).catch(() => null) : Promise.resolve(null),
       loadLogo(design),
     ]);
-  const [colors, backdrop] = await Promise.all([
+  const [colors, backdrop, contentTop] = await Promise.all([
     adColors(design, photoBlob),
     design.layout === "poster"
       ? adBackdrop(photoBlob, "top")
       : design.layout === "banner"
         ? adBackdrop(photoBlob, bannerFrame(design.aspect).side)
         : Promise.resolve(null),
+    design.layout === "poster" ? adContentTop(photoBlob) : Promise.resolve(null),
   ]);
   const render = async (withBrand: boolean) => {
     const { width, height, tree } = buildAdLayout({
@@ -307,6 +328,7 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       labels: design.labels,
       ...(design.typeStyle ? { typeStyle: design.typeStyle } : {}),
       ...(backdrop ? { backdrop } : {}),
+      ...(contentTop != null ? { contentTop } : {}),
       ...(design.photoLayout && design.photoLayout !== design.layout
         ? { photoFor: design.photoLayout }
         : {}),

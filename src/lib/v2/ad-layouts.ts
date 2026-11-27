@@ -55,6 +55,11 @@ export type AdLayoutInput = {
    */
   backdrop?: string;
   /**
+   * How far down the photo (0 to 1) its plain top backdrop ends and the product (or anything
+   * solid) begins (photoContentTop). The Poster keeps its type field above it.
+   */
+  contentTop?: number;
+  /**
    * The layout the photo was composed for, when it differs from `layout` (Edit text switched
    * it). The photo's calm area is then elsewhere, so a layout that would cover part of the
    * frame with solid colour lets the photo show through instead.
@@ -322,6 +327,38 @@ export function photoBackdrop(
     px.reduce((t, p) => t + Math.hypot(p[0] - mean[0], p[1] - mean[1], p[2] - mean[2]), 0) /
     px.length;
   return spread > 38 ? null : rgbToHex(mean[0], mean[1], mean[2]);
+}
+
+/**
+ * Where the photo's plain top backdrop ends (0 to 1 of the height): the first row where at
+ * least 5% of the pixels clearly differ from the top edge's colour. Sparse splash drops don't
+ * count; the product's top does. Null when the top edge isn't one plain colour.
+ */
+export function photoContentTop(data: Uint8ClampedArray, width: number, height: number) {
+  const rows = Math.max(2, Math.round(height * 0.1));
+  const mean = [0, 0, 0];
+  let n = 0;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      mean[0] += data[i];
+      mean[1] += data[i + 1];
+      mean[2] += data[i + 2];
+      n++;
+    }
+  }
+  if (!n) return null;
+  for (let c = 0; c < 3; c++) mean[c] /= n;
+  for (let y = 0; y < height; y++) {
+    let off = 0;
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const d = Math.hypot(data[i] - mean[0], data[i + 1] - mean[1], data[i + 2] - mean[2]);
+      if (d > 45) off++;
+    }
+    if (off >= width * 0.05) return y < rows ? null : y / height;
+  }
+  return 1;
 }
 
 /** First usable colour from the brand/accent list, else the fallback. */
@@ -705,10 +742,15 @@ function hook(ctx: Ctx): AdNode {
  * The Poster's colour wash: solid accent down to just under the type (`solidTo`), then a fade
  * to clear over the next 14% of the frame. Exported for tests.
  */
-export function posterFade(accent: string, solidTo: number, height: number) {
+export function posterFade(
+  accent: string,
+  solidTo: number,
+  height: number,
+  fadeLength = height * 0.14,
+) {
   const rgb = hexToRgb(accent) ?? { r: 17, g: 17, b: 17 };
   const c = (a: number) => `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
-  const total = Math.min(height, Math.round(solidTo + height * 0.14));
+  const total = Math.min(height, Math.round(solidTo + fadeLength));
   const stop = Math.round((solidTo / total) * 100);
   return {
     height: total,
@@ -732,6 +774,82 @@ export function posterScrim(solidTo: number, height: number) {
 /** Extra space above the Poster CTA, which sits in the colour field under the copy. */
 const POSTER_CTA_GAP = 10;
 
+/**
+ * The Poster's type size and colour field, kept clear of the product. The photo brief asks
+ * for a plain top 45%, but the model doesn't always obey and long copy can need more (live,
+ * an adidas ring ad hid the diamond under the headline). When the field would reach the
+ * product (ctx.contentTop), the headline shrinks first; if that isn't enough the photo moves
+ * down, by at most 15% of the frame, filled above by the same backdrop colour. The fade
+ * ends where the product starts. Exported for tests.
+ */
+export function posterFit(
+  ctx: Pick<Ctx, "width" | "height" | "fit" | "copy" | "contentTop">,
+  words: string,
+  textTop: number,
+  textW: number,
+  seeThrough = false,
+) {
+  /* Anton is condensed by design; a brand font is usually wider, so it gets a lower cap and
+     a third line. */
+  const baseMax = Math.round((ctx.height > ctx.width ? 180 : 136) * (ctx.fit ? 0.78 : 1));
+  const baseMin = ctx.fit ? 60 : 72;
+  const subLines = ctx.copy.subline
+    ? Math.max(1, Math.ceil((ctx.copy.subline.length * 34 * 0.5) / textW))
+    : 0;
+  const cta = 18 + POSTER_CTA_GAP + 34 + 2 * Math.round(34 * 0.62);
+  const lineHeight = ctx.fit ? 0.98 : 0.9;
+  const at = (max: number, min: number, withSub: boolean) => {
+    const size = fitHeadline(words, textW, {
+      maxLines: ctx.fit ? 3 : 2,
+      max,
+      min,
+      glyph: 0.52,
+      measure: ctx.fit,
+    });
+    /* The colour stays solid down past the last line of text (headline, subline and CTA). */
+    const lines = measuredLines(
+      words,
+      textW,
+      size,
+      ctx.fit ?? ((t: string, s: number) => t.length * s * 0.52),
+    );
+    const sub = withSub && subLines ? 18 + subLines * 34 * 1.3 : 0;
+    return {
+      size,
+      field: textTop + lines * size * lineHeight + sub + cta + 28,
+      showSubline: withSub && subLines > 0,
+    };
+  };
+  const full = at(baseMax, baseMin, true);
+  const normalFade = ctx.height * 0.14;
+  const productTop =
+    !seeThrough && ctx.contentTop != null && ctx.contentTop > 0 && ctx.contentTop < 1
+      ? ctx.contentTop * ctx.height
+      : null;
+  if (productTop == null) return { ...full, shift: 0, fadeLength: normalFade };
+
+  const clearance = Math.round(ctx.height * 0.03);
+  const maxShift = ctx.height * 0.15;
+  const need = (f: { field: number }) => f.field + clearance - productTop;
+  /* Try, in order: the full design; a headline down to three quarters of its size; the same
+     without the subline (it still goes out in the post copy); then a smaller headline. Each
+     may move the photo down by up to maxShift. The first that clears the product wins. */
+  const soft = Math.max(Math.min(baseMin, 56), Math.round(baseMax * 0.75));
+  const floor = Math.min(baseMin, 56);
+  const tries: ReturnType<typeof at>[] = [];
+  for (const withSub of [true, false]) {
+    for (let max = baseMax; max >= soft; max -= 4)
+      tries.push(at(max, Math.min(baseMin, max), withSub));
+  }
+  for (let max = soft - 4; max >= floor; max -= 4)
+    tries.push(at(max, Math.min(baseMin, max), false));
+  const fit = tries.find((t) => need(t) <= maxShift) ?? tries[tries.length - 1];
+  const shift = Math.round(Math.min(maxShift, Math.max(0, need(fit))));
+  const room = productTop + shift - fit.field;
+  const fadeLength = Math.max(ctx.height * 0.03, Math.min(normalFade, room));
+  return { ...fit, shift, fadeLength };
+}
+
 /** Bold offer: huge condensed type on the accent colour, which fades into a full-bleed photo. */
 function poster(ctx: Ctx): AdNode {
   /* The logo sits top centre; everything else moves down by its height. */
@@ -739,38 +857,25 @@ function poster(ctx: Ctx): AdNode {
   const textTop = ctx.top + logoRoom;
   const textW = ctx.width - ctx.pad * 2;
   const words = ctx.copy.headline.toUpperCase();
-  /* Anton is condensed by design; a brand font is usually wider, so it gets a lower cap and
-     a third line. */
-  const size = fitHeadline(words, textW, {
-    maxLines: ctx.fit ? 3 : 2,
-    max: Math.round((ctx.height > ctx.width ? 180 : 136) * (ctx.fit ? 0.78 : 1)),
-    min: ctx.fit ? 60 : 72,
-    glyph: 0.52,
-    measure: ctx.fit,
-  });
-  /* The colour stays solid down past the last line of text (headline, subline and CTA). */
-  const lines = measuredLines(
-    words,
-    textW,
-    size,
-    ctx.fit ?? ((t: string, s: number) => t.length * s * 0.52),
-  );
-  const subLines = ctx.copy.subline
-    ? Math.max(1, Math.ceil((ctx.copy.subline.length * 34 * 0.5) / textW))
-    : 0;
-  const sub = subLines ? 18 + subLines * 34 * 1.3 : 0;
-  const cta = 18 + POSTER_CTA_GAP + 34 + 2 * Math.round(34 * 0.62);
-  const field = textTop + lines * size * (ctx.fit ? 0.98 : 0.9) + sub + cta + 28;
-  /* The photo's own backdrop colour when it has a plain one, so the type field and the photo
-     read as one picture (live, a black brand colour over a blue set looked pasted on). */
   /* Edit text: a photo made for another layout may have the product up here (live, Poster
      over a Magazine photo hid the lamp head), so the field turns into a see-through scrim. */
   const seeThrough = !!ctx.photoFor && ctx.photoFor !== "poster";
+  const { size, field, shift, fadeLength, showSubline } = posterFit(
+    ctx,
+    words,
+    textTop,
+    textW,
+    seeThrough,
+  );
+  /* The photo's own backdrop colour when it has a plain one, so the type field and the photo
+     read as one picture (live, a black brand colour over a blue set looked pasted on). */
   const wash = seeThrough ? "#000000" : (ctx.backdrop ?? ctx.accent);
   const ink = inkOn(wash);
   /* The photo fills the frame. The colour is solid behind the type and fades into the photo
      just below it. */
-  const fade = seeThrough ? posterScrim(field, ctx.height) : posterFade(wash, field, ctx.height);
+  const fade = seeThrough
+    ? posterScrim(field, ctx.height)
+    : posterFade(wash, field, ctx.height, fadeLength);
   return el(
     "div",
     {
@@ -779,11 +884,12 @@ function poster(ctx: Ctx): AdNode {
       width: ctx.width,
       height: ctx.height,
       background: wash,
+      overflow: "hidden",
     },
     [
       el(
         "img",
-        { position: "absolute", left: 0, top: 0, width: ctx.width, height: ctx.height },
+        { position: "absolute", left: 0, top: shift, width: ctx.width, height: ctx.height },
         undefined,
         { src: ctx.photo, width: ctx.width, height: ctx.height },
       ),
@@ -822,7 +928,7 @@ function poster(ctx: Ctx): AdNode {
             },
             words,
           ),
-          ...(ctx.copy.subline
+          ...(showSubline && ctx.copy.subline
             ? [
                 el(
                   "div",
