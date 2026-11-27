@@ -79,15 +79,20 @@ function VideoHubPage() {
                 {recent.slice(0, 10).map((video) => (
                   <Link
                     key={video.id}
-                    to="/assets"
-                    className="group relative aspect-[183/231] overflow-hidden rounded-[12px]"
+                    /* Its result page (also for a run still in progress); Assets otherwise. */
+                    {...(video.jobId
+                      ? { to: "/generations/$jobId", params: { jobId: video.jobId } }
+                      : { to: "/assets" })}
+                    className="group relative aspect-[183/231] overflow-hidden rounded-[12px] bg-v2-surface-2"
                     aria-label={`Open ${video.title}`}
                   >
-                    <img
-                      src={video.thumbnailUrl}
-                      alt=""
-                      className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    />
+                    {video.thumbnailUrl ? (
+                      <img
+                        src={video.thumbnailUrl}
+                        alt=""
+                        className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      />
+                    ) : null}
                     <span className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[26px] bg-white px-[12.4px] py-[11.8px] shadow-sm transition-transform group-hover:scale-110">
                       <img src={playIcon} alt="" className="h-[12.4px] w-[11.2px]" />
                     </span>

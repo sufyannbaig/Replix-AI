@@ -328,7 +328,8 @@ export async function composeAd(design: AdDesign, photoUrl: string): Promise<Blo
       labels: design.labels,
       ...(design.typeStyle ? { typeStyle: design.typeStyle } : {}),
       ...(backdrop ? { backdrop } : {}),
-      ...(contentTop != null ? { contentTop } : {}),
+      /* Poster: null (unmeasurable top) makes the layout assume where the product starts. */
+      ...(design.layout === "poster" ? { contentTop } : {}),
       ...(design.photoLayout && design.photoLayout !== design.layout
         ? { photoFor: design.photoLayout }
         : {}),

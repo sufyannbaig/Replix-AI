@@ -763,6 +763,10 @@ export const editAd = createServerFn({ method: "POST" })
           ...copy,
           layout: data.layout,
           photoLayout: row.copy.photoLayout ?? row.copy.layout,
+          /* The post's headline followed the ad's: keep them together after an edit. */
+          ...(row.copy.post && row.copy.post.headline === row.copy.headline
+            ? { post: { ...row.copy.post, headline: copy.headline } }
+            : {}),
         },
       })
       .eq("id", row.id)
@@ -807,7 +811,7 @@ const ListInput = z.object({
   limit: z.number().int().min(1).max(100).default(40),
 });
 
-/** Finished generations (first image as thumbnail), newest first. */
+/** Finished generations (first image as thumbnail), plus videos in progress, newest first. */
 export const listGenerations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => ListInput.parse(data ?? {}))
@@ -816,11 +820,14 @@ export const listGenerations = createServerFn({ method: "POST" })
     let jobsQuery = db
       .from("generation_jobs")
       .select("*")
-      .eq("status", "done")
+      .in("status", ["done", "running", "queued"])
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (data.kind !== "all") jobsQuery = jobsQuery.eq("kind", data.kind);
-    const { data: jobs } = await jobsQuery;
+    /* Videos still in progress (a Concept waiting for review, a Short rendering) are listed in
+       Recent so they can be found again; photos and ads only once done. */
+    const { data: listed } = await jobsQuery;
+    const jobs = (listed ?? []).filter((j) => j.status === "done" || j.kind === "video");
     if (!jobs?.length) return { recent: [], assets: [] };
     let outputsQuery = db
       .from("generation_outputs")
@@ -839,6 +846,18 @@ export const listGenerations = createServerFn({ method: "POST" })
 
     const recent: Generation[] = jobs.flatMap((j) => {
       const first = (outputs ?? []).find((o) => o.job_id === j.id && o.image_path);
+      if (!first && j.status !== "done") {
+        return [
+          {
+            id: j.id,
+            jobId: j.id,
+            kind: j.kind,
+            title: title(j),
+            thumbnailUrl: "",
+            createdAt: j.created_at,
+          },
+        ];
+      }
       const design = first && adDesign(j, first);
       return first
         ? [
@@ -857,7 +876,7 @@ export const listGenerations = createServerFn({ method: "POST" })
     });
     const assets: AssetItem[] = (outputs ?? []).flatMap((o) => {
       const j = byJob.get(o.job_id);
-      if (!j || !o.image_path) return [];
+      if (!j || j.status !== "done" || !o.image_path) return [];
       const design = adDesign(j, o);
       return [
         {

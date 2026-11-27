@@ -4,6 +4,7 @@ import { strictEqual, ok, deepStrictEqual } from "node:assert";
 import {
   END_CARD_SIZE,
   buildEndCard,
+  cardProductName,
   endCardAccent,
   endCardLogo,
   inkOn,
@@ -77,4 +78,12 @@ describe("end card", () => {
         taglineSize("A much longer line for the end card here.", 1072),
     );
   });
+});
+
+test("cardProductName drops SKU and date codes", () => {
+  strictEqual(
+    cardProductName("SOLAR POWERED OUTDOOR POST LIGHT 2K 20261024233601"),
+    "SOLAR POWERED OUTDOOR POST LIGHT 2K",
+  );
+  strictEqual(cardProductName("Classic Percale Sheet Set"), "Classic Percale Sheet Set");
 });

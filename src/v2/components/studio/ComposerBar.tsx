@@ -259,6 +259,7 @@ export function ComposerBar({
         disabled={generating}
         aria-busy={generating}
         aria-disabled={!canGenerate}
+        aria-label={typeof label === "string" ? label : undefined}
         aria-keyshortcuts="Control+Enter Meta+Enter"
         title={canGenerate ? `${isMac() ? "⌘" : "Ctrl"}+Enter` : generateHint}
         className={pillClass(

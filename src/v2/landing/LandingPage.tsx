@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 import { PAID_PRICING_PLANS } from "@/lib/pricing-plans";
 import { ReplixLogo, ReplixMark } from "@/v2/components/brand/ReplixLogo";
 import { EASE, LazyVideo, Magnetic, Reveal, SplitWords } from "./motion";
@@ -59,9 +60,6 @@ const character = glob(
 );
 const scene = glob(
   import.meta.glob("/src/assets/v2/catalog/scene/*.webp", { eager: true, import: "default" }),
-);
-const prop = glob(
-  import.meta.glob("/src/assets/v2/catalog/prop/*.webp", { eager: true, import: "default" }),
 );
 const style = glob(
   import.meta.glob("/src/assets/v2/catalog/style/*.webp", { eager: true, import: "default" }),
@@ -238,6 +236,11 @@ const NAV = [
 ] as const;
 
 function Nav() {
+  /* Signed in: the way back into the app, not "Log in". */
+  const { user } = useAuth();
+  const account = user
+    ? ({ to: "/dashboard", label: "Dashboard" } as const)
+    : ({ to: "/login", label: "Log in" } as const);
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -266,10 +269,10 @@ function Nav() {
             </a>
           ))}
           <Link
-            to="/login"
+            to={account.to}
             className="rounded-full px-4 py-2 font-inter-tight text-[15px] text-[#3c4a66] transition-colors hover:bg-black/[0.04] hover:text-[#0b1220]"
           >
-            Log in
+            {account.label}
           </Link>
         </div>
         <div className="flex items-center gap-2">
@@ -311,10 +314,10 @@ function Nav() {
               </a>
             ))}
             <Link
-              to="/login"
+              to={account.to}
               className="rounded-2xl px-4 py-3 font-inter-tight text-base text-[#0b1220] hover:bg-black/[0.04]"
             >
-              Log in
+              {account.label}
             </Link>
             <Link to="/login" onClick={trackLead} className={cn(CTA_DARK, "mt-1")}>
               Start free
@@ -1050,7 +1053,8 @@ function StoryAd() {
 
 /* ---------- 8. library marquee ---------- */
 
-const LIB_TABS = ["Characters", "Scenes", "Props", "Styles and poses"] as const;
+/* The app's Library has these three; there is no Props library. */
+const LIB_TABS = ["Characters", "Scenes", "Styles and poses"] as const;
 type LibTab = (typeof LIB_TABS)[number];
 const nice = (slug: string) =>
   slug
@@ -1060,7 +1064,6 @@ const nice = (slug: string) =>
 const LIBRARY: Record<LibTab, { src: string; name: string }[]> = {
   Characters: Object.entries(character).map(([k, src]) => ({ src, name: nice(k) })),
   Scenes: Object.entries(scene).map(([k, src]) => ({ src, name: nice(k) })),
-  Props: Object.entries(prop).map(([k, src]) => ({ src, name: nice(k) })),
   "Styles and poses": Object.entries(style)
     .filter(([k]) => !k.startsWith("linen-"))
     .map(([k, src]) => ({ src, name: nice(k) })),
@@ -1409,7 +1412,7 @@ function Pricing() {
 const FAQ = [
   [
     "What can Replix make?",
-    "Product photoshoots, finished ads, UGC videos with a creator talking about your product, short product videos and story ads, all from one product photo.",
+    "Product photoshoots, finished ads, UGC videos with a creator talking about your product, short product videos and Concept ads, all from one product photo.",
   ],
   [
     "Do I need a website?",
@@ -1421,7 +1424,7 @@ const FAQ = [
   ],
   [
     "What does one credit get me?",
-    "A photo or an ad is 2 credits. Product shorts are 8 to 13 credits, UGC videos 15 or 30 credits, and story ads 10 credits for every 15 seconds.",
+    "A photo or an ad is 2 credits. Product shorts are 8 to 13 credits, UGC videos 15 or 30 credits, and Concept ads 18 credits for 15 seconds or 30 for 30 seconds.",
   ],
   [
     "Can I cancel any time?",

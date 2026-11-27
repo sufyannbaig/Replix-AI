@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 
 import { AuthProvider } from "@/hooks/use-auth";
+import { ReplixLogo } from "@/v2/components/brand/ReplixLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { StaleModuleRecovery } from "@/components/stale-module-recovery";
 import { ApiHealthBanner } from "@/components/api-health-banner";
@@ -23,17 +24,26 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
+        <Link to="/" aria-label="Replix AI home" className="mx-auto mb-8 inline-flex">
+          <ReplixLogo className="h-8 w-auto" />
+        </Link>
+        <title>Page not found · Replix AI</title>
         <h1 className="font-display text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
-        <Link
-          to="/"
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-colors hover:brightness-110"
-        >
-          Go home
-        </Link>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-colors hover:brightness-110"
+          >
+            Go to your dashboard
+          </Link>
+          <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Replix home
+          </Link>
+        </div>
       </div>
     </div>
   );

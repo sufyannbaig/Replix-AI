@@ -212,10 +212,17 @@ function AddProductDialog({
       return;
     }
     setImporting(true);
+    /* A failed read must not leave the last product on screen, ready to add. */
+    setDraft(null);
     try {
       setDraft(await importProductFromUrl(parsed.toString()));
-    } catch {
-      toast.error("We couldn't read that page.");
+    } catch (error) {
+      const said = error instanceof Error ? error.message : "";
+      toast.error(
+        said && said.length < 200 && !/fetch|TypeError|aborted/i.test(said)
+          ? said
+          : "We couldn't read that page.",
+      );
     } finally {
       setImporting(false);
     }

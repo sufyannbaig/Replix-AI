@@ -113,7 +113,7 @@ const CREATE_CARDS = [
   {
     to: "/video-studio",
     title: "Video Studio",
-    description: "UGC ads, product shorts and story ads.",
+    description: "UGC ads, product shorts and Concept ads.",
     Motion: VideoMotion,
   },
 ] as const;
@@ -166,12 +166,15 @@ function RecentGenerations() {
         {recent.slice(0, 8).map((g) => {
           const content = (
             <>
-              <img
-                src={g.thumbnailUrl}
-                alt=""
-                loading="lazy"
-                className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-              />
+              {/* A video still in progress has no picture yet. */}
+              {g.thumbnailUrl ? (
+                <img
+                  src={g.thumbnailUrl}
+                  alt=""
+                  loading="lazy"
+                  className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                />
+              ) : null}
               {g.kind === "video" ? (
                 <span className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[26px] bg-white px-[12.4px] py-[11.8px] shadow-sm">
                   <img src={playIcon} alt="" className="h-[12.4px] w-[11.2px]" />
@@ -212,11 +215,7 @@ function RecentGenerations() {
   );
 }
 
-const PRO_FEATURES = [
-  "Premium Photo & Video Templates",
-  "Concept & Story ads",
-  "More Credits Every Month",
-];
+const PRO_FEATURES = ["Premium Photo & Video Templates", "Concept ads", "More Credits Every Month"];
 
 function UpgradePromo() {
   return (

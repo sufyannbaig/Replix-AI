@@ -56,7 +56,11 @@ function CompactCredits() {
   return (
     <Link
       to="/upgrade"
-      aria-label={`${remaining} of ${planInfo.ads} credits left on the ${planInfo.name} plan`}
+      aria-label={
+        loading
+          ? "Credits loading"
+          : `${remaining} of ${planInfo.ads} credits left on the ${planInfo.name} plan`
+      }
       className="flex h-9 items-center gap-1.5 rounded-full bg-v2-surface px-3 shadow-sm"
     >
       <img src={creditCoin} alt="" className="size-[18px]" />
@@ -74,7 +78,11 @@ function CreditsCard() {
     <div className="flex items-center gap-2.5 rounded-[36px] bg-v2-panel px-[15px] py-2 night:border-[0.6px] night:border-white/35 drop-shadow-[0px_1px_4.3px_rgba(0,0,0,0.03)]">
       <Link
         to="/upgrade"
-        aria-label={`${remaining} of ${planInfo.ads} credits left on the ${planInfo.name} plan`}
+        aria-label={
+          loading
+            ? "Credits loading"
+            : `${remaining} of ${planInfo.ads} credits left on the ${planInfo.name} plan`
+        }
         className="flex h-[41px] w-[185px] items-center justify-center rounded-[41px] border border-black/[0.04] bg-v2-surface px-2 py-1 drop-shadow-[0px_0px_14.75px_rgba(0,0,0,0.03)] night:border-transparent night:bg-white/20"
       >
         <span className="flex w-[156px] items-center justify-between">
@@ -87,13 +95,16 @@ function CreditsCard() {
           <span
             className={cn(
               "rounded-[15px] px-2.5 py-1.5 font-jakarta text-xs font-medium leading-[1.26]",
-              /* Paid plans get the same green-to-cream gradient as the Pro template badges. */
-              planInfo.key === "free"
-                ? "bg-v2-cream text-black/60 night:text-v2-ink-70"
-                : "bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] text-black",
+              /* Until the plan loads: a blank chip, not a "Free" that flips to "Pro". */
+              loading
+                ? "min-w-[42px] animate-pulse bg-v2-cream text-transparent"
+                : /* Paid plans get the same green-to-cream gradient as the Pro template badges. */
+                  planInfo.key === "free"
+                  ? "bg-v2-cream text-black/60 night:text-v2-ink-70"
+                  : "bg-gradient-to-b from-[#d0ffb6] to-[#ffebc9] text-black",
             )}
           >
-            {planInfo.name}
+            {loading ? "\u00a0" : planInfo.name}
           </span>
         </span>
       </Link>

@@ -1,7 +1,7 @@
 // Run with: node --test src/lib/v2/ad-poster-fit.test.ts
 import { test } from "node:test";
-import { ok, strictEqual } from "node:assert";
-import { photoContentTop, posterFit } from "./ad-layouts.ts";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { POSTER_ASSUMED_TOP, photoContentTop, posterFit } from "./ad-layouts.ts";
 
 /* The live adidas ring ad: 1:1, logo on top, a long headline, subline and button. */
 const copy = {
@@ -66,4 +66,10 @@ test("photoContentTop gives up on a busy top edge", () => {
   const n = 32;
   const data = image(n, (x) => (x % 2 ? [0, 0, 0] : [255, 255, 255]));
   strictEqual(photoContentTop(data, n, n), null);
+});
+
+test("an unmeasurable photo top is treated as a product starting at 45%", () => {
+  const assumed = posterFit({ ...frame, contentTop: POSTER_ASSUMED_TOP }, words, textTop, textW);
+  const unknown = posterFit({ ...frame, contentTop: null }, words, textTop, textW);
+  deepStrictEqual(unknown, assumed);
 });

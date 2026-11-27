@@ -70,6 +70,18 @@ export function taglineSize(tagline: string, width: number) {
   return Math.round(base);
 }
 
+/**
+ * A product name fit for the card: no SKU or date codes ("…POST LIGHT 2K 20261024233601"),
+ * and shop-style all-caps set in normal case (the card uppercases it in its own type).
+ */
+export function cardProductName(raw: string) {
+  const name = raw
+    .replace(/[\s_-]*\b[A-Z0-9-]*\d{6,}[A-Z0-9-]*\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (name || raw.trim()).slice(0, 48).trim();
+}
+
 export function buildEndCard(input: EndCardInput) {
   const { width, height } = END_CARD_SIZE[input.aspect];
   const short = Math.min(width, height);
@@ -186,7 +198,7 @@ export function buildEndCard(input: EndCardInput) {
           marginTop: short * 0.035,
           textTransform: "uppercase",
         },
-        input.productName.trim(),
+        cardProductName(input.productName),
       ),
       el(
         "div",

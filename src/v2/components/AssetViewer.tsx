@@ -54,7 +54,7 @@ const SIZE_LABEL: Record<string, string> = {
   "1:1": "1:1 Square",
   "4:5": "4:5 Portrait",
   "9:16": "9:16 Story",
-  "16:9": "16:9 Wide",
+  "16:9": "16:9 Landscape",
 };
 
 export function AssetViewer({

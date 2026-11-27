@@ -58,7 +58,8 @@ export type AdLayoutInput = {
    * How far down the photo (0 to 1) its plain top backdrop ends and the product (or anything
    * solid) begins (photoContentTop). The Poster keeps its type field above it.
    */
-  contentTop?: number;
+  /** Where the product starts (share of height); null when it couldn't be measured. */
+  contentTop?: number | null;
   /**
    * The layout the photo was composed for, when it differs from `layout` (Edit text switched
    * it). The photo's calm area is then elsewhere, so a layout that would cover part of the
@@ -782,6 +783,8 @@ const POSTER_CTA_GAP = 10;
  * down, by at most 15% of the frame, filled above by the same backdrop colour. The fade
  * ends where the product starts. Exported for tests.
  */
+export const POSTER_ASSUMED_TOP = 0.45;
+
 export function posterFit(
   ctx: Pick<Ctx, "width" | "height" | "fit" | "copy" | "contentTop">,
   words: string,
@@ -822,10 +825,10 @@ export function posterFit(
   };
   const full = at(baseMax, baseMin, true);
   const normalFade = ctx.height * 0.14;
-  const productTop =
-    !seeThrough && ctx.contentTop != null && ctx.contentTop > 0 && ctx.contentTop < 1
-      ? ctx.contentTop * ctx.height
-      : null;
+  /* null = measured but unreadable (a busy top edge): assume the product starts at 45%, the
+     usual place in our poster photos, rather than letting the type run down over it. */
+  const top = ctx.contentTop === null ? POSTER_ASSUMED_TOP : ctx.contentTop;
+  const productTop = !seeThrough && top != null && top > 0 && top < 1 ? top * ctx.height : null;
   if (productTop == null) return { ...full, shift: 0, fadeLength: normalFade };
 
   const clearance = Math.round(ctx.height * 0.03);

@@ -335,3 +335,24 @@ Details in `docs/V2_VIDEO_PLAN.md` 5f. Everything is on `v2` up to `5724c2e` and
   generic toast, unless the message is technical.
 - **Re-sync asks first and keeps your edits.** A dialog explains what changes. The kit's name,
   uploaded logos and uploaded font files are kept; colours, tone and audience are re-read.
+
+## 18. QA "Wrong" and polish sweep, 27 Nov 2026
+
+- Poster: a photo whose top can't be measured is treated as a product starting at 45%
+  (`POSTER_ASSUMED_TOP`), so busy-top photos no longer get type over the product.
+- Concept end card drops SKU/date codes from the product name (`cardProductName`).
+- Landing FAQ: Concept ads 18 credits for 15 s, 30 for 30 s. "Story ads" renamed to Concept
+  ads on the landing page and dashboard. The landing Library drops the Props tab (no such
+  library in the app). Signed-in visitors see "Dashboard", not "Log in".
+- Onboarding: "Read again" refreshes the kit just made (no second brand); "I don't have a
+  website" opens Brand Kit's add form (manual set-up); paid users skip the plan step.
+  Re-sync keeps the kit's name only when the site is the same one.
+- Brand reads: a domain that doesn't exist, a file link and a 404 page each get their own
+  message (no AI-made brand); the daily limit says "20 websites in the last 24 hours".
+- Header: no "Free" / "0 of 10" flash while the plan loads.
+- Recent video tiles open their result page; videos in progress are listed (no picture yet)
+  so a run can be found again. Assets still lists finished jobs only.
+- Products: a failed link clears the previous product and shows the real reason.
+- Edit text: headline counter (n/60); the post headline follows an edited ad headline when
+  they matched. "16:9 Wide" is now "16:9 Landscape". Generate button has an explicit name.
+- 404 page: logo, "Go to your dashboard" and a page title.

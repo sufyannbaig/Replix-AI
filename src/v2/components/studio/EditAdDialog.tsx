@@ -118,7 +118,12 @@ export function EditAdDialog({
 
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="font-inter-tight text-xs text-v2-muted">Headline</span>
+              <span className="flex justify-between font-inter-tight text-xs text-v2-muted">
+                Headline
+                <span aria-live="polite" className="tabular-nums">
+                  {headline.length}/{EDIT_LIMITS.headline}
+                </span>
+              </span>
               <textarea
                 value={headline}
                 rows={2}

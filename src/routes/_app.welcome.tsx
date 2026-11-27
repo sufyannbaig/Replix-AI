@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, Globe, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useCredits } from "@/hooks/use-credits";
 import { formatPlanPrice, PAID_PRICING_PLANS } from "@/lib/pricing-plans";
 import { cn } from "@/lib/utils";
 import { usePlanCheckout, type PaidPlanKey } from "@/v2/components/billing/usePlanCheckout";
@@ -34,14 +35,19 @@ function WelcomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"brand" | "plan">("brand");
+  /* Someone already on a paid plan (a tester, a returning customer) isn't offered one. */
+  const { plan } = useCredits();
+  const paid = plan !== "free";
 
-  const finish = () => {
+  const finish = (to: "/dashboard" | "/brand-kit" = "/dashboard") => {
     try {
       if (user) localStorage.setItem(welcomeKey(user.id), "1");
     } catch {
       /* storage can be blocked */
     }
-    void navigate({ to: "/dashboard" });
+    /* No website: the Brand Kit page's add form, where "Set it up manually" lives. */
+    if (to === "/brand-kit") void navigate({ to, search: { new: "1" } });
+    else void navigate({ to });
   };
 
   return (
@@ -64,7 +70,7 @@ function WelcomePage() {
         </div>
         <button
           type="button"
-          onClick={finish}
+          onClick={() => finish()}
           className="font-inter-tight text-sm text-[#5b6476] hover:text-[#0b1220]"
         >
           Skip for now
@@ -80,7 +86,10 @@ function WelcomePage() {
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.5, ease: EASE }}
             >
-              <BrandStep onNext={() => setStep("plan")} />
+              <BrandStep
+                onNext={() => (paid ? finish() : setStep("plan"))}
+                onManual={() => finish("/brand-kit")}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -90,7 +99,7 @@ function WelcomePage() {
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.5, ease: EASE }}
             >
-              <PlanStep onFree={finish} />
+              <PlanStep onFree={() => finish()} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -101,7 +110,7 @@ function WelcomePage() {
 
 /* ---------- step 1: brand kit ---------- */
 
-function BrandStep({ onNext }: { onNext: () => void }) {
+function BrandStep({ onNext, onManual }: { onNext: () => void; onManual: () => void }) {
   const { data: kits } = useBrandKits();
   const extract = useExtractBrandKit();
   const [site, setSite] = useState("");
@@ -131,7 +140,8 @@ function BrandStep({ onNext }: { onNext: () => void }) {
     setError(null);
     extract.mutate(
       /* Fill an unfinished kit (or a new one); never overwrite a finished brand. */
-      { kitId: kits.find((k) => !k.isComplete)?.id ?? "new", website },
+      /* "Read again" refreshes the kit just made rather than adding a second brand. */
+      { kitId: kit?.id ?? kits.find((k) => !k.isComplete)?.id ?? "new", website },
       {
         onSuccess: (k) => {
           setKit(k);
@@ -215,7 +225,7 @@ function BrandStep({ onNext }: { onNext: () => void }) {
           {!kit ? (
             <button
               type="button"
-              onClick={onNext}
+              onClick={onManual}
               className="font-inter-tight text-sm text-[#5b6476] underline-offset-4 hover:underline"
             >
               I don&apos;t have a website

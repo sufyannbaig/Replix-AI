@@ -103,6 +103,22 @@ async function keepLogo(db: SupabaseClient<V2Database>, userId: string, link: st
   }
 }
 
+/** False only when DNS says the domain doesn't exist; any doubt counts as existing. */
+async function domainExists(host: string) {
+  try {
+    const res = await fetch(
+      `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=A`,
+      { headers: { Accept: "application/dns-json" }, signal: AbortSignal.timeout(5_000) },
+    );
+    if (!res.ok) return true;
+    const answer = (await res.json()) as { Status?: number };
+    /* 3 = NXDOMAIN: no such domain. */
+    return answer.Status !== 3;
+  } catch {
+    return true;
+  }
+}
+
 /** An empty read, for a site that blocked us. */
 function blockedBrand(): PageBrand {
   return {
@@ -165,7 +181,11 @@ export const extractBrandKit = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => BrandInput.parse(data))
   .handler(async ({ data, context }): Promise<BrandKitRow> => {
     const { spendDailyAllowance } = await import("./generation.server");
-    await spendDailyAllowance(context.userId, "v2_brand_extract", 20);
+    await spendDailyAllowance(context.userId, "v2_brand_extract", 20).catch(() => {
+      throw new Error(
+        "You've read 20 websites in the last 24 hours, the most we allow. Try again tomorrow, or set your brand up by hand.",
+      );
+    });
     const site = /^https?:\/\//i.test(data.website) ? data.website : `https://${data.website}`;
     /*
      * Big brands (adidas.com, for one) block automatic visits: a 403, or the request hangs
@@ -182,6 +202,17 @@ export const extractBrandKit = createServerFn({ method: "POST" })
     } catch (err) {
       const safe = isSafePublicUrl(site);
       if (!safe) throw err;
+      const said = err instanceof Error ? err.message : "";
+      /* Not a block: a file link, a missing page or a domain that doesn't exist. */
+      if (/isn't a web page/.test(said)) {
+        throw new Error("That link is a file, not a web page. Enter your homepage, like acme.com.");
+      }
+      if (/answered with 404/.test(said)) {
+        throw new Error(`${safe.hostname} has no page at that address. Try your homepage.`);
+      }
+      if (!(await domainExists(safe.hostname))) {
+        throw new Error(`We couldn't find a website at ${safe.hostname}. Check the spelling.`);
+      }
       url = safe;
       brand = blockedBrand();
       blocked = true;
@@ -242,7 +273,9 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
     const ownLogos = (before?.logos ?? []).filter((l) => !isLinkedLogo(l));
     const ownFonts = before?.fonts?.files ? before.fonts : null;
 
-    const ownName = before?.name && before.name !== "My brand" ? before.name : null;
+    /* Only for the same site: reading a different one (a typo fixed) names it afresh. */
+    const ownName =
+      before?.name && before.name !== "My brand" && before.website === host ? before.name : null;
     const name = (ownName || ai.name || brand.siteName || url.hostname).slice(0, 120);
     const logoUrl = ownLogos.length
       ? null
