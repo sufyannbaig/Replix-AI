@@ -374,3 +374,24 @@ Details in `docs/V2_VIDEO_PLAN.md` 5f. Everything is on `v2` up to `5724c2e` and
   light, nothing printed on the product that isn't on it, no callouts copied from the source,
   real-world size kept next to hands and faces) and a colour rule to Photo Studio. Not tested
   live: these change what the image model is asked, and need a few real runs to judge.
+
+## 20. Remaining QA items, 27 Nov 2026 (evening)
+
+- **Products**: saved products have a "⋯" menu to edit the name and details or delete
+  (`useUpdateProduct`, `useDeleteProduct`; Shopify products stay read-only). "Make Photo" and
+  "Make Ad" open the studio with the product picked (`?product=`, `usePreselectedProduct`).
+  Ad Studio keeps the chosen themes when the product changes. "Change settings" on a result
+  returns with the same product (and Photo template, `?template=`).
+- **Concept**: the character is optional (the server already allowed it); a voiceover too long
+  for the ad can't be saved until it is shortened (it used to be cut mid-thought).
+- **Brand kits**: the favicon is only a last resort for the logo (page logo, then Wikidata,
+  then icon); fonts are ranked by use and other-script or icon fonts are skipped; quoted font
+  names are now read; lazy-loaded images use data-src; brand images are copied into uploads
+  (`brand/images`, up to 6) and dropped if they can't be; a toast says when no logo was found.
+- **Polish**: the step bar shows the next step light blue (not navy as if done); Generate
+  panels sit at the end of the page on phones instead of floating; theme cards and Redo
+  buttons have names; product, asset and still images have alt text and load lazily;
+  Concept stills open full size; the 404 page sets its title; product hover menu no longer
+  sticks after focus. Offer post copy adds no conditions to the user's offer.
+- **"Suggest with AI"** (and "Write with AI") charge no credits: one text call, about $0.005,
+  capped at 60 a day per user (`DAILY_INSIGHTS`).

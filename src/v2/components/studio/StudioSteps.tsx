@@ -84,14 +84,17 @@ export type StudioStep = {
   onClick?: () => void;
 };
 
-/** "What to do next" in a studio: the current step is the first one not done yet. */
+/**
+ * "What to do next" in a studio: finished steps are navy and the first step not done yet is
+ * light blue (it used to be navy too, so a product looked picked before it was).
+ */
 export function StudioSteps({ steps }: { steps: StudioStep[] }) {
   const first = steps.findIndex((s) => !s.done);
   return (
     <StepBar
       label="Steps"
       labels={steps.map((s) => s.label)}
-      current={first === -1 ? steps.length - 1 : first}
+      current={first === -1 ? steps.length - 1 : first - 1}
       onSelect={(i) => steps[i].onClick?.()}
       clickable={(i) => !!steps[i].onClick}
     />

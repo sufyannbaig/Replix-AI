@@ -186,7 +186,7 @@ function ShortsPage() {
         </>
       }
     >
-      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-2 sm:pb-[160px]">
         <ModeSwitcher
           modes={MODES}
           value={mode}
@@ -281,7 +281,7 @@ function ShortsPage() {
         )}
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:bottom-6 lg:left-[308px]">
+      <div className="pointer-events-none z-20 flex justify-center px-4 max-sm:mt-8 max-sm:px-0 sm:fixed sm:inset-x-0 sm:bottom-4 lg:bottom-6 lg:left-[308px]">
         <div className="pointer-events-auto w-full max-w-[622px]">
           <ComposerBar
             product={product}

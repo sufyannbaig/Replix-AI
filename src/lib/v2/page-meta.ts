@@ -158,7 +158,10 @@ export function readProduct(html: string, pageUrl: URL): PageProduct {
 export type PageBrand = {
   siteName: string | null;
   description: string | null;
+  /** A real logo: the site's Organization logo or an <img> marked as the logo. */
   logoUrl: string | null;
+  /** The site icon (apple-touch-icon or favicon): only a last resort for the logo. */
+  iconUrl: string | null;
   themeColor: string | null;
   /** Most used hex colours in inline CSS, most frequent first. */
   cssColors: string[];
@@ -193,6 +196,10 @@ const GENERIC_FONTS = new Set([
   "emoji",
 ]);
 
+/** Fonts that are only a fallback for another script (Nike's Arabic font) or icons. */
+const NOT_BRAND_FONT =
+  /arabic|hebrew|kufi|naskh|thai|cyrillic|devanagari|bengali|tamil|\b(jp|kr|sc|tc|hk)\b|cjk|japanese|korean|chinese|icon|awesome|material symbols|glyph/i;
+
 function normalizeHex(hex: string) {
   const h = hex.toLowerCase();
   return h.length === 4 ? `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}` : h;
@@ -209,10 +216,15 @@ export function readBrand(html: string, pageUrl: URL): PageBrand {
   const logoImg = (html.match(/<img\b[^>]*>/gi) ?? []).find((t) =>
     /logo/i.test(`${attr(t, "class") ?? ""} ${attr(t, "alt") ?? ""} ${attr(t, "src") ?? ""}`),
   );
+  /* The site icon is kept apart: a favicon makes a poor logo (Allbirds), so the caller tries
+     Wikidata's official logo before falling back to it. */
   const logoUrl = absolute(
     firstString(org?.logo) ??
-      (logoImg ? attr(logoImg, "src") : null) ??
-      (appleIcon ? attr(appleIcon, "href") : null) ??
+      (logoImg ? (attr(logoImg, "src") ?? attr(logoImg, "data-src")) : null),
+    pageUrl,
+  );
+  const iconUrl = absolute(
+    (appleIcon ? attr(appleIcon, "href") : null) ??
       (iconTags[0] ? attr(iconTags[0], "href") : null),
     pageUrl,
   );
@@ -231,25 +243,38 @@ export function readBrand(html: string, pageUrl: URL): PageBrand {
     .map(([hex]) => hex)
     .slice(0, 12);
 
-  const fonts = new Set<string>();
+  /* Most used first: a font used once (a locale fallback, a widget) shouldn't lead. */
+  const fontCounts = new Map<string, number>();
+  const addFont = (name: string, weight = 1) => {
+    if (!name || GENERIC_FONTS.has(name.toLowerCase()) || name.startsWith("var(")) return;
+    if (NOT_BRAND_FONT.test(name)) return;
+    fontCounts.set(name, (fontCounts.get(name) ?? 0) + weight);
+  };
   for (const m of html.matchAll(/fonts\.googleapis\.com\/css2?\?([^"'\s>]+)/gi)) {
     for (const fam of decodeEntities(m[1]).matchAll(/family=([^&:]+)/g))
-      fonts.add(decodeURIComponent(fam[1].replace(/\+/g, " ")));
+      addFont(decodeURIComponent(fam[1].replace(/\+/g, " ")), 3);
   }
-  for (const m of css.matchAll(/font-family\s*:\s*([^;}"]+)/gi)) {
-    const first = m[1].split(",")[0].replace(/["']/g, "").trim();
-    if (first && !GENERIC_FONTS.has(first.toLowerCase()) && !first.startsWith("var("))
-      fonts.add(first);
+  /* Quoted names too ("Brand Sans"): the old pattern stopped at the first quote. */
+  for (const m of css.matchAll(/font-family\s*:\s*([^;}\n]+)/gi)) {
+    addFont(m[1].split(",")[0].replace(/["']/g, "").trim());
   }
+  const fonts = [...fontCounts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
 
   const images = new Set<string>();
   const og = absolute(metaContent(html, "og:image"), pageUrl);
   if (og) images.add(og);
   for (const tag of html.match(/<img\b[^>]*>/gi) ?? []) {
     if (images.size >= 8) break;
-    const src = absolute(attr(tag, "src") ?? attr(tag, "data-src"), pageUrl);
+    /* Lazy-loaded images keep a placeholder in src and the real one in data-src. */
+    const raw = attr(tag, "data-src") ?? attr(tag, "src");
+    if (!raw || raw.startsWith("data:")) continue;
+    const src = absolute(raw, pageUrl);
     const w = Number(attr(tag, "width") ?? 0);
-    if (src && !/\.svg(\?|$)|logo|icon|sprite|pixel|badge/i.test(src) && (w === 0 || w >= 300))
+    if (
+      src &&
+      !/\.svg(\?|$)|logo|icon|sprite|pixel|badge|placeholder|blank|spacer/i.test(src) &&
+      (w === 0 || w >= 300)
+    )
       images.add(src);
   }
 
@@ -267,9 +292,10 @@ export function readBrand(html: string, pageUrl: URL): PageBrand {
       clean(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1], 120),
     description: metaContent(html, "og:description") ?? metaContent(html, "description"),
     logoUrl,
+    iconUrl,
     themeColor: metaContent(html, "theme-color"),
     cssColors,
-    fonts: [...fonts].slice(0, 8),
+    fonts: fonts.slice(0, 8),
     images: [...images].slice(0, 8),
     text,
   };

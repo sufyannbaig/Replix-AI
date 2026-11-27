@@ -344,7 +344,7 @@ export function proofStory(proof?: string | null, themeId = "b2b-proof") {
 export function offerStory(offer?: string | null, themeId = "offer-sale") {
   const real = offer?.replace(/\s+/g, " ").trim();
   return real
-    ? `Deal-led urgency around the customer's real offer: "${real.replace(/"/g, "'")}". The headline states that offer exactly as given (the amount, price or code unchanged) in at most 6 words; don't add other deals, deadlines or terms.`
+    ? `Deal-led urgency around the customer's real offer: "${real.replace(/"/g, "'")}". The headline states that offer exactly as given (the amount, price or code unchanged) in at most 6 words; don't add other deals, deadlines or terms. The post copy repeats it as given and adds no conditions ("first order", "at checkout", "sitewide").`
     : AD_THEME_RECIPES[themeId].story;
 }
 

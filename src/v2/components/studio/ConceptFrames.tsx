@@ -154,7 +154,23 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
                 busy === `redo-${i}` && "animate-pulse",
               )}
             >
-              {url ? <img src={url} alt="" className="size-full object-cover" /> : null}
+              {url ? (
+                /* Opens full size in a new tab: the grid tile is small. */
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open still ${i + 1} large`}
+                >
+                  <img
+                    src={url}
+                    alt={`Still ${i + 1}: ${review.shots[i]?.beat ?? ""}`}
+                    loading="lazy"
+                    decoding="async"
+                    className="size-full object-cover"
+                  />
+                </a>
+              ) : null}
               <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 font-inter-tight text-[11px] font-semibold text-white">
                 {i + 1} · {review.shots[i]?.beat}
               </span>
@@ -190,6 +206,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
                 type="button"
                 disabled={act.isPending || review.redosLeft < 1}
                 onClick={() => run(`redo-${i}`, { action: "redo", index: i, note: notes[i] })}
+                aria-label={`Redo frame ${i + 1}`}
                 className="flex h-8 flex-1 items-center justify-center gap-1 rounded-[6px] bg-v2-surface font-inter-tight text-xs font-semibold text-v2-ink disabled:opacity-40"
               >
                 <RotateCcw className="size-3.5" /> Redo
@@ -249,7 +266,7 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
             >
               About {readSeconds(vo ?? sound.voiceover)} s to say, in a {sound.seconds} s ad.
               {readSeconds(vo ?? sound.voiceover) > sound.seconds - 2
-                ? " Too long: the end will be cut. Shorten it."
+                ? " Too long for the ad: shorten it to save."
                 : ""}
             </span>
           </label>
@@ -291,8 +308,12 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
           {soundEdited ? (
             <button
               type="button"
+              /* A voiceover too long for the ad would be cut mid-thought: shorten it first. */
               disabled={
-                act.isPending || !(vo ?? sound.voiceover).trim() || !(music ?? sound.music).trim()
+                act.isPending ||
+                !(vo ?? sound.voiceover).trim() ||
+                !(music ?? sound.music).trim() ||
+                readSeconds(vo ?? sound.voiceover) > sound.seconds - 2
               }
               onClick={() =>
                 run("sound", {
@@ -304,7 +325,11 @@ export function ConceptFrames({ job }: { job: GenerationJob }) {
               }
               className="self-start rounded-[6px] bg-v2-surface px-3 py-1.5 font-inter-tight text-xs font-semibold text-v2-ink disabled:opacity-40"
             >
-              {busy === "sound" ? "Saving…" : "Save voiceover and music"}
+              {busy === "sound"
+                ? "Saving…"
+                : readSeconds(vo ?? sound.voiceover) > sound.seconds - 2
+                  ? "Shorten the voiceover to save"
+                  : "Save voiceover and music"}
             </button>
           ) : null}
         </div>

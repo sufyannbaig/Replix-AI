@@ -211,6 +211,7 @@ function AssetSection({
               src={item.thumbnailUrl}
               alt={item.title}
               loading="lazy"
+              decoding="async"
               className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             />
             {item.kind === "video" ? (

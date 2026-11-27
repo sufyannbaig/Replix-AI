@@ -72,8 +72,20 @@ describe("readBrand", () => {
     strictEqual(brand.logoUrl, "https://store.example.com/logo.png");
     strictEqual(brand.themeColor, "#162544");
     deepStrictEqual(brand.cssColors.slice(0, 3), ["#162544", "#fab91b", "#ffffff"]);
-    deepStrictEqual(brand.fonts, ["Archivo", "Inter Tight"]);
+    /* Most used first: Inter Tight is linked and also set in the CSS. */
+    deepStrictEqual(brand.fonts, ["Inter Tight", "Archivo"]);
     strictEqual(brand.text.includes("Skincare that works"), true);
     strictEqual(brand.text.includes("hidden"), false);
   });
+});
+
+test("readBrand keeps the favicon apart, skips fallback fonts and reads lazy images", () => {
+  const html = `<html><head><link rel="icon" href="/favicon.ico">
+    <style>body{font-family:"Noto Kufi Arabic",sans-serif} h1{font-family:"Brand Sans"} p{font-family:"Brand Sans"}</style>
+    </head><body><img data-src="/hero.jpg" src="data:image/gif;base64,R0lGOD" width="800"></body></html>`;
+  const brand = readBrand(html, new URL("https://shop.example.com/"));
+  strictEqual(brand.logoUrl, null);
+  strictEqual(brand.iconUrl, "https://shop.example.com/favicon.ico");
+  deepStrictEqual(brand.fonts, ["Brand Sans"]);
+  deepStrictEqual(brand.images, ["https://shop.example.com/hero.jpg"]);
 });

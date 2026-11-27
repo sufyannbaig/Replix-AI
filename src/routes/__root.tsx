@@ -21,13 +21,15 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
+  useEffect(() => {
+    document.title = "Page not found · Replix AI";
+  }, []);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <Link to="/" aria-label="Replix AI home" className="mx-auto mb-8 inline-flex">
           <ReplixLogo className="h-8 w-auto" />
         </Link>
-        <title>Page not found · Replix AI</title>
         <h1 className="font-display text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">

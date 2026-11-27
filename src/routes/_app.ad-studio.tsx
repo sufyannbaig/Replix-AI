@@ -14,7 +14,12 @@ import {
 import { StudioBrandChip, useStudioBrand } from "@/v2/components/brand/BrandMenus";
 import { ProductPicker } from "@/v2/components/studio/ProductPicker";
 import { StudioSteps } from "@/v2/components/studio/StudioSteps";
-import { adGenerationCost, useAdThemes, useProductInsights } from "@/v2/data/api";
+import {
+  usePreselectedProduct,
+  adGenerationCost,
+  useAdThemes,
+  useProductInsights,
+} from "@/v2/data/api";
 import { B2B_CTAS } from "@/v2/data/types";
 import type { AdAudience, AdTheme, AspectRatio, Product } from "@/v2/data/types";
 import plusJoin from "@/assets/v2/icons/plus-join.svg";
@@ -24,6 +29,8 @@ import artSodaCherry from "@/assets/v2/catalog/product/acme-charge.webp";
 import artTruffle from "@/assets/v2/catalog/product/acme-glow-serum.webp";
 
 export const Route = createFileRoute("/_app/ad-studio")({
+  validateSearch: (search: Record<string, unknown>): { product?: string } =>
+    typeof search.product === "string" ? { product: search.product } : {},
   head: () => ({ meta: [{ title: "Ad Studio · Replix AI" }] }),
   component: AdStudioPage,
 });
@@ -47,6 +54,8 @@ function AdStudioPage() {
   const [cta, setCta] = useState<string>(B2B_CTAS[0]);
   const [proof, setProof] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
+  /* "Make Ad" on a product card opens the studio with that product picked. */
+  usePreselectedProduct(Route.useSearch().product, product, setProduct);
   const [pickerOpen, setPickerOpen] = useState(false);
   /* With more than one ad, several themes can be picked (up to one per ad); the ads take
      them in turn. */
@@ -92,7 +101,7 @@ function AdStudioPage() {
 
   return (
     <AppShell title="Ad Studio" subtitle="Turn one product into ready-to-run ad creatives">
-      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-2 sm:pb-[160px]">
         <StudioSteps
           steps={[
             { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
@@ -155,6 +164,7 @@ function AdStudioPage() {
                   type="button"
                   role={multi ? "checkbox" : "radio"}
                   aria-checked={active}
+                  aria-label={t.name}
                   onClick={() => toggleTheme(t)}
                   className={cn(
                     "group flex flex-col overflow-hidden rounded-[12px] border-[0.8px] bg-v2-surface text-left transition-colors",
@@ -259,7 +269,7 @@ function AdStudioPage() {
         ) : null}
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:bottom-6 lg:left-[308px]">
+      <div className="pointer-events-none z-20 flex justify-center px-4 max-sm:mt-8 max-sm:px-0 sm:fixed sm:inset-x-0 sm:bottom-4 lg:bottom-6 lg:left-[308px]">
         <div className="pointer-events-auto w-full max-w-[622px]">
           <ComposerBar
             product={product}
@@ -317,10 +327,8 @@ function AdStudioPage() {
       <ProductPicker
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        onSelect={(next) => {
-          setProduct(next);
-          setPicked([]);
-        }}
+        /* The picked themes stay: they don't depend on the product. */
+        onSelect={setProduct}
         initialSelectedId={product?.id}
       />
     </AppShell>

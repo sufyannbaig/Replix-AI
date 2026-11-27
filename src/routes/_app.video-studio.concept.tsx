@@ -276,12 +276,11 @@ function ConceptPage() {
           steps={[
             { label: "Product", done: !!product, onClick: () => setPickerOpen(true) },
             { label: "Concept", done: !!concept.trim() },
-            { label: "Cast & scene", done: !!character },
             { label: "Generate", done: false },
           ]}
         />
       </div>
-      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px] xl:flex-row xl:items-start xl:gap-[62px]">
+      <div className="mt-10 flex flex-col gap-10 pb-2 sm:pb-[160px] xl:flex-row xl:items-start xl:gap-[62px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[60px] xl:max-w-[686px]">
           <StoryField
             title="Concept"
@@ -347,8 +346,8 @@ function ConceptPage() {
 
         <aside className="flex w-full shrink-0 flex-col gap-6 rounded-[14px] bg-v2-surface p-[26px] xl:sticky xl:top-6 xl:w-[292px]">
           <SlotUpload
-            label="Character"
-            hint="Click to upload"
+            label="Character (optional)"
+            hint="Leave it empty and the director casts the people your idea needs"
             libraryKind="character"
             value={character}
             onChange={setCharacter}
@@ -416,7 +415,7 @@ function ConceptPage() {
         </aside>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:bottom-6 lg:left-[308px]">
+      <div className="pointer-events-none z-20 flex justify-center px-4 max-sm:mt-8 max-sm:px-0 sm:fixed sm:inset-x-0 sm:bottom-4 lg:bottom-6 lg:left-[308px]">
         <div className="pointer-events-auto w-full max-w-[622px]">
           <ComposerBar
             product={product}
@@ -430,12 +429,10 @@ function ConceptPage() {
             onNoteChange={setNote}
             notePlaceholder="Anything else the director should know? (optional)"
             cost={cost}
-            canGenerate={!!product && !!concept.trim() && !!character}
-            generateHint={missingHint([
-              !concept.trim() && "a concept",
-              !character && "a character",
-              !product && "a product",
-            ])}
+            /* The character is optional: without one the director casts the people the idea
+               needs (often two, which one uploaded character can't cover). */
+            canGenerate={!!product && !!concept.trim()}
+            generateHint={missingHint([!concept.trim() && "a concept", !product && "a product"])}
             onGenerate={() =>
               generate({
                 studio: "concept",

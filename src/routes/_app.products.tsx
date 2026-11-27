@@ -1,12 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, MoreHorizontal, Search } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AppShell } from "@/v2/components/shell/AppShell";
 import { PillButton, pillClass } from "@/v2/components/primitives";
-import { importProductFromUrl, useAddProduct, useProducts } from "@/v2/data/api";
+import {
+  importProductFromUrl,
+  useAddProduct,
+  useDeleteProduct,
+  useProducts,
+  useUpdateProduct,
+} from "@/v2/data/api";
 import type { Product, ProductSource } from "@/v2/data/types";
 import { ProductBrandChip } from "@/v2/components/brand/BrandMenus";
 import closeIcon from "@/assets/v2/icons/close.svg";
@@ -136,11 +148,39 @@ function ProductsPage() {
 
 /** Product card; on hover it doubles as a launchpad into each studio (wireframe idea). */
 function ProductTile({ product }: { product: Product }) {
+  /* Shopify products come from the store; only saved ones (a uuid row) can be changed here. */
+  const own = /^[0-9a-f-]{36}$/i.test(product.id) && product.source !== "shopify";
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   return (
     <div className="group flex flex-col overflow-hidden rounded-[12px] bg-v2-surface">
       <div className="relative aspect-[244/194] overflow-hidden rounded-[12px]">
-        <img src={product.imageUrl} alt="" className="size-full object-cover" />
-        <div className="absolute inset-0 flex items-end justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
+          className="size-full object-cover"
+        />
+        {own ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label={`More for ${product.name}`}
+              className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full bg-white/95 text-[#12213d] shadow-sm hover:bg-white"
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setEditing(true)}>
+                Edit name and details
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDeleting(true)} className="text-[#c93030]">
+                Delete product
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        <div className="absolute inset-0 flex items-end justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           {[
             { to: "/photo-studio", label: "Photo" },
             { to: "/ad-studio", label: "Ad" },
@@ -149,6 +189,8 @@ function ProductTile({ product }: { product: Product }) {
             <Link
               key={studio.to}
               to={studio.to}
+              /* Photo and Ad Studio open with this product already picked. */
+              {...(studio.to !== "/video-studio" ? { search: { product: product.id } } : {})}
               className="rounded-full bg-white/95 px-3 py-1 font-archivo text-xs text-[#12213d] hover:bg-white"
             >
               Make {studio.label}
@@ -165,7 +207,137 @@ function ProductTile({ product }: { product: Product }) {
       <div className="-mt-1.5 px-[14px] pb-[14px]">
         <ProductBrandChip product={product} />
       </div>
+      {own ? (
+        <>
+          <EditProductDialog product={product} open={editing} onOpenChange={setEditing} />
+          <DeleteProductDialog product={product} open={deleting} onOpenChange={setDeleting} />
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function EditProductDialog({
+  product,
+  open,
+  onOpenChange,
+}: {
+  product: Product;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const update = useUpdateProduct();
+  const [name, setName] = useState(product.name);
+  const [description, setDescription] = useState(product.description ?? "");
+  const field =
+    "rounded-[8px] bg-v2-canvas px-3 py-2 font-inter-tight text-sm text-v2-ink outline-none";
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          setName(product.name);
+          setDescription(product.description ?? "");
+        }
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent className="w-[calc(100vw-32px)] max-w-[480px] rounded-[18px] border-none bg-v2-surface p-6 text-v2-ink">
+        <DialogTitle className="font-archivo text-xl font-medium">Edit product</DialogTitle>
+        <DialogDescription className="font-inter-tight text-sm text-v2-ink-70">
+          The name and details shape the ads and photos you make next.
+        </DialogDescription>
+        <label className="flex flex-col gap-1.5">
+          <span className="font-inter-tight text-xs text-v2-muted">Name</span>
+          <input
+            value={name}
+            maxLength={200}
+            onChange={(e) => setName(e.target.value)}
+            className={field}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="font-inter-tight text-xs text-v2-muted">Details (optional)</span>
+          <textarea
+            value={description}
+            rows={4}
+            maxLength={5000}
+            onChange={(e) => setDescription(e.target.value)}
+            className={cn(field, "resize-none")}
+          />
+        </label>
+        <div className="mt-2 flex justify-end gap-2">
+          <PillButton variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </PillButton>
+          <PillButton
+            disabled={!name.trim() || update.isPending}
+            onClick={() =>
+              update.mutate(
+                { id: product.id, name, description },
+                {
+                  onSuccess: () => {
+                    toast.success("Product saved");
+                    onOpenChange(false);
+                  },
+                  onError: (e) => toast.error(e.message),
+                },
+              )
+            }
+          >
+            {update.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Save
+          </PillButton>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteProductDialog({
+  product,
+  open,
+  onOpenChange,
+}: {
+  product: Product;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const remove = useDeleteProduct();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100vw-32px)] max-w-[440px] rounded-[18px] border-none bg-v2-surface p-6 text-v2-ink">
+        <DialogTitle className="font-archivo text-xl font-medium">
+          Delete {product.name}?
+        </DialogTitle>
+        <DialogDescription className="font-inter-tight text-sm leading-relaxed text-v2-ink-70">
+          The product and its photo are removed. Ads, photos and videos you already made from it
+          stay in Assets.
+        </DialogDescription>
+        <div className="mt-2 flex justify-end gap-2">
+          <PillButton variant="outline" onClick={() => onOpenChange(false)}>
+            Keep it
+          </PillButton>
+          <PillButton
+            variant="outline"
+            className="border-[#c93030] bg-[#c93030] text-white hover:bg-[#b02828]"
+            disabled={remove.isPending}
+            onClick={() =>
+              remove.mutate(product.id, {
+                onSuccess: () => {
+                  toast.success(`${product.name} deleted`);
+                  onOpenChange(false);
+                },
+                onError: (e) => toast.error(e.message),
+              })
+            }
+          >
+            {remove.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Delete product
+          </PillButton>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

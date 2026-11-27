@@ -4,6 +4,7 @@
  * ./backend.ts), and falls back to the bundled sample data otherwise. Return types never
  * change. Query keys are stable so mutations can invalidate them.
  */
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getShopifyProducts } from "@/lib/shopify.functions";
 import { extractBrandKit, keepBrandLogos, readProductPage } from "@/lib/v2/v2.functions";
@@ -25,6 +26,7 @@ import { askPersonConsent, CONSENT_DECLINED } from "./consent";
 import {
   backendUser,
   db,
+  UPLOADS_BUCKET,
   nameFromFile,
   resolveUrls,
   signedInUserId,
@@ -651,6 +653,76 @@ async function insertProduct(
 
 export function useProducts() {
   return useQuery({ queryKey: queryKeys.products, queryFn: fetchProducts });
+}
+
+/** Pick the product named in the link (?product=<id>) once the list has loaded. */
+export function usePreselectedProduct(
+  id: string | undefined,
+  current: Product | null,
+  set: (product: Product) => void,
+) {
+  const { data: list } = useProducts();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || !id || current || !list) return;
+    const found = list.find((p) => p.id === id);
+    if (found) {
+      done.current = true;
+      set(found);
+    }
+  }, [id, current, list, set]);
+}
+
+/** Rename a saved product or change its description. Shopify products are read-only. */
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; name: string; description: string }) => {
+      const userId = await backendUser("products");
+      if (!userId || !UUID.test(input.id)) throw new Error("This product can't be edited here.");
+      const { error } = await db
+        .from("products")
+        .update({
+          name: input.name.trim().slice(0, 200),
+          description: input.description.trim().slice(0, 5000) || null,
+        })
+        .eq("id", input.id)
+        .eq("user_id", userId);
+      if (error) throw new Error("Couldn't save the product. Please try again.");
+      return input;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.products }),
+  });
+}
+
+/**
+ * Delete a saved product (and its uploaded photo). Ads and photos already made from it stay
+ * in Assets. Shopify products come from the store and are removed there.
+ */
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await backendUser("products");
+      if (!userId || !UUID.test(id)) throw new Error("This product can't be deleted here.");
+      const { data: row } = await db
+        .from("products")
+        .select("image_path")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      const { error } = await db.from("products").delete().eq("id", id).eq("user_id", userId);
+      if (error) throw new Error("Couldn't delete the product. Please try again.");
+      if (row?.image_path) {
+        await db.storage
+          .from(UPLOADS_BUCKET)
+          .remove([row.image_path])
+          .catch(() => null);
+      }
+      return id;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.products }),
+  });
 }
 
 /**

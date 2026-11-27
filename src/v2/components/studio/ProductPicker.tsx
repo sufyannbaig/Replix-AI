@@ -272,7 +272,9 @@ export function ProductPicker({
                       >
                         <img
                           src={product.imageUrl}
-                          alt=""
+                          alt={product.name}
+                          loading="lazy"
+                          decoding="async"
                           className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                         />
                       </span>

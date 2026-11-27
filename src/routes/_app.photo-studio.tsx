@@ -29,7 +29,13 @@ import {
   type DiySelection,
 } from "@/v2/components/studio/BuildItYourself";
 import { DEFAULT_SHOT, labelLines, ShotStep } from "@/v2/components/studio/ShotStep";
-import { photoGenerationCost, usePhotoTemplates, usePiece, useProductLabel } from "@/v2/data/api";
+import {
+  usePreselectedProduct,
+  photoGenerationCost,
+  usePhotoTemplates,
+  usePiece,
+  useProductLabel,
+} from "@/v2/data/api";
 import { photoInputs } from "@/v2/data/inputs";
 import type {
   AspectRatio,
@@ -53,9 +59,13 @@ import modeCrop from "@/assets/v2/studio/mode-crop.svg";
 type PhotoMode = "templates" | "piece" | "diy";
 
 export const Route = createFileRoute("/_app/photo-studio")({
-  validateSearch: (search: Record<string, unknown>): { mode?: PhotoMode; use?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { mode?: PhotoMode; use?: string; product?: string; template?: string } => ({
     ...(search.mode === "piece" || search.mode === "diy" ? { mode: search.mode } : {}),
     ...(typeof search.use === "string" ? { use: search.use } : {}),
+    ...(typeof search.product === "string" ? { product: search.product } : {}),
+    ...(typeof search.template === "string" ? { template: search.template } : {}),
   }),
   head: () => ({ meta: [{ title: "Photo Studio · Replix AI" }] }),
   component: PhotoStudioPage,
@@ -251,11 +261,13 @@ const FILTERS: readonly { value: "all" | PhotoTemplateCategory; label: string }[
 /* ---------- Page ---------- */
 
 function PhotoStudioPage() {
-  const { mode = "templates", use } = Route.useSearch();
+  const { mode = "templates", use, product: productId, template: templateId } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { plan } = useCredits();
   const { generate, pending: generating } = useGenerate();
   const [product, setProduct] = useState<Product | null>(null);
+  /* "Make Photo" on a product card opens the studio with that product picked. */
+  usePreselectedProduct(productId, product, setProduct);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const [filter, setFilter] = useState<"all" | PhotoTemplateCategory>("all");
@@ -296,6 +308,14 @@ function PhotoStudioPage() {
     () => templates.filter((t) => filter === "all" || t.categories.includes(filter)),
     [templates, filter],
   );
+
+  /* "Change settings" on a result opens the studio on the same template. */
+  useEffect(() => {
+    if (!templateId || selected) return;
+    const found = templates.find((t) => t.id === templateId);
+    if (found) setSelected(found);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once the templates load
+  }, [templateId, templates]);
 
   const choose = (template: PhotoTemplate) => {
     if (template.isPro && plan === "free") {
@@ -353,7 +373,7 @@ function PhotoStudioPage() {
 
   return (
     <AppShell title="Photo Studio" subtitle="Select how you want to create">
-      <div className="mt-10 flex flex-col gap-10 pb-[250px] sm:pb-[160px]">
+      <div className="mt-10 flex flex-col gap-10 pb-2 sm:pb-[160px]">
         <ModeSwitcher
           modes={MODES}
           value={mode}
@@ -416,7 +436,7 @@ function PhotoStudioPage() {
       </div>
 
       {/* Composer floats at the bottom of the content column. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 lg:left-[308px] lg:bottom-6">
+      <div className="pointer-events-none z-20 flex justify-center px-4 max-sm:mt-8 max-sm:px-0 sm:fixed sm:inset-x-0 sm:bottom-4 lg:left-[308px] lg:bottom-6">
         <div className="pointer-events-auto w-full max-w-[622px]">
           <ComposerBar
             product={product}

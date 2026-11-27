@@ -370,6 +370,18 @@ function Result({ job }: { job: GenerationJob }) {
               </PillButton>
               <Link
                 to={studio.to}
+                /* Back to the studio with the same product (and Photo template) picked. */
+                {...(request.studio === "photo" || request.studio === "ad"
+                  ? {
+                      search: {
+                        product: request.product.id,
+                        ...(request.inputs?.studio === "photo" &&
+                        request.inputs.mode === "templates"
+                          ? { template: request.inputs.templateId }
+                          : {}),
+                      },
+                    }
+                  : {})}
                 className="text-center font-inter-tight text-sm text-v2-blue hover:underline"
               >
                 Change settings in {studio.label}

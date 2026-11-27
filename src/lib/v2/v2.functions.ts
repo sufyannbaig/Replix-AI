@@ -70,7 +70,12 @@ export const isLinkedLogo = (ref: string) => /^https?:\/\//i.test(ref);
  * ads: most sites don't let other sites load their images (CORS), and links break. Returns
  * the storage path, or null when it can't be copied (the caller keeps the link then).
  */
-async function keepLogo(db: SupabaseClient<V2Database>, userId: string, link: string) {
+async function keepLogo(
+  db: SupabaseClient<V2Database>,
+  userId: string,
+  link: string,
+  folder: "logos" | "images" = "logos",
+) {
   try {
     let url = isSafePublicUrl(link);
     for (let hop = 0; hop < 4 && url; hop++) {
@@ -91,7 +96,9 @@ async function keepLogo(db: SupabaseClient<V2Database>, userId: string, link: st
       if (!ext || length > MAX_LOGO_BYTES) return null;
       const bytes = new Uint8Array(await res.arrayBuffer());
       if (!bytes.byteLength || bytes.byteLength > MAX_LOGO_BYTES) return null;
-      const path = `${userId}/brand/logos/${crypto.randomUUID()}.${ext}`;
+      /* No SVG among brand images: they're photos, and an SVG there is usually a sprite. */
+      if (folder === "images" && ext === "svg") return null;
+      const path = `${userId}/brand/${folder}/${crypto.randomUUID()}.${ext}`;
       const { error } = await db.storage
         .from("uploads")
         .upload(path, bytes, { contentType: type, upsert: false });
@@ -125,6 +132,7 @@ function blockedBrand(): PageBrand {
     siteName: null,
     description: null,
     logoUrl: null,
+    iconUrl: null,
     themeColor: null,
     cssColors: [],
     fonts: [],
@@ -277,11 +285,20 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
     const ownName =
       before?.name && before.name !== "My brand" && before.website === host ? before.name : null;
     const name = (ownName || ai.name || brand.siteName || url.hostname).slice(0, 120);
+    /* The page's own logo, else the official one from Wikidata, and only then the site icon. */
     const logoUrl = ownLogos.length
       ? null
       : (brand.logoUrl ??
-        (await import("./brand-logo").then((m) => m.findBrandLogo(name, url.hostname))));
+        (await import("./brand-logo").then((m) => m.findBrandLogo(name, url.hostname))) ??
+        brand.iconUrl);
     const logo = logoUrl ? ((await keepLogo(db, context.userId, logoUrl)) ?? logoUrl) : null;
+    /* Brand images are copied in too: hotlinked ones broke (Allbirds showed 7 broken). Ones
+       that can't be copied are dropped rather than shown broken. */
+    const images = (
+      await Promise.all(
+        brand.images.slice(0, 6).map((link) => keepLogo(db, context.userId, link, "images")),
+      )
+    ).filter((p): p is string => !!p);
     const row = {
       name,
       website: host,
@@ -301,7 +318,7 @@ Return {"name": brand name, "colors": 3 to 5 brand hex colours (#rrggbb, primary
         .slice(0, 6),
       tone: ai.tone?.slice(0, 3000) ?? null,
       audience: ai.audience?.slice(0, 3000) ?? null,
-      images: brand.images,
+      images,
       extracted_at: new Date().toISOString(),
     };
 

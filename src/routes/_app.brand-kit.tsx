@@ -106,6 +106,10 @@ function BrandKitPage() {
       {
         onSuccess: (done) => {
           toast.success("Brand kit ready. It now shapes this brand's ads.");
+          /* Some sites draw their logo in code we can't read (Gymshark): say so. */
+          if (!done.logos.length) {
+            toast.warning("We couldn't find your logo on the site. Add it with Edit Brand.");
+          }
           select(done.id);
         },
         onError: (error) => {
